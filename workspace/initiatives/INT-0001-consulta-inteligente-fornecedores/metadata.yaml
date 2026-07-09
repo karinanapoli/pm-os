@@ -1,0 +1,15 @@
+id: INT-0001
+name: Consulta Inteligente de Fornecedores
+status: discovery
+owner: karina
+created_at: 2026-07-09
+
+tags:
+  - security
+  - suppliers
+
+artifacts:
+  - prd
+
+workflows:
+  - create_prd

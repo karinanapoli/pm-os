@@ -1,16 +1,16 @@
 from pathlib import Path
 from typing import Protocol
 
-from pm_os.models import Feature
+from pm_os.domain.initiative import Initiative
 
 
-class FeatureRepositoryProtocol(Protocol):
-    def list_features(self) -> list[Feature]:
+class InitiativeRepositoryProtocol(Protocol):
+    def list_initiatives(self) -> list[Initiative]:
         ...
 
 
 class ContextBuilderProtocol(Protocol):
-    def build(self, feature: Feature) -> str:
+    def build(self, initiative: Initiative) -> str:
         ...
 
 

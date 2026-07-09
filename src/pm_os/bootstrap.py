@@ -1,6 +1,7 @@
-from pm_os.infrastructure.ai.clients.fake_ai_client import FakeAIClient
+from pm_os.infrastructure.ai.clients.ollama_client import OllamaClient
+from pm_os.infrastructure.logging.console_logger import ConsoleLogger
 from pm_os.context_builder import ContextBuilder
-from pm_os.feature_repository import FeatureRepository
+from pm_os.repositories.initiative_repository import InitiativeRepository
 from pm_os.prompt_builder import PromptBuilder
 from pm_os.workflows.create_prd_workflow import CreatePRDWorkflow
 from pm_os.writers.markdown_writer import MarkdownWriter
@@ -12,10 +13,12 @@ def create_prd_workflow() -> CreatePRDWorkflow:
 
     This is the composition root of the application.
     """
+
     return CreatePRDWorkflow(
-        feature_repository=FeatureRepository(),
+        initiative_repository=InitiativeRepository(),
         context_builder=ContextBuilder(),
         prompt_builder=PromptBuilder(),
-       ai_client=FakeAIClient(),
+        ai_client=OllamaClient(),
         markdown_writer=MarkdownWriter(),
+        logger=ConsoleLogger(),
     )

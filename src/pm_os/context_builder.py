@@ -1,26 +1,14 @@
-from pm_os.models import Feature
+from pm_os.domain.initiative import Initiative
 
 
 class ContextBuilder:
     """
-    Responsável por transformar uma Feature em um contexto consolidado
-    que poderá ser enviado ao LLM.
+    Builds the context used by PM OS workflows.
     """
 
-    def build(self, feature: Feature) -> str:
+    def build(self, initiative: Initiative) -> str:
+        """
+        Builds a single context string from all initiative documents.
+        """
 
-        sections = []
-
-        for document in feature.documents:
-
-            content = document.read_text(encoding="utf-8")
-
-            sections.append(
-                f"""
-# Documento: {document.name}
-
-{content}
-"""
-            )
-
-        return "\n\n---\n\n".join(sections)
+        return "\n\n".join(initiative.documents)

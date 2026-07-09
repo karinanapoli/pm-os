@@ -1,14 +1,12 @@
 from pm_os.bootstrap import create_prd_workflow
 
 
-def main():
+def main() -> None:
     workflow = create_prd_workflow()
 
-    output_path = workflow.run(
-        output_path="features/03-prds/PRD.md",
+    workflow.run(
+        "workspace/initiatives/INT-0001-consulta-inteligente-fornecedores/artifacts/prd.md"
     )
-
-    print(f"PRD created at: {output_path}")
 
 
 if __name__ == "__main__":

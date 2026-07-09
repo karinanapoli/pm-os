@@ -1,9 +1,10 @@
 from pathlib import Path
 
+from pm_os.contracts.logger import Logger
 from pm_os.contracts.workflow_contracts import (
     AIClientProtocol,
     ContextBuilderProtocol,
-    FeatureRepositoryProtocol,
+    InitiativeRepositoryProtocol,
     MarkdownWriterProtocol,
     PromptBuilderProtocol,
 )
@@ -18,36 +19,49 @@ class CreatePRDWorkflow:
 
     def __init__(
         self,
-        feature_repository: FeatureRepositoryProtocol,
+        initiative_repository: InitiativeRepositoryProtocol,
         context_builder: ContextBuilderProtocol,
         prompt_builder: PromptBuilderProtocol,
         ai_client: AIClientProtocol,
         markdown_writer: MarkdownWriterProtocol,
+        logger: Logger,
     ):
-        self.feature_repository = feature_repository
+        self.initiative_repository = initiative_repository
         self.context_builder = context_builder
         self.prompt_builder = prompt_builder
         self.ai_client = ai_client
         self.markdown_writer = markdown_writer
+        self.logger = logger
 
     def run(self, output_path: str) -> Path:
-        features = self.feature_repository.list_features()
+        self.logger.info("Loading initiatives from workspace.")
 
-        if not features:
-            raise ValueError("No features found in the inbox.")
+        initiatives = self.initiative_repository.list_initiatives()
 
-        feature = features[0]
+        if not initiatives:
+            raise ValueError("No initiatives found in the workspace.")
 
-        context = self.context_builder.build(feature)
+        initiative = initiatives[0]
+        self.logger.info(f"Selected initiative: {initiative.name}")
 
+        self.logger.info("Building context.")
+        context = self.context_builder.build(initiative)
+
+        self.logger.info("Building prompt for create_prd workflow.")
         prompt = self.prompt_builder.build(
             workflow_name="create_prd",
             context=context,
         )
 
+        self.logger.info("Generating PRD content with AI client.")
         prd_content = self.ai_client.generate(prompt)
 
-        return self.markdown_writer.write(
+        self.logger.info(f"Writing PRD to {output_path}.")
+        output_file = self.markdown_writer.write(
             content=prd_content,
             output_path=output_path,
         )
+
+        self.logger.info("Create PRD workflow completed successfully.")
+
+        return output_file
