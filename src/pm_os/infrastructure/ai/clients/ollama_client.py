@@ -1,5 +1,15 @@
 import json
+import urllib.error
 import urllib.request
+
+
+class OllamaConnectionError(RuntimeError):
+    """
+    Raised when PM OS cannot connect to the local Ollama server.
+    """
+
+    def __init__(self):
+        super().__init__("Could not connect to the Ollama server.")
 
 
 class OllamaClient:
@@ -31,8 +41,15 @@ class OllamaClient:
             method="POST",
         )
 
-        with urllib.request.urlopen(request, timeout=120) as response:
-            response_body = response.read().decode("utf-8")
-            data = json.loads(response_body)
+        try:
+            with urllib.request.urlopen(
+                request,
+                timeout=120,
+            ) as response:
+                response_body = response.read().decode("utf-8")
+                data = json.loads(response_body)
+
+        except urllib.error.URLError as error:
+            raise OllamaConnectionError() from error
 
         return data["response"]
