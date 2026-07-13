@@ -3,7 +3,7 @@
 
 {% block topbar_actions %}
 <div style="display: flex; gap: 8px;">
-    <a href="/generate" class="btn btn-primary btn-sm">◇ {{ "nav.generate_prd"|t }}</a>
+    <a href="/generate" class="btn btn-ai btn-sm">◇ {{ "nav.generate_prd"|t }}</a>
     {% if prd_exists %}
     <a href="/validate/{{ initiative.name }}" class="btn btn-secondary btn-sm">✓ {{ "validate.title"|t }}</a>
     {% endif %}

@@ -12,19 +12,24 @@
     --sidebar-active: linear-gradient(135deg, #6c5ce7, #a855f7);
 
     --bg: #0f0d1e;
-    --bg-card: #16132b;
-    --bg-card-hover: #1d1a38;
+    --bg-card: #14111f;
+    --bg-card-hover: #1b1830;
     --bg-elevated: #1e1a3a;
 
     --text: #f1f0f7;
     --text-secondary: #9895b8;
     --text-muted: #6b6890;
 
-    --primary: #7c5ce7;
-    --primary-light: #a78bfa;
-    --primary-glow: rgba(124, 92, 231, 0.25);
+    --primary: #6e56d9;
+    --primary-light: #a996f5;
+    --primary-glow: rgba(110, 86, 217, 0.30);
     --accent: #14b8a6;
     --accent-light: #5eead4;
+
+    /* AI-triggered actions — any action the model performs gets this color */
+    --ai: #22b8d9;
+    --ai-light: #6fd8ef;
+    --ai-glow: rgba(34, 184, 217, 0.28);
 
     --success: #10b981;
     --warning: #f59e0b;
@@ -46,7 +51,7 @@
     --radius-lg: 16px;
 
     --shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
-    --shadow-glow: 0 0 40px rgba(124, 92, 231, 0.15);
+    --shadow-glow: 0 0 40px rgba(110, 86, 217, 0.15);
     --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.5);
 
     --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
@@ -366,7 +371,7 @@ body {
     left: 0;
     right: 0;
     height: 3px;
-    background: linear-gradient(90deg, var(--primary), var(--accent));
+    background: linear-gradient(90deg, var(--primary), var(--ai));
     opacity: 0;
     transition: opacity 0.2s ease;
 }
@@ -406,9 +411,9 @@ body {
     color: var(--text-secondary);
 }
 
-.init-card-status.discovery { background: rgba(124, 92, 231, 0.15); color: var(--primary-light); }
-.init-card-status.planning { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
-.init-card-status.development { background: rgba(20, 184, 166, 0.15); color: var(--accent-light); }
+.init-card-status.discovery { background: rgba(110, 86, 217, 0.15); color: var(--primary-light); }
+.init-card-status.planning { background: rgba(34, 184, 217, 0.15); color: var(--ai-light); }
+.init-card-status.development { background: rgba(240, 169, 64, 0.15); color: var(--amber); }
 .init-card-status.completed { background: rgba(16, 185, 129, 0.15); color: var(--success); }
 
 /* ── Table ── */
@@ -462,14 +467,24 @@ body {
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, var(--primary), #a855f7);
+    background: linear-gradient(135deg, var(--primary), #8a72ec);
     color: #fff;
-    box-shadow: 0 4px 16px rgba(124, 92, 231, 0.25);
+    box-shadow: 0 4px 16px rgba(110, 86, 217, 0.25);
 }
 
 .btn-primary:hover {
     transform: translateY(-1px);
-    box-shadow: 0 6px 24px rgba(124, 92, 231, 0.35);
+    box-shadow: 0 6px 24px rgba(110, 86, 217, 0.35);
+}
+
+.btn-ai {
+    background: linear-gradient(135deg, var(--ai), #3cc9e8);
+    color: #04252c;
+    box-shadow: 0 2px 14px var(--ai-glow);
+}
+
+.btn-ai:hover {
+    filter: brightness(1.06);
 }
 
 .btn-secondary {
@@ -629,9 +644,9 @@ body {
     font-weight: 600;
 }
 
-.badge-discovery { background: rgba(124, 92, 231, 0.15); color: var(--primary-light); }
-.badge-planning { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
-.badge-development { background: rgba(20, 184, 166, 0.15); color: var(--accent-light); }
+.badge-discovery { background: rgba(110, 86, 217, 0.15); color: var(--primary-light); }
+.badge-planning { background: rgba(34, 184, 217, 0.15); color: var(--ai-light); }
+.badge-development { background: rgba(240, 169, 64, 0.15); color: var(--amber); }
 .badge-completed { background: rgba(16, 185, 129, 0.15); color: var(--success); }
 .badge-unknown { background: rgba(255, 255, 255, 0.04); color: var(--text-muted); }
 
@@ -734,9 +749,9 @@ body {
 }
 
 .alert-info {
-    background: rgba(124, 92, 231, 0.1);
+    background: rgba(110, 86, 217, 0.1);
     color: var(--primary-light);
-    border-color: rgba(124, 92, 231, 0.2);
+    border-color: rgba(110, 86, 217, 0.2);
 }
 
 /* ── Sections Grid (Validation) ── */
@@ -826,6 +841,8 @@ body {
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }
+
+.loading-spinner.ai { border-top-color: var(--ai-light); }
 
 /* ── Onboarding Modal ── */
 /* ── Action Modal (confirms, replaces confirm()) ── */
@@ -993,7 +1010,7 @@ body {
 
 .file-upload:hover {
     border-color: var(--primary);
-    background: rgba(124, 92, 231, 0.05);
+    background: rgba(110, 86, 217, 0.05);
 }
 
 .file-upload-icon {

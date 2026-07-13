@@ -144,6 +144,7 @@
                     var overlay = document.getElementById('loadingOverlay');
                     var text = document.getElementById('loadingText');
                     var sub = document.getElementById('loadingSub');
+                    var spinner = overlay.querySelector('.loading-spinner');
                     var action = form.getAttribute('data-loading') || 'processing';
                     var texts = {
                         processing: ['{{ "loading.processing"|t }}', '{{ "loading.sub"|t }}'],
@@ -155,6 +156,12 @@
                     var t = texts[action] || texts.default;
                     text.textContent = t[0];
                     sub.textContent = t[1];
+                    // AI actions get the ciano spinner, system actions get violet
+                    if (action === 'processing') {
+                        spinner.classList.add('ai');
+                    } else {
+                        spinner.classList.remove('ai');
+                    }
                     overlay.classList.add('active');
                 });
             });
