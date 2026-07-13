@@ -1,9 +1,9 @@
-**PRD - Consulta Inteligente de Fornecedores**
+**PRD - Consulta Inteligente de Fornecedores de Ecomm**
 
 **Visão Geral**
 --------------------------------
 
-A Consulta Inteligente de Fornecedores é uma solução que visa automatizar a consulta de fornecedores utilizando CNPJ, CPF ou nome. A integração com os serviços OneTrust e SecurityScorecard permitirá uma ampla gama de informações sobre os fornecedores, reduzindo o esforço manual do time de Segurança da Informação.
+A Consulta Inteligente de Fornecedores é uma solução que visa automatizar a consulta de fornecedores utilizando CNPJ, CPF ou nome. A integração permitirá uma ampla gama de informações sobre os fornecedores do ecommerce, reduzindo o esforço manual.
 
 **Problema**
 ------------
@@ -13,8 +13,8 @@ A consulta manual de fornecedores é um processo demorado e propenso a erros. Is
 **Objetivos**
 -------------
 
-* Reduzir o tempo de consulta de fornecedores em 70%
-* Aumentar a precisão das consultas em 90%
+* Reduzir o tempo de consulta de fornecedores em 10%
+* Aumentar a precisão das consultas em 80%
 * Simplificar o processo de gestão de informações sobre fornecedores
 * Forneecer uma visão de controle e transparência para as áreas internas
 
@@ -39,15 +39,14 @@ A consulta manual de fornecedores é um processo demorado e propenso a erros. Is
 
 1. **Autenticção e Autorização**: Implementar um sistema de autenticação e autorização robusto para garantir a segurança das informações.
 2. **Consulta Inteligente**: Desenvolver uma consulta inteligente que permita à usuária filtrar resultados por CNPJ, CPF ou nome.
-3. **Integração com OneTrust e SecurityScorecard**: Integrar os serviços OneTrust e SecurityScorecard para fornecer uma ampla gama de informações sobre os fornecedores.
-4. **Armazenamento de Dados**: Implementar um sistema de armazenamento seguro de dados que atenda às necessidades da empresa.
+3. **Armazenamento de Dados**: Implementar um sistema de armazenamento seguro de dados que atenda às necessidades da empresa.
 
 **Requisitos Não Funcionais**
 ------------------------------
 
 1. **Desempenho**: Garantir que a consulta inteligente seja capaz de lidar com um grande volume de consultas por segundo.
 2. **Segurança**: Implementar medidas de segurança robustas para proteger as informações sensíveis.
-3. **Escalabilidade**: Desenvolver uma solução escalável que possa atender às necessidades da empresa em crescimento.
+3. **Escalabilidade**: Desenvolver uma solução escalável que possa atender às necessidades.
 
 **Métricas de Sucesso**
 -------------------------
@@ -68,5 +67,5 @@ A consulta manual de fornecedores é um processo demorado e propenso a erros. Is
 -------------------------
 
 1. Como podemos melhorar a precisão das consultas inteligentes?
-2. Quais são as implicações éticas da integração com os serviços OneTrust e SecurityScorecard?
+2. Quais são as implicações éticas da integração com os serviços?
 3. Como podemos garantir que a solução seja escalável e atenda às necessidades da empresa em crescimento?

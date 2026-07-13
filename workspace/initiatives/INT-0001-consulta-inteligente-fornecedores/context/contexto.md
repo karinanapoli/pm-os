@@ -2,6 +2,6 @@
 
 Queremos permitir que usuários consultem fornecedores usando CNPJ, CPF ou nome.
 
-A solução deve integrar dados do OneTrust e SecurityScorecard.
+A solução deve integrar dados do ecommerce. 
 
-O objetivo é reduzir esforço manual do time de Segurança da Informação e dar mais autonomia para áreas internas.
+O objetivo é reduzir esforço manual e dar mais autonomia para áreas internas.
