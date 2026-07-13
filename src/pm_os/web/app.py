@@ -194,7 +194,7 @@ async def initiative_detail(request: Request, initiative_name: str):
     if report_path.exists():
         scan = WorkspaceScanWorkflow(initiative_repository=InitiativeRepository(), logger=_SilentLogger())
         score = scan._read_validation_score(selected.path)
-        validation_score = f"{score}/10" if score is not None else "✓"
+        validation_score = f"{score}/10" if score is not None else "-"
 
     return templates.TemplateResponse(
         "initiative_detail.html",
@@ -824,6 +824,50 @@ async def delete_product_link(
     links = [l for l in _load_product_links() if l["url"] != url]
     _save_product_links(links)
     return await product_docs_page(request)
+
+
+# ─── Archived Initiatives ───
+
+@app.get("/archived", response_class=HTMLResponse)
+async def archived_page(request: Request):
+    repo = InitiativeRepository()
+    archive_dir = repo.initiatives_path.parent / "archived"
+    archived = []
+    if archive_dir.exists():
+        for f in sorted(archive_dir.iterdir(), reverse=True):
+            if f.is_dir():
+                archived_at = ""
+                meta_file = f / ".archive_meta"
+                if meta_file.exists():
+                    for line in meta_file.read_text(encoding="utf-8").splitlines():
+                        if line.startswith("archived_at:"):
+                            archived_at = line.split(":", 1)[1].strip()
+                archived.append({
+                    "name": f.name,
+                    "archived_at": archived_at,
+                })
+    return templates.TemplateResponse(
+        "archived.html",
+        _ctx(request, archived=archived),
+    )
+
+
+@app.post("/archived/restore", response_class=HTMLResponse)
+async def restore_initiative(request: Request, name: str = Form(...)):
+    import shutil
+    repo = InitiativeRepository()
+    archive_dir = repo.initiatives_path.parent / "archived"
+    src = archive_dir / name
+    if src.exists() and src.is_dir():
+        # Extract original name from archive name (format: name_timestamp)
+        original_name = name.rsplit("_", 1)[0] if "_" in name else name
+        dst = repo.initiatives_path / original_name
+        if dst.exists():
+            dst = repo.initiatives_path / f"{original_name}_restored"
+        shutil.move(str(src), str(dst))
+        tracker = ChangeTracker()
+        tracker.update_manifest(str(dst))
+    return await archived_page(request)
 
 
 # ─── Helpers ───

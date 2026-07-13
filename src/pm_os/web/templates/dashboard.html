@@ -35,10 +35,10 @@ document.addEventListener('DOMContentLoaded', function() {
         <span class="stat-value">{{ avg_score }}/10</span>
     </div>
     {% if archived_count and archived_count > 0 %}
-    <div class="stat-card" style="border-color: rgba(255,255,255,0.03); opacity: 0.6;">
-        <div class="stat-label">Arquivadas</div>
+    <a href="/archived" class="stat-card" style="border-color: rgba(255,255,255,0.03); opacity: 0.6; text-decoration: none; color: inherit;">
+        <div class="stat-label">{{ "dashboard.stats.archived"|t }}</div>
         <span class="stat-value" style="font-size: 24px; background: none; -webkit-text-fill-color: var(--text-muted);">{{ archived_count }}</span>
-    </div>
+    </a>
     {% endif %}
 </div>
 
@@ -55,7 +55,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <a href="/initiative/{{ init.name }}" class="init-card">
                 <div class="init-card-name">{{ init.name }}</div>
                 <div class="init-card-meta">
-                    <span class="init-card-status {{ init.status }}">{{ init.status }}</span>
+                    <span class="init-card-status {{ init.status }}">{{ init.status|t }}</span>
                     <span>{{ "dashboard.stats.score"|t }}: {{ init.score }}</span>
                 </div>
                 <div style="font-size: 13px; color: var(--text-muted); display: flex; gap: 16px;">
@@ -72,9 +72,9 @@ document.addEventListener('DOMContentLoaded', function() {
     <div class="card-body">
         <div class="empty-state">
             <div class="empty-icon">📋</div>
-            <div class="empty-title">{{ "dashboard.empty.title"|t }}</div>
-            <div class="empty-desc">{{ "dashboard.empty.desc"|t }}</div>
-            <a href="/initiatives/new" class="btn btn-primary">{{ "dashboard.empty.cta"|t }}</a>
+            <h2>{{ "dashboard.empty.title"|t }}</h2>
+            <p>{{ "dashboard.empty.desc"|t }}</p>
+            <a href="/initiatives/new" class="btn-primary">{{ "initiative.new.create"|t }}</a>
         </div>
     </div>
 </div>

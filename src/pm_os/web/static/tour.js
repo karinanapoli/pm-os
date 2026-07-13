@@ -91,6 +91,16 @@ var PMOSTour = (function() {
         document.body.appendChild(overlay);
     }
 
+    function handleKeydown(e) {
+        if (!active) return;
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            PMOSTour.end();
+        }
+    }
+
+    document.addEventListener('keydown', handleKeydown);
+
     function getElement(selector) {
         if (!selector) return null;
         var el = document.querySelector(selector);
@@ -120,17 +130,23 @@ var PMOSTour = (function() {
     }
 
     function showStep(index) {
-        var step = steps[index];
+        var stepList = window.__pmosSteps || steps;
+        var step = stepList[index];
         if (!step) return;
 
         var overlay = document.getElementById('pmosTour');
         var tooltip = document.getElementById('tourTooltip');
         var highlight = document.getElementById('tourHighlight');
 
+        // Set aria-live for accessibility
+        tooltip.setAttribute('role', 'dialog');
+        tooltip.setAttribute('aria-live', 'polite');
+        tooltip.setAttribute('aria-label', (t[step.key] || step.key) + ' - ' + (t[step.key + '_desc'] || ''));
+
         currentStep = index;
         var title = t[step.key] || step.key;
         var desc = t[step.key + '_desc'] || '';
-        var total = steps.length;
+        var total = stepList.length;
 
         var isCenter = step.position === 'center';
         var targetEl = getElement(step.target);
@@ -212,10 +228,19 @@ var PMOSTour = (function() {
     return {
         start: function() {
             if (!document.getElementById('pmosTour')) createElements();
+            // Skip init-card step if no cards exist on dashboard
+            var hasCards = document.querySelector('.init-card') || document.querySelector('.init-card-link');
+            var filteredSteps = steps.filter(function(s) {
+                if (s.target === '.init-card' && !hasCards) return false;
+                return true;
+            });
+            // Reassign global steps if filtered
+            window.__pmosSteps = filteredSteps;
             showStep(0);
         },
         next: function() {
-            if (currentStep < steps.length - 1) showStep(currentStep + 1);
+            var stepList = window.__pmosSteps || steps;
+            if (currentStep < stepList.length - 1) showStep(currentStep + 1);
         },
         prev: function() {
             if (currentStep > 0) showStep(currentStep - 1);

@@ -11,17 +11,17 @@
         <div class="alert alert-error">{{ error }}</div>
         {% endif %}
 
-        <form method="POST" action="/initiatives/new" class="form">
+        <form method="POST" action="/initiatives/new" class="form" data-loading="saving">
             <div class="form-group">
                 <label for="name">{{ "initiative.new.name"|t }}</label>
                 <input type="text" name="name" id="name" placeholder="{{ 'initiative.new.name_placeholder'|t }}" required>
-                <div class="form-hint">Nome curto e descritivo para sua iniciativa.</div>
+                <div class="form-hint">{{ "initiative.new.name_hint"|t }}</div>
             </div>
 
             <div class="form-group">
                 <label for="id">{{ "initiative.new.id"|t }}</label>
                 <input type="text" name="id" id="id" placeholder="{{ 'initiative.new.id_placeholder'|t }}">
-                <div class="form-hint">Deixe vazio para auto-gerar.</div>
+                <div class="form-hint">{{ "initiative.new.id_hint"|t }}</div>
             </div>
 
             <div class="form-group">

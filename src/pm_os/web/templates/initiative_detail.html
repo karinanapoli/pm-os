@@ -20,7 +20,7 @@
     <div class="stat-card">
         <div class="stat-label">{{ "initiative.detail.status"|t }}</div>
         <span class="stat-value" style="font-size: 24px;">
-            <span class="badge badge-{{ metadata.status if metadata else 'unknown' }}">{{ metadata.status if metadata else 'unknown' }}</span>
+            <span class="badge badge-{{ metadata.status if metadata else 'unknown' }}">{{ (metadata.status if metadata else 'unknown')|t }}</span>
         </span>
     </div>
     <div class="stat-card">
@@ -54,7 +54,7 @@
                 </span>
                 <div style="display: flex; align-items: center; gap: 12px;">
                     <span class="doc-size">{{ doc.size }}</span>
-                    <form method="POST" action="/initiative/{{ initiative.name }}/delete-doc" style="display:inline;">
+                    <form method="POST" action="/initiative/{{ initiative.name }}/delete-doc" style="display:inline;" data-loading="deleting" onsubmit="return confirm('{{ "archive.confirm_delete"|t }}')">
                         <input type="hidden" name="filename" value="{{ doc.name }}">
                         <button type="submit" class="doc-delete" title="Delete">✕</button>
                     </form>

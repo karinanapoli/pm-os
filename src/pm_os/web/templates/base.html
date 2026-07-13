@@ -78,15 +78,29 @@
 
     <div class="loading-overlay" id="loadingOverlay">
         <div class="loading-spinner"></div>
-        <div class="loading-text">{{ "loading.processing"|t }}</div>
-        <div class="loading-sub">{{ "loading.sub"|t }}</div>
+        <div class="loading-text" id="loadingText">{{ "loading.processing"|t }}</div>
+        <div class="loading-sub" id="loadingSub">{{ "loading.sub"|t }}</div>
     </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             document.querySelectorAll('form').forEach(function(form) {
                 form.addEventListener('submit', function() {
-                    document.getElementById('loadingOverlay').classList.add('active');
+                    var overlay = document.getElementById('loadingOverlay');
+                    var text = document.getElementById('loadingText');
+                    var sub = document.getElementById('loadingSub');
+                    var action = form.getAttribute('data-loading') || 'processing';
+                    var texts = {
+                        processing: ['{{ "loading.processing"|t }}', '{{ "loading.sub"|t }}'],
+                        saving: ['{{ "loading.saving"|t }}', '{{ "loading.saving_sub"|t }}'],
+                        deleting: ['{{ "loading.deleting"|t }}', '{{ "loading.deleting_sub"|t }}'],
+                        restoring: ['{{ "loading.restoring"|t }}', '{{ "loading.restoring_sub"|t }}'],
+                        default: ['{{ "loading.default"|t }}', '{{ "loading.default_sub"|t }}'],
+                    };
+                    var t = texts[action] || texts.default;
+                    text.textContent = t[0];
+                    sub.textContent = t[1];
+                    overlay.classList.add('active');
                 });
             });
 

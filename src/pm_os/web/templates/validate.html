@@ -12,7 +12,7 @@
             {{ "validate.desc"|t }} <strong>{{ initiative.name }}</strong>,
             {{ "validate.checking"|t }}
         </p>
-        <form method="POST" action="/validate/{{ initiative.name }}" class="form">
+        <form method="POST" action="/validate/{{ initiative.name }}" class="form" data-loading="processing">
             <button type="submit" class="btn btn-primary">{{ "validate.cta"|t }}</button>
         </form>
     </div>
@@ -46,7 +46,7 @@
                 </div>
                 {% if section.issues %}
                 <div class="section-issues">
-                    <strong>Issues:</strong>
+                    <strong>{{ "validate.issues"|t }}:</strong>
                     <ul>
                         {% for issue in section.issues %}
                         <li>{{ issue }}</li>
@@ -56,7 +56,7 @@
                 {% endif %}
                 {% if section.suggestions %}
                 <div class="section-suggestions">
-                    <strong>Suggestions:</strong>
+                    <strong>{{ "validate.suggestions"|t }}:</strong>
                     <ul>
                         {% for suggestion in section.suggestions %}
                         <li>{{ suggestion }}</li>

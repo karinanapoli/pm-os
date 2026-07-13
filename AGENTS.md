@@ -118,6 +118,22 @@ All templates use `|t` filter for i18n:
 - Content can be toggled as context in PRD generation (checkbox on `/generate`)
 - Content can be toggled as context in Q&A consultation (checkbox on `/consult`)
 
+## UX Fixes (11 findings resolved)
+
+| # | Priority | Issue | Fix |
+|---|----------|-------|-----|
+| P1 | CRITICAL | Archived initiatives can't be restored | Added `/archived` GET route + `/archived/restore` POST, created `archived.html` template, sidebar link from dashboard stat |
+| P2 | CRITICAL | Destructive actions (delete doc, link, MCP) lack `confirm()` | Added `onsubmit="return confirm('...')"` with i18n key `archive.confirm_delete`/`mcp.confirm_delete` on all destructive forms |
+| P3 | HIGH | Tour breaks when no `.init-card` exists (first visit) | `tour.js` checks for `.init-card`/`.init-card-link` on start; filters out step if absent |
+| P4 | HIGH | Initiative status rendered raw (`discovery`) instead of translated | Added `|t` filter to `{{ init.status }}` in `dashboard.html` and `{{ metadata.status }}` in `initiative_detail.html` |
+| P5 | HIGH | Hardcoded strings bypass i18n | Migrated to `|t` keys: `generate.initiative_hint`, `generate.issues`, `generate.suggestions`, `generate.product_docs_badge`, `validate.issues`, `validate.suggestions`, `consult.references`, `dashboard.stats.archived`, `initiative.new.name_hint`, `initiative.new.id_hint` |
+| P6 | MEDIUM | `<select multiple>` requires Cmd/Ctrl+click | Replaced with `<div class="checkbox-group">` of `<label class="checkbox-label"><input type="checkbox">` in `generate.html` and `consult.html`; updated JS filtering to hide/show checkboxes |
+| P7 | MEDIUM | MCP toggle shows result state ("Inativo") instead of action ("Desativar") | Changed labels to `mcp.activate`/`mcp.deactivate` action verbs |
+| P8 | MEDIUM | Loading overlay text is generic for all operations | Added `data-loading` attribute on forms (`processing`, `saving`, `deleting`, `restoring`); base.html JS reads it to set dynamic text via `loading.*` i18n keys |
+| P9 | LOW | `"✓"` shown when validation score is unreadable (wrongly implies perfect) | Changed to `"-"` in `app.py:197` |
+| P10 | LOW | Same "✕" icon for archive and permanent delete | Archive (reversible) keeps soft icon button; permanent deletes get explicit "Excluir" button text |
+| P11 | LOW | Tour lacks keyboard focus management, Esc key, aria-live | Added `aria-live="polite"`, `role="dialog"`, `aria-label` on tooltip; `Escape` key handler dismisses tour |
+
 ## Key UX Writing Decisions
 - "Gerando com IA..." instead of "Processando..."
 - "Enquanto isso, revise os documentos" instead of "Isso pode levar minutos"
@@ -141,7 +157,7 @@ All templates use `|t` filter for i18n:
 
 ## Files to Reference
 - `src/pm_os/web/app.py` — All route handlers
-- `src/pm_os/web/templates/` — All 9 Jinja2 templates
+- `src/pm_os/web/templates/` — All 10 Jinja2 templates (incl. `archived.html`)
 - `src/pm_os/web/static/style.css` — Complete CSS (880 lines)
 - `src/pm_os/web/static/tour.js` — Interactive tour engine
 - `src/pm_os/web/static/tour.css` — Tour overlay styles

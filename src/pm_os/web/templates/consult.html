@@ -7,18 +7,21 @@
         <h3>{{ "consult.card_title"|t }}</h3>
     </div>
     <div class="card-body">
-        <form method="POST" action="/consult" class="form">
+        <form method="POST" action="/consult" class="form" data-loading="processing">
             <div class="form-group">
                 <label for="question">{{ "consult.question"|t }}</label>
                 <textarea name="question" id="question" rows="3" placeholder="{{ 'consult.question_placeholder'|t }}" required>{{ question or '' }}</textarea>
             </div>
             <div class="form-group">
-                <label for="initiatives">{{ "consult.initiatives"|t }}</label>
-                <select name="initiatives" id="initiatives" multiple style="min-height: 100px;">
+                <label>{{ "consult.initiatives"|t }}</label>
+                <div class="checkbox-group" id="initiatives">
                     {% for name in initiative_names %}
-                    <option value="{{ name }}" {% if not selected_initiatives or name in selected_initiatives %}selected{% endif %}>{{ name }}</option>
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="initiatives" value="{{ name }}" {% if not selected_initiatives or name in selected_initiatives %}checked{% endif %}>
+                        <span>{{ name }}</span>
+                    </label>
                     {% endfor %}
-                </select>
+                </div>
                 <div class="form-hint">{{ "consult.initiatives_hint"|t }}</div>
             </div>
             <div class="form-group">
@@ -48,7 +51,7 @@
         <pre class="answer-content" style="white-space: pre-wrap; font-family: inherit; line-height: 1.7;">{{ result.answer }}</pre>
         {% if result.references %}
         <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border);">
-            <strong style="color: var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Referências</strong>
+            <strong style="color: var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">{{ "consult.references"|t }}</strong>
             <ul style="margin-top: 8px; font-size: 13px;">
                 {% for ref in result.references %}
                 <li style="margin-bottom: 4px;">

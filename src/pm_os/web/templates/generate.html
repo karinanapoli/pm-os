@@ -7,7 +7,7 @@
         <h3>{{ "generate.card_title"|t }}</h3>
     </div>
     <div class="card-body">
-        <form method="POST" action="/generate" class="form">
+        <form method="POST" action="/generate" class="form" data-loading="processing">
             <div class="form-group">
                 <label for="initiative_name">{{ "generate.initiative"|t }}</label>
                 <select name="initiative_name" id="initiative_name" required>
@@ -16,15 +16,18 @@
                     <option value="{{ init.name }}">{{ init.name }}</option>
                     {% endfor %}
                 </select>
-                <div class="form-hint">O PRD será gerado usando os documentos de contexto desta iniciativa.</div>
+                <div class="form-hint">{{ "generate.initiative_hint"|t }}</div>
             </div>
             <div class="form-group">
-                <label for="additional_initiatives">{{ "generate.additional_context"|t }}</label>
-                <select name="additional_initiatives" id="additional_initiatives" multiple style="min-height: 80px;">
+                <label>{{ "generate.additional_context"|t }}</label>
+                <div class="checkbox-group" id="additional_initiatives">
                     {% for init in initiatives %}
-                    <option value="{{ init.name }}">{{ init.name }}</option>
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="additional_initiatives" value="{{ init.name }}">
+                        <span>{{ init.name }}</span>
+                    </label>
                     {% endfor %}
-                </select>
+                </div>
                 <div class="form-hint">{{ "generate.additional_hint"|t }}</div>
             </div>
             <div class="form-group">
@@ -69,7 +72,7 @@
             {% endif %}
             {% if result.product_docs_used %}
             <span style="padding: 4px 10px; font-size: 12px; background: rgba(72,187,120,0.1); border: 1px solid rgba(72,187,120,0.2); border-radius: 12px; color: #48bb78;">
-                + Documentação do Produto
+                + {{ "generate.product_docs_badge"|t }}
             </span>
             {% endif %}
         </div>
@@ -86,7 +89,7 @@
                 </div>
                 {% if section.issues %}
                 <div class="section-issues">
-                    <strong>Issues:</strong>
+                    <strong>{{ "generate.issues"|t }}:</strong>
                     <ul>
                         {% for issue in section.issues %}
                         <li>{{ issue }}</li>
@@ -96,7 +99,7 @@
                 {% endif %}
                 {% if section.suggestions %}
                 <div class="section-suggestions">
-                    <strong>Suggestions:</strong>
+                    <strong>{{ "generate.suggestions"|t }}:</strong>
                     <ul>
                         {% for suggestion in section.suggestions %}
                         <li>{{ suggestion }}</li>
@@ -124,19 +127,17 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     var mainSelect = document.getElementById('initiative_name');
-    var additionalSelect = document.getElementById('additional_initiatives');
-    var allOptions = Array.from(additionalSelect.options).map(function(o) { return {value: o.value, text: o.text}; });
+    var checkboxGroup = document.getElementById('additional_initiatives');
+    var allLabels = Array.from(checkboxGroup.querySelectorAll('.checkbox-label')).map(function(lbl) {
+        var cb = lbl.querySelector('input[type=checkbox]');
+        return {label: lbl, cb: cb, value: cb.value, span: lbl.querySelector('span')};
+    });
 
     function filterAdditional() {
         var selected = mainSelect.value;
-        additionalSelect.innerHTML = '';
-        allOptions.forEach(function(opt) {
-            if (opt.value !== selected) {
-                var o = document.createElement('option');
-                o.value = opt.value;
-                o.text = opt.text;
-                additionalSelect.appendChild(o);
-            }
+        allLabels.forEach(function(item) {
+            item.label.style.display = (item.value !== selected) ? '' : 'none';
+            if (item.value === selected) item.cb.checked = false;
         });
     }
 

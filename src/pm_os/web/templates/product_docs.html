@@ -12,7 +12,7 @@
         </p>
 
         <h4 style="margin-bottom: 12px;">{{ "product_docs.upload"|t }}</h4>
-        <form method="POST" action="/product-docs/upload" enctype="multipart/form-data" class="form" style="margin-bottom: 32px;">
+        <form method="POST" action="/product-docs/upload" enctype="multipart/form-data" class="form" style="margin-bottom: 32px;" data-loading="saving">
             <div class="form-group">
                 <input type="file" name="docs" multiple accept=".md,.txt">
                 <div class="form-hint">{{ "product_docs.upload_hint"|t }}</div>
@@ -21,7 +21,7 @@
         </form>
 
         <h4 style="margin-bottom: 12px;">{{ "product_docs.links"|t }}</h4>
-        <form method="POST" action="/product-docs/add-link" class="form" style="margin-bottom: 16px; display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap;">
+        <form method="POST" action="/product-docs/add-link" class="form" style="margin-bottom: 16px; display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap;" data-loading="saving">
             <div class="form-group" style="flex: 1; min-width: 180px;">
                 <input type="text" name="title" placeholder="{{ 'product_docs.links_title_placeholder'|t }}" required>
             </div>
@@ -40,7 +40,7 @@
                     <br>
                     <a href="{{ link.url }}" target="_blank" style="color: var(--primary-light); font-size: 13px;">{{ link.url }}</a>
                 </div>
-                <form method="POST" action="/product-docs/delete-link" style="margin: 0;">
+                <form method="POST" action="/product-docs/delete-link" style="margin: 0;" data-loading="deleting" onsubmit="return confirm('{{ "archive.confirm_delete"|t }}')">
                     <input type="hidden" name="url" value="{{ link.url }}">
                     <button type="submit" class="btn btn-ghost btn-sm" style="color: var(--danger);">{{ "product_docs.delete"|t }}</button>
                 </form>
@@ -60,7 +60,7 @@
                     <strong>{{ doc.name }}</strong>
                     <span style="color: var(--text-muted); font-size: 12px; margin-left: 8px;">{{ doc.size }}</span>
                 </div>
-                <form method="POST" action="/product-docs/delete-doc/{{ doc.name }}" style="margin: 0;">
+                <form method="POST" action="/product-docs/delete-doc/{{ doc.name }}" style="margin: 0;" data-loading="deleting" onsubmit="return confirm('{{ "archive.confirm_delete"|t }}')">
                     <button type="submit" class="btn btn-ghost btn-sm" style="color: var(--danger);">{{ "product_docs.delete"|t }}</button>
                 </form>
             </div>

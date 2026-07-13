@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block page_title %}{{ "archive.title"|t }}{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3>{{ "archive.title"|t }}</h3>
+    </div>
+    <div class="card-body">
+        {% if archived %}
+        <div>
+            {% for item in archived %}
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border);">
+                <div>
+                    <strong>{{ item.name }}</strong>
+                    <br>
+                    <span style="color: var(--text-muted); font-size: 13px;">
+                        {{ "archive.archived_at"|t }}: {{ item.archived_at }}
+                    </span>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <form method="POST" action="/archived/restore" style="margin: 0;" data-loading="restoring">
+                        <input type="hidden" name="name" value="{{ item.name }}">
+                        <button type="submit" class="btn btn-secondary btn-sm">{{ "archive.restore"|t }}</button>
+                    </form>
+                    <form method="POST" action="/initiative/{{ item.name }}/delete" style="margin: 0;" data-loading="deleting" onsubmit="return confirm('{{ "archive.warning"|t }}')">
+                        <button type="submit" class="btn btn-ghost btn-sm" style="color: var(--danger);">{{ "archive.button"|t }}</button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p style="color: var(--text-muted); font-size: 14px;">{{ "archive.empty"|t }}</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

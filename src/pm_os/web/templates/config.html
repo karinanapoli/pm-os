@@ -7,7 +7,7 @@
         <h3>{{ "config.card_title"|t }}</h3>
     </div>
     <div class="card-body">
-        <form method="POST" action="/config" class="form">
+        <form method="POST" action="/config" class="form" data-loading="saving">
             <div class="form-group">
                 <label for="model">{{ "config.model"|t }}</label>
                 <input type="text" name="model" id="model" value="{{ config.model }}" required>
@@ -47,7 +47,7 @@
             {{ "mcp.desc"|t }}
         </p>
 
-        <form method="POST" action="/config/mcp/add" class="form" style="margin-bottom: 20px;">
+        <form method="POST" action="/config/mcp/add" class="form" style="margin-bottom: 20px;" data-loading="saving">
             <div style="display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap;">
                 <div class="form-group" style="flex: 1; min-width: 160px; margin-bottom: 0;">
                     <input type="text" name="name" placeholder="{{ 'mcp.name_placeholder'|t }}" required>
@@ -76,10 +76,10 @@
                     <form method="POST" action="/config/mcp/toggle" style="margin: 0;">
                         <input type="hidden" name="url" value="{{ server.url }}">
                         <button type="submit" class="btn btn-ghost btn-sm" style="font-size: 11px;">
-                            {% if server.enabled %}{{ "mcp.disabled"|t }}{% else %}{{ "mcp.enabled"|t }}{% endif %}
+                            {% if server.enabled %}{{ "mcp.deactivate"|t }}{% else %}{{ "mcp.activate"|t }}{% endif %}
                         </button>
                     </form>
-                    <form method="POST" action="/config/mcp/delete" style="margin: 0;">
+                    <form method="POST" action="/config/mcp/delete" style="margin: 0;" data-loading="deleting" onsubmit="return confirm('{{ "mcp.confirm_delete"|t }}')">
                         <input type="hidden" name="url" value="{{ server.url }}">
                         <button type="submit" class="btn btn-ghost btn-sm" style="color: var(--danger);">{{ "mcp.delete"|t }}</button>
                     </form>
