@@ -1,61 +1,105 @@
 # PM OS — Components
 
-## Objetivo
+> "Componentes pequenos, responsabilidades claras e dependência de contratos. Essa é a base da arquitetura do PM OS."
 
-Este documento descreve os principais componentes do PM OS Core, suas responsabilidades e como eles colaboram para executar os workflows da plataforma.
+---
 
-Cada componente possui uma única responsabilidade.
+# Objetivo
 
-A comunicação entre eles acontece através de contratos bem definidos, reduzindo acoplamento e facilitando a evolução da arquitetura.
+Este documento descreve os principais componentes do PM OS Core, suas responsabilidades e como eles colaboram para executar as capacidades da plataforma.
+
+Cada componente possui uma única responsabilidade e se comunica através de contratos bem definidos, permitindo evolução incremental, baixo acoplamento e alta coesão.
 
 ---
 
 # Visão Geral
 
-O PM OS Core é composto por pequenos componentes especializados.
+O PM OS é organizado em torno de componentes especializados.
 
-Nenhum componente conhece a implementação interna dos demais.
+Cada componente executa apenas uma parte do fluxo de trabalho.
 
-Cada Workflow apenas orquestra esses componentes.
+Nenhum componente implementa responsabilidades pertencentes a outro.
 
 ```text
-FeatureRepository
-        │
-        ▼
-ContextBuilder
-        │
-        ▼
-PromptBuilder
-        │
-        ▼
-AIClient
-        │
-        ▼
-MarkdownWriter
+Workspace
+      │
+      ▼
+Initiative Repository
+      │
+      ▼
+Context Builder
+      │
+      ▼
+Prompt Builder
+      │
+      ▼
+AI Client (Contract)
+      │
+      ▼
+Infrastructure (Ollama, OpenAI...)
+      │
+      ▼
+Markdown Writer
 ```
+
+O Workflow atua apenas como orquestrador desse fluxo.
 
 ---
 
-# Feature
+# Workspace
 
 ## Responsabilidade
 
-Representa uma iniciativa de produto dentro do PM OS.
+Representar a área de trabalho do usuário.
 
-Uma Feature é a unidade central de trabalho do sistema.
+O Workspace armazena todas as iniciativas, seus contextos, artefatos, metadados e configurações.
 
-Ela agrupa todos os materiais relacionados a uma iniciativa.
+Estrutura atual:
 
-Exemplos:
+```text
+workspace/
+└── initiatives/
+    └── INT-0001-consulta-inteligente-fornecedores/
+        ├── context/
+        ├── artifacts/
+        ├── logs/
+        └── metadata.yaml
+```
 
-- atas de reunião;
-- documentos de discovery;
-- RFCs;
-- diagramas;
+## Conhece
+
+- iniciativas;
+- artefatos;
+- contexto;
+- configurações.
+
+## Não conhece
+
+- IA;
+- workflows;
+- lógica de negócio.
+
+---
+
+# Initiative
+
+## Responsabilidade
+
+Representar a unidade central do domínio do PM OS.
+
+Uma Initiative agrupa todo o conhecimento relacionado a uma iniciativa de produto durante seu ciclo de vida.
+
+Pode conter:
+
+- discovery;
+- pesquisas;
+- atas;
 - requisitos;
-- APIs;
-- imagens;
-- decisões técnicas.
+- PRDs;
+- roadmaps;
+- RFCs;
+- métricas;
+- decisões.
 
 ## Entrada
 
@@ -75,17 +119,21 @@ Objeto de domínio utilizado pelos Workflows.
 
 - IA;
 - prompts;
-- workflows;
-- MCP;
-- interfaces de usuário.
+- infraestrutura;
+- interfaces.
+
+## Princípios aplicados
+
+- Domain-Driven Design
+- Single Responsibility
 
 ---
 
-# FeatureRepository
+# Initiative Repository
 
 ## Responsabilidade
 
-Encontrar Features disponíveis no Workspace.
+Recuperar Initiatives disponíveis no Workspace.
 
 Converte a estrutura de diretórios em objetos de domínio.
 
@@ -95,41 +143,38 @@ Workspace.
 
 ## Saída
 
-Lista de objetos `Feature`.
+Lista de objetos `Initiative`.
 
 ## Conhece
 
 - estrutura do Workspace;
-- arquivos disponíveis.
+- localização das iniciativas.
 
 ## Não conhece
 
 - IA;
 - prompts;
-- contexto;
+- workflows;
 - artefatos.
 
-## Padrão aplicado
+## Princípios aplicados
 
-Repository Pattern.
-
-Todo acesso ao Workspace acontece por meio deste componente.
+- Repository Pattern
+- Separation of Concerns
 
 ---
 
-# ContextBuilder
+# Context Builder
 
 ## Responsabilidade
 
-Construir contexto consolidado para uma iniciativa.
+Consolidar o conhecimento disponível de uma Initiative.
 
-O objetivo não é simplesmente ler arquivos.
-
-O objetivo é transformar conhecimento disperso em um contexto reutilizável.
+Seu objetivo não é apenas ler arquivos, mas construir um contexto reutilizável para qualquer workflow.
 
 ## Entrada
 
-Objeto `Feature`.
+Objeto `Initiative`.
 
 ## Saída
 
@@ -137,40 +182,38 @@ Contexto consolidado.
 
 ## Conhece
 
-- documentos da iniciativa;
-- conteúdo dos arquivos.
+- documentos da Initiative.
 
 ## Não conhece
 
-- modelo de IA;
+- IA;
 - prompts;
-- artefatos finais.
+- persistência.
 
-## Princípio aplicado
+## Princípios aplicados
 
-Context Engineering.
-
-Contexto é tratado como um ativo do sistema.
+- Context Engineering
+- Single Responsibility
 
 ---
 
-# PromptBuilder
+# Prompt Builder
 
 ## Responsabilidade
 
-Transformar contexto em instruções para um Workflow específico.
+Transformar contexto em instruções específicas para um workflow.
 
-O PromptBuilder responde:
+Responde à pergunta:
 
-> "O que queremos que o modelo faça?"
+> "O que queremos que a IA faça?"
 
-Enquanto o ContextBuilder responde:
+Enquanto o Context Builder responde:
 
-> "O que o modelo precisa saber?"
+> "O que a IA precisa saber?"
 
 ## Entrada
 
-- nome do workflow;
+- workflow;
 - contexto.
 
 ## Saída
@@ -179,55 +222,80 @@ Prompt.
 
 ## Conhece
 
-- estrutura esperada de cada Workflow.
+- estrutura de cada workflow.
 
 ## Não conhece
 
 - Workspace;
 - IA;
-- persistência.
+- armazenamento.
 
 ---
 
-# AIClient
+# Contracts
 
 ## Responsabilidade
 
-Comunicar-se com um modelo de IA.
+Definir contratos públicos entre os componentes.
 
-O restante do Core não conhece implementações específicas.
+O PM OS utiliza `typing.Protocol` para desacoplar o domínio das implementações concretas.
 
-Nesta Sprint utilizamos um Fake AI Client.
+Exemplos:
 
-No futuro poderão existir implementações para:
+- AIClientProtocol
+- InitiativeRepositoryProtocol
+- ContextBuilderProtocol
+- MarkdownWriterProtocol
+- Logger
 
-- Ollama
-- OpenAI
-- Gemini
-- Claude
-- modelos internos
+## Princípios aplicados
 
-## Entrada
-
-Prompt.
-
-## Saída
-
-Texto gerado.
-
-## Princípio aplicado
-
-AI is a Dependency.
-
-O Core depende apenas do contrato do cliente de IA.
+- Dependency Inversion Principle
+- Interface Segregation
 
 ---
 
-# MarkdownWriter
+# Infrastructure
 
 ## Responsabilidade
 
-Persistir artefatos Markdown no Workspace.
+Implementar integrações com serviços externos.
+
+O domínio nunca depende diretamente dessas implementações.
+
+Exemplos atuais:
+
+```text
+infrastructure/
+├── ai/
+│   └── clients/
+│       ├── FakeAIClient
+│       └── OllamaClient
+└── logging/
+    └── ConsoleLogger
+```
+
+No futuro poderão existir integrações para:
+
+- OpenAI;
+- Azure OpenAI;
+- Anthropic;
+- Gemini;
+- Vector Stores;
+- Observabilidade.
+
+## Princípios aplicados
+
+- Ports and Adapters
+- Dependency Injection
+
+---
+
+# Markdown Writer
+
+## Responsabilidade
+
+Persistir artefatos gerados pelos workflows.
 
 Não gera conteúdo.
 
@@ -252,38 +320,50 @@ Arquivo Markdown.
 
 ## Responsabilidade
 
-Representar um caso de uso do usuário.
+Representar uma capacidade da plataforma.
 
-Workflows não implementam regras específicas de IA.
+Cada Workflow coordena os componentes especializados para entregar um resultado de negócio.
 
-Eles apenas coordenam componentes especializados.
-
-Cada Workflow representa uma ação de negócio.
-
-Exemplos futuros:
+Exemplos atuais e futuros:
 
 - CreatePRDWorkflow
 - CreateBacklogWorkflow
+- CreateRoadmapWorkflow
 - CreateRFCWorkflow
 - ExecutiveSummaryWorkflow
 
-## Exemplo
+O Workflow não implementa regras específicas de IA.
+
+Ele apenas coordena os componentes necessários.
+
+## Princípios aplicados
+
+- Use Case Pattern
+- Orchestration
+
+---
+
+# Logger
+
+## Responsabilidade
+
+Registrar os principais eventos durante a execução dos workflows.
+
+Seu objetivo é tornar o comportamento do sistema observável.
+
+Exemplo:
 
 ```text
-FeatureRepository
-        │
-        ▼
-ContextBuilder
-        │
-        ▼
-PromptBuilder
-        │
-        ▼
-AIClient
-        │
-        ▼
-MarkdownWriter
+Loading initiatives...
+Building context...
+Generating PRD...
+Writing artifact...
 ```
+
+## Princípios aplicados
+
+- Observability
+- Separation of Concerns
 
 ---
 
@@ -291,98 +371,77 @@ MarkdownWriter
 
 ## Responsabilidade
 
-Montar a aplicação.
+Montar toda a aplicação.
 
-O Bootstrap é o Composition Root do PM OS.
+O Bootstrap é o **Composition Root** do PM OS.
 
 Toda criação de dependências acontece neste componente.
 
-Graças ao Bootstrap, é possível trocar implementações sem alterar os Workflows.
-
 Exemplo:
 
 ```text
-Hoje
-
 Workflow
-    ↓
-Fake AI Client
-
-Amanhã
-
-Workflow
-    ↓
-Ollama Client
+    │
+    ▼
+AIClient (Contract)
+    │
+    ▼
+OllamaClient
 ```
 
-Nenhum Workflow precisa ser alterado.
+Graças ao Bootstrap, é possível substituir implementações sem alterar os Workflows.
+
+## Princípios aplicados
+
+- Composition Root
+- Dependency Injection
+- Inversion of Control
 
 ---
 
-# Protocols
+# Relação entre os Componentes
 
-## Responsabilidade
-
-Definir contratos públicos entre os componentes.
-
-Os Workflows dependem de Protocols e não de implementações concretas.
-
-Exemplo:
-
-```python
-AIClientProtocol
-```
-
-e não
-
-```python
-AIClient
-```
-
-Isso reduz acoplamento e facilita testes, evolução e substituição de implementações.
-
-## Princípio aplicado
-
-Dependency Inversion Principle (DIP).
-
----
-
-# Relação entre os componentes
-
-Cada componente possui uma única responsabilidade.
+O fluxo principal da plataforma é:
 
 ```text
-FeatureRepository
-        │
-        ▼
-ContextBuilder
-        │
-        ▼
-PromptBuilder
-        │
-        ▼
-AIClient
-        │
-        ▼
-MarkdownWriter
+Workspace
+      │
+      ▼
+Initiative Repository
+      │
+      ▼
+Context Builder
+      │
+      ▼
+Prompt Builder
+      │
+      ▼
+AI Client (Contract)
+      │
+      ▼
+Infrastructure
+      │
+      ▼
+Markdown Writer
 ```
 
-O Workflow coordena esse fluxo.
+O Workflow apenas coordena essa sequência.
 
-Os componentes não conhecem uns aos outros.
+Cada componente permanece independente.
 
 ---
 
 # Princípios Arquiteturais
 
-Os componentes do PM OS seguem os seguintes princípios:
+Todos os componentes seguem os seguintes princípios:
 
 - Single Responsibility Principle
 - Dependency Injection
 - Dependency Inversion
-- Composition over Magic
+- Separation of Concerns
 - Context Engineering
-- AI is a Dependency
+- AI as a Dependency
+- Composition Root
 - Low Coupling
 - High Cohesion
 
@@ -392,27 +451,38 @@ Os componentes do PM OS seguem os seguintes princípios:
 
 | Componente | Responsabilidade |
 |------------|------------------|
-| Feature | Representar uma iniciativa de produto |
-| FeatureRepository | Localizar iniciativas no Workspace |
-| ContextBuilder | Consolidar conhecimento |
-| PromptBuilder | Construir prompts para Workflows |
-| AIClient | Conversar com modelos de IA |
-| MarkdownWriter | Persistir artefatos |
-| Workflow | Orquestrar casos de uso |
+| Workspace | Armazenar iniciativas e conhecimento |
+| Initiative | Representar a unidade central do domínio |
+| Initiative Repository | Recuperar iniciativas do Workspace |
+| Context Builder | Consolidar conhecimento |
+| Prompt Builder | Construir prompts |
+| Contracts | Definir contratos públicos |
+| Infrastructure | Implementar integrações externas |
+| AI Client | Gerar conteúdo utilizando IA |
+| Markdown Writer | Persistir artefatos |
+| Workflow | Orquestrar capacidades |
+| Logger | Registrar eventos da execução |
 | Bootstrap | Montar a aplicação |
-| Protocols | Definir contratos públicos |
 
 ---
 
 # Evolução
 
-À medida que o PM OS evoluir, novos componentes poderão ser adicionados ao Core.
+A arquitetura continuará evoluindo conforme novas capacidades forem adicionadas.
 
-Entretanto, os princípios fundamentais permanecem:
+Os próximos componentes previstos incluem:
+
+- Configuration Manager;
+- Template Engine;
+- Vector Store;
+- Embedding Service;
+- Metrics;
+- Telemetry.
+
+Independentemente do crescimento do projeto, o PM OS continuará seguindo os mesmos princípios:
 
 - componentes pequenos;
 - responsabilidades claras;
-- baixo acoplamento;
-- alta coesão;
-- dependência de contratos;
-- contexto como ativo do sistema.
+- domínio desacoplado da infraestrutura;
+- contexto como principal ativo do sistema;
+- arquitetura orientada a capacidades.

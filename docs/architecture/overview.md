@@ -1,302 +1,353 @@
-# PM OS Architecture Overview
+# PM OS — Architecture Overview
 
-> "A arquitetura é a forma como organizamos responsabilidades para que o sistema possa evoluir sem perder simplicidade."
-
----
-
-# Visão Geral
-
-O PM OS foi projetado como um framework de AI Product Engineering.
-
-O objetivo não é apenas integrar um Large Language Model, mas criar um sistema capaz de organizar conhecimento, executar workflows e apoiar Product Managers durante todo o ciclo de desenvolvimento de produtos.
-
-Para isso, adotamos uma arquitetura baseada em componentes independentes e responsabilidades bem definidas.
-
-Cada camada do sistema possui uma única função.
-
-Essa separação permite que novas funcionalidades sejam adicionadas sem alterar a estrutura existente.
+> "A arquitetura do PM OS foi projetada para transformar conhecimento em capacidades reutilizáveis, permitindo que Product Managers utilizem Inteligência Artificial de forma estruturada, escalável e independente de ferramentas específicas."
 
 ---
 
-# Arquitetura em Camadas
+# Objetivo
+
+O PM OS (Product Manager Operating System) é uma plataforma open source de AI Product Engineering.
+
+Seu propósito é apoiar Product Managers durante todo o ciclo de vida de uma iniciativa, organizando conhecimento, executando workflows e gerando artefatos de produto de forma consistente.
+
+O objetivo do projeto não é apenas integrar um Large Language Model (LLM), mas construir um sistema capaz de evoluir continuamente, mantendo baixo acoplamento, alta coesão e uma arquitetura simples de compreender.
+
+---
+
+# Visão Geral da Arquitetura
+
+O PM OS é composto por três grandes blocos:
+
+1. Interfaces de utilização
+2. PM OS Core
+3. Workspace
+
+Cada bloco possui responsabilidades bem definidas.
 
 ```text
-                    User
+                        Usuário
+                           │
+                           ▼
+        Continue • CLI • MCP • Web (futuro)
+                           │
+                           ▼
+──────────────────────────────────────────────────
+                    PM OS Core
+──────────────────────────────────────────────────
 
-                     │
+        Workflows
+             │
+             ▼
+     Initiative Repository
+             │
+             ▼
+      Context Builder
+             │
+             ▼
+      Prompt Builder
+             │
+             ▼
+     AI Client (Contract)
+             │
+             ▼
+ Infrastructure (Ollama, OpenAI...)
+             │
+             ▼
+      Markdown Writer
 
-                     ▼
+──────────────────────────────────────────────────
+                     Workspace
+──────────────────────────────────────────────────
 
-      Continue • OpenCode • CLI • Web
-
-                     │
-
-                     ▼
-
-               MCP Server Layer
-
-                     │
-
-                     ▼
-
-                PM OS Core Layer
-
-      ┌────────────────────────────────┐
-
-      │                                │
-
-Repositories      Builders      Workflows
-
-AI Clients        Writers       Domain Models
-
-      │                                │
-
-      └────────────────────────────────┘
-
-                     │
-
-                     ▼
-
-            Workspace / Knowledge
+Initiatives
+Templates
+Knowledge
+Configuration
 ```
-
----
-
-# Camada 1 — Interface
-
-A camada de interface representa todas as formas pelas quais um usuário pode utilizar o PM OS.
-
-Exemplos:
-
-- Continue
-- OpenCode
-- CLI
-- Interface Web (futuro)
-
-Esta camada nunca implementa regras de negócio.
-
-Seu único objetivo é iniciar um workflow.
-
----
-
-# Camada 2 — MCP
-
-O MCP atua como uma ponte entre as interfaces e o PM OS Core.
-
-Seu papel é expor ferramentas como:
-
-- create_prd
-- create_backlog
-- create_rfc
-- security_review
-- executive_summary
-
-O MCP não possui inteligência própria.
-
-Ele apenas recebe solicitações e encaminha para o Core.
-
----
-
-# Camada 3 — PM OS Core
-
-O PM OS Core é o coração do sistema.
-
-Toda a lógica de negócio reside aqui.
-
-O Core contém componentes especializados, cada um responsável por uma parte do workflow.
-
-Exemplos:
-
-- Domain Models
-- Repositories
-- Context Builders
-- Prompt Builders
-- AI Clients
-- Writers
-- Workflows
-
-O Core não conhece:
-
-- Continue
-- OpenCode
-- MCP
-- Interface Web
-
-Isso garante independência entre a lógica do sistema e a forma como ele é utilizado.
-
----
-
-# Camada 4 — Workspace
-
-O Workspace representa o conhecimento utilizado pelo PM OS.
-
-Inclui:
-
-- Features
-- Templates
-- Skills
-- Knowledge Base
-- Configurações
-
-O Workspace é tratado como uma fonte de informação.
-
-Ele nunca executa lógica de negócio.
-
----
-
-# Fluxo Principal
-
-O principal workflow do PM OS seguirá a seguinte sequência:
-
-```text
-Usuário
-
-↓
-
-Interface
-
-↓
-
-MCP
-
-↓
-
-Workflow
-
-↓
-
-Repository
-
-↓
-
-ContextBuilder
-
-↓
-
-PromptBuilder
-
-↓
-
-AIClient
-
-↓
-
-Writer
-
-↓
-
-Workspace
-```
-
-Cada componente possui apenas uma responsabilidade.
-
-Nenhum componente executa tarefas pertencentes a outro.
 
 ---
 
 # Princípios Arquiteturais
 
-A arquitetura do PM OS é guiada pelos seguintes princípios.
+Toda decisão arquitetural do PM OS é guiada pelos seguintes princípios.
+
+## Contexto antes de Prompt
+
+Prompts são descartáveis.
+
+Contexto é um ativo permanente.
+
+O PM OS investe na organização e consolidação do contexto antes da interação com qualquer modelo de IA.
+
+---
+
+## AI é uma Dependência
+
+Modelos de IA são serviços externos.
+
+O domínio do PM OS nunca depende diretamente de uma implementação específica.
+
+Hoje utilizamos Ollama.
+
+Amanhã poderemos utilizar OpenAI, Azure OpenAI, Claude ou qualquer outro provedor.
+
+---
 
 ## Core First
 
-Toda lógica de negócio deve permanecer no PM OS Core.
+Toda regra de negócio pertence ao PM OS Core.
 
-Interfaces nunca implementam regras de domínio.
-
----
-
-## Low Coupling
-
-Componentes devem depender de contratos simples.
-
-Sempre que possível, mudanças em um componente não devem impactar os demais.
+Interfaces, MCPs ou aplicações externas nunca implementam lógica de domínio.
 
 ---
 
-## High Cohesion
+## Baixo Acoplamento
 
-Cada componente possui apenas uma responsabilidade claramente definida.
+Os componentes se comunicam através de contratos (Protocols).
 
----
-
-## Context Engineering
-
-O PM OS prioriza a construção de contexto antes da geração de prompts.
-
-Contexto é considerado um ativo do sistema.
+Isso permite substituir implementações sem alterar os workflows.
 
 ---
 
-## AI as a Dependency
+## Alta Coesão
 
-Modelos de IA são dependências externas.
+Cada componente possui apenas uma responsabilidade.
 
-O sistema deve continuar organizado independentemente do modelo utilizado.
+Essa separação facilita manutenção, testes e evolução da plataforma.
 
 ---
 
-## Replaceable Components
+## Evolução Incremental
 
-Qualquer componente poderá ser substituído sem alterar a arquitetura.
+O PM OS evolui por pequenas entregas contínuas.
+
+Cada Sprint busca fortalecer a arquitetura antes de adicionar novas capacidades.
+
+---
+
+# Organização do PM OS Core
+
+O Core concentra toda a inteligência da plataforma.
+
+Sua estrutura atual é organizada da seguinte forma:
+
+```text
+src/
+└── pm_os/
+    ├── contracts/
+    ├── domain/
+    ├── infrastructure/
+    ├── repositories/
+    ├── workflows/
+    ├── writers/
+    ├── templates/
+    ├── bootstrap.py
+    └── context_builder.py
+```
+
+Cada diretório possui uma responsabilidade específica.
+
+| Componente | Responsabilidade |
+|------------|------------------|
+| `contracts/` | Define os contratos (Protocols) utilizados pela aplicação. |
+| `domain/` | Contém os conceitos centrais do domínio do PM OS. |
+| `repositories/` | Recupera informações do Workspace. |
+| `workflows/` | Orquestra a execução das capacidades da plataforma. |
+| `infrastructure/` | Implementações concretas de serviços externos (Ollama, Logging, etc.). |
+| `writers/` | Responsável por persistir artefatos gerados. |
+| `templates/` | Templates utilizados pelos workflows. |
+
+---
+
+# O Domínio
+
+O conceito central do PM OS é a **Initiative**.
+
+Uma Initiative representa um problema de negócio ou uma oportunidade de produto.
+
+Ela concentra todo o conhecimento relacionado ao seu ciclo de vida.
+
+Uma Initiative pode conter:
+
+- documentos de discovery;
+- atas de reunião;
+- pesquisas;
+- requisitos;
+- PRDs;
+- backlogs;
+- roadmaps;
+- RFCs;
+- métricas;
+- decisões arquiteturais.
+
+Essa decisão foi formalizada na **ADR-004 — Workspace Orientado a Iniciativas**.
+
+---
+
+# Workspace
+
+O Workspace representa a área de trabalho do usuário.
+
+Ele contém todas as iniciativas e os artefatos produzidos pelo PM OS.
+
+Estrutura atual:
+
+```text
+workspace/
+└── initiatives/
+    └── INT-0001-consulta-inteligente-fornecedores/
+        ├── context/
+        ├── artifacts/
+        ├── logs/
+        └── metadata.yaml
+```
+
+## Context
+
+Armazena todo o conhecimento bruto utilizado pelos workflows.
 
 Exemplos:
 
-- Ollama → OpenAI
-- Continue → Cursor
-- MCP → API REST
+- Discovery
+- Entrevistas
+- Reuniões
+- Notas
+- Documentação técnica
 
 ---
 
-# Objetivos da Arquitetura
+## Artifacts
 
-Esta arquitetura foi desenhada para permitir:
+Contém todos os documentos gerados pelo PM OS.
+
+Exemplos:
+
+- PRD
+- Backlog
+- Roadmap
+- RFC
+- Executive Summary
+
+---
+
+## Metadata
+
+Representa a identidade da Initiative.
+
+No futuro armazenará informações como:
+
+- identificador;
+- responsável;
+- status;
+- tags;
+- workflows executados;
+- artefatos gerados.
+
+---
+
+## Logs
+
+Armazena o histórico de execução dos workflows relacionados à Initiative.
+
+---
+
+# Fluxo de Execução
+
+O principal workflow do PM OS segue a sequência abaixo:
+
+```text
+Usuário
+    │
+    ▼
+Interface
+    │
+    ▼
+Workflow
+    │
+    ▼
+Initiative Repository
+    │
+    ▼
+Context Builder
+    │
+    ▼
+Prompt Builder
+    │
+    ▼
+AI Client (Contract)
+    │
+    ▼
+Infrastructure
+(Ollama, OpenAI...)
+    │
+    ▼
+Markdown Writer
+    │
+    ▼
+Artifact
+```
+
+Cada componente possui uma única responsabilidade e pode evoluir independentemente.
+
+---
+
+# Capabilities
+
+O PM OS é organizado em torno de capacidades reutilizáveis.
+
+Cada capacidade representa um workflow completo de produto.
+
+Exemplos planejados:
+
+- Create PRD
+- Create Backlog
+- Create Roadmap
+- Create RFC
+- Executive Summary
+- AI Review
+- Security Review
+
+Todas reutilizam a mesma arquitetura do Core.
+
+---
+
+# Benefícios da Arquitetura
+
+A arquitetura foi desenhada para proporcionar:
 
 - evolução incremental;
+- baixo acoplamento;
+- alta coesão;
 - facilidade de testes;
 - reutilização de componentes;
-- suporte a múltiplas interfaces;
-- integração com diferentes modelos de IA;
-- manutenção simples;
-- contribuição da comunidade open source.
+- independência entre domínio e infraestrutura;
+- suporte a múltiplos provedores de IA;
+- facilidade de contribuição da comunidade open source.
 
 ---
 
-# Evolução Esperada
+# Próximos Passos
 
-O MVP será composto por um único workflow:
+A arquitetura continuará evoluindo conforme novas capacidades forem adicionadas.
 
-```
-create_prd
-```
+Entre os próximos temas previstos estão:
 
-Com a evolução do projeto, novos workflows serão adicionados utilizando exatamente a mesma arquitetura.
-
-Exemplos:
-
-- create_backlog
-- create_roadmap
-- create_rfc
-- security_review
-- ai_review
-- executive_summary
-
-A arquitetura foi planejada para que esses novos workflows reutilizem os componentes existentes, reduzindo duplicação de código e mantendo consistência em todo o framework.
+- camada de configuração centralizada;
+- testes de integração;
+- Template Engine;
+- múltiplos provedores de IA;
+- Vector Store;
+- observabilidade avançada;
+- CLI oficial do PM OS.
 
 ---
 
 # Resumo
 
-O PM OS não é um chatbot.
+O PM OS não é apenas um gerador de documentos.
 
-O PM OS é um framework de AI Product Engineering.
+Ele é uma plataforma de AI Product Engineering construída para transformar conhecimento em capacidades reutilizáveis.
 
-Sua arquitetura foi desenhada para separar claramente:
+Sua arquitetura foi projetada para refletir o modelo mental de Product Managers, mantendo uma clara separação entre domínio, infraestrutura e interfaces.
 
-- interfaces;
-- protocolos;
-- lógica de negócio;
-- inteligência artificial;
-- armazenamento de conhecimento.
-
-Essa separação garante que o projeto permaneça simples, modular e escalável conforme novas funcionalidades forem sendo adicionadas.
+Essa abordagem permite que o projeto evolua de forma incremental, mantendo simplicidade, escalabilidade e facilidade de colaboração.
