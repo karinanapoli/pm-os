@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block page_title %}{{ "dashboard.title"|t }}{% endblock %}
+
+{% block topbar_actions %}
+<a href="/initiatives/new" class="btn btn-primary btn-sm">+ {{ "nav.new_initiative"|t }}</a>
+{% endblock %}
+
+{% block content %}
+
+{% if show_onboarding %}
+<script src="/static/tour.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(function() { PMOSTour.start(); }, 600);
+});
+</script>
+{% endif %}
+
+{# ── Stats Row ── #}
+<div class="stats-row">
+    <div class="stat-card">
+        <div class="stat-label">{{ "dashboard.stats.initiatives"|t }}</div>
+        <span class="stat-value">{{ total }}</span>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">{{ "dashboard.stats.prds"|t }}</div>
+        <span class="stat-value">{{ has_prd }}</span>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">{{ "dashboard.stats.docs"|t }}</div>
+        <span class="stat-value">{{ total_docs }}</span>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">{{ "dashboard.stats.score"|t }}</div>
+        <span class="stat-value">{{ avg_score }}/10</span>
+    </div>
+    {% if archived_count and archived_count > 0 %}
+    <div class="stat-card" style="border-color: rgba(255,255,255,0.03); opacity: 0.6;">
+        <div class="stat-label">Arquivadas</div>
+        <span class="stat-value" style="font-size: 24px; background: none; -webkit-text-fill-color: var(--text-muted);">{{ archived_count }}</span>
+    </div>
+    {% endif %}
+</div>
+
+{# ── Initiatives Grid ── #}
+{% if initiatives %}
+<div class="card">
+    <div class="card-header">
+        <h3>{{ "dashboard.initiatives"|t }}</h3>
+        <span style="font-size: 13px; color: var(--text-muted);">{{ total }} {{ "dashboard.total"|t }}</span>
+    </div>
+    <div class="card-body">
+        <div class="init-grid">
+            {% for init in initiatives %}
+            <a href="/initiative/{{ init.name }}" class="init-card">
+                <div class="init-card-name">{{ init.name }}</div>
+                <div class="init-card-meta">
+                    <span class="init-card-status {{ init.status }}">{{ init.status }}</span>
+                    <span>{{ "dashboard.stats.score"|t }}: {{ init.score }}</span>
+                </div>
+                <div style="font-size: 13px; color: var(--text-muted); display: flex; gap: 16px;">
+                    <span>📄 {{ "dashboard.has_prd"|t if init.has_prd else "dashboard.no_prd"|t }}</span>
+                    <span>📁 {{ init.doc_count }} {{ "dashboard.docs"|t }}</span>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body">
+        <div class="empty-state">
+            <div class="empty-icon">📋</div>
+            <div class="empty-title">{{ "dashboard.empty.title"|t }}</div>
+            <div class="empty-desc">{{ "dashboard.empty.desc"|t }}</div>
+            <a href="/initiatives/new" class="btn btn-primary">{{ "dashboard.empty.cta"|t }}</a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

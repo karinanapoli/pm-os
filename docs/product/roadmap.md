@@ -1,42 +1,42 @@
 # PM OS — Product Roadmap
 
-> "O Roadmap do PM OS é organizado por capacidades da plataforma. Cada capacidade representa uma evolução funcional reutilizável para Product Managers."
+> "The PM OS Roadmap is organized by platform capabilities. Each capability represents a reusable functional evolution for Product Managers."
 
 ---
 
-# Visão
+# Vision
 
-Construir uma plataforma open source de AI Product Engineering capaz de apoiar Product Managers durante todo o ciclo de desenvolvimento de produtos.
+Build an open source AI Product Engineering platform capable of supporting Product Managers throughout the entire product development cycle.
 
-A evolução do PM OS acontece por capacidades incrementais, reutilizando uma arquitetura comum e mantendo baixo acoplamento entre seus componentes.
+PM OS evolution happens through incremental capabilities, reusing a common architecture and maintaining low coupling between its components.
 
 ---
 
-# Capacidades
+# Capabilities
 
 | Capability | Status | Sprint |
 |------------|--------|---------|
-| Foundation | ✅ Concluída | Sprint 001 |
-| Core Architecture | ✅ Concluída | Sprint 002 |
-| Create PRD | ✅ Concluída | Sprint 003 |
-| Configuration Layer | 🟡 Planejada | Sprint 004 |
-| Integration Tests | 🟡 Planejada | Sprint 004 |
-| Create Backlog | 🟡 Planejada | Sprint 005 |
-| Template Engine | 🟡 Planejada | Sprint 005 |
+| Foundation | ✅ Completed | Sprint 001 |
+| Core Architecture | ✅ Completed | Sprint 002 |
+| Create PRD | ✅ Completed | Sprint 003 |
+| Configuration Layer | 🟡 Planned | Sprint 004 |
+| Integration Tests | 🟡 Planned | Sprint 004 |
+| Create Backlog | 🟡 Planned | Sprint 005 |
+| Template Engine | 🟡 Planned | Sprint 005 |
 | Create Roadmap | 🔵 Backlog | Sprint 006 |
 | Executive Summary | 🔵 Backlog | Sprint 006 |
 | AI Review | 🔵 Backlog | Sprint 007 |
 | Security Review | 🔵 Backlog | Sprint 007 |
 | RFC Generator | 🔵 Backlog | Sprint 008 |
-| Vector Store | ⚪ Futuro | TBD |
-| Knowledge Graph | ⚪ Futuro | TBD |
-| Multi Provider AI | ⚪ Futuro | TBD |
-| Web Interface | ⚪ Futuro | TBD |
-| MCP Server | ⚪ Futuro | TBD |
+| Vector Store | ⚪ Future | TBD |
+| Knowledge Graph | ⚪ Future | TBD |
+| Multi Provider AI | ⚪ Future | TBD |
+| Web Interface | ⚪ Future | TBD |
+| MCP Server | ⚪ Future | TBD |
 
 ---
 
-# Próxima Sprint
+# Next Sprint
 
 ## Sprint 004
 
@@ -44,37 +44,37 @@ A evolução do PM OS acontece por capacidades incrementais, reutilizando uma ar
 
 Platform Evolution
 
-### Objetivos
+### Objectives
 
-- Implementar camada centralizada de configuração.
-- Criar testes de integração.
-- Melhorar a CLI.
-- Preparar a plataforma para múltiplos provedores de IA.
+- Implement centralized configuration layer.
+- Create integration tests.
+- Improve CLI.
+- Prepare platform for multiple AI providers.
 
 ---
 
-# Visão de Longo Prazo
+# Long-Term Vision
 
-O PM OS deverá evoluir para uma plataforma composta por diversas capacidades reutilizáveis.
+PM OS should evolve into a platform composed of several reusable capabilities.
 
-Cada nova capability deverá reutilizar os componentes existentes do Core, preservando a arquitetura construída nas primeiras Sprints.
+Each new capability should reuse existing Core components, preserving the architecture built in the first Sprints.
 
-A evolução do projeto seguirá os princípios de:
+The project evolution will follow the principles of:
 
 - Context Engineering;
 - AI as a Dependency;
 - Domain-Driven Design;
-- Arquitetura orientada a capacidades;
-- Evolução incremental.
+- Capability-oriented architecture;
+- Incremental evolution.
 
 ---
 
-# Critérios para Novas Capacidades
+# Criteria for New Capabilities
 
-Uma nova capability somente será adicionada quando:
+A new capability will only be added when it:
 
-- reutilizar a arquitetura existente;
-- representar um caso de uso completo;
-- possuir valor para Product Managers;
-- não aumentar o acoplamento da plataforma;
-- respeitar os princípios arquiteturais do PM OS.
+- reuses the existing architecture;
+- represents a complete use case;
+- provides value for Product Managers;
+- does not increase platform coupling;
+- respects PM OS architectural principles.

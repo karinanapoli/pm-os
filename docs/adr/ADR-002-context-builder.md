@@ -1,135 +1,135 @@
-# ADR-002 — O PM OS utilizará Context Engineering em vez de Document Loading
+# ADR-002 — PM OS will use Context Engineering instead of Document Loading
 
-**Status:** Aceito
+**Status:** Accepted
 
-**Data:** Sprint 001
-
----
-
-# Contexto
-
-Durante a implementação inicial do PM OS surgiu a necessidade de ler todos os documentos de uma Feature para enviá-los ao modelo de IA.
-
-A primeira ideia foi criar um componente chamado `DocumentLoader`.
-
-Entretanto, percebemos que essa responsabilidade seria muito maior do que apenas carregar arquivos.
-
-Precisávamos decidir qual seria a verdadeira responsabilidade desse componente.
+**Date:** Sprint 001
 
 ---
 
-# Problema
+# Context
 
-Um Large Language Model não entende arquivos.
+During the initial implementation of PM OS, the need arose to read all documents from a Feature to send them to the AI model.
 
-Ele entende contexto.
+The first idea was to create a component called `DocumentLoader`.
 
-Enviar documentos diretamente para o modelo cria diversos problemas:
+However, we realized this responsibility would be much larger than just loading files.
 
-- documentos duplicados;
-- informações irrelevantes;
-- contexto desorganizado;
-- desperdício de tokens;
-- baixa qualidade das respostas.
-
-Era necessário criar uma camada responsável por preparar esse contexto.
+We needed to decide what the true responsibility of this component would be.
 
 ---
 
-# Opções consideradas
+# Problem
 
-## Opção A
+A Large Language Model does not understand files.
 
-Criar um DocumentLoader.
+It understands context.
 
-Responsabilidade:
+Sending documents directly to the model creates several problems:
 
-- abrir arquivos;
-- devolver texto.
+- duplicate documents;
+- irrelevant information;
+- disorganized context;
+- token waste;
+- low response quality.
 
-### Vantagens
-
-- implementação simples.
-
-### Desvantagens
-
-- pouca responsabilidade de negócio;
-- não permite evolução futura;
-- mistura infraestrutura com preparação de contexto.
+It was necessary to create a layer responsible for preparing this context.
 
 ---
 
-## Opção B
+# Options Considered
 
-Criar um ContextBuilder.
+## Option A
 
-Responsabilidade:
+Create a DocumentLoader.
 
-- ler documentos;
-- organizar informações;
-- remover redundâncias;
-- adicionar conhecimento complementar;
-- aplicar templates;
-- estruturar contexto para IA.
+Responsibility:
 
-### Vantagens
+- open files;
+- return text.
 
-- representa uma responsabilidade de domínio;
-- separa infraestrutura da preparação para IA;
-- facilita reutilização;
-- permite crescimento do projeto.
+### Advantages
 
-### Desvantagens
+- simple implementation.
 
-- componente inicialmente mais abstrato.
+### Disadvantages
+
+- little business responsibility;
+- does not allow future evolution;
+- mixes infrastructure with context preparation.
 
 ---
 
-# Decisão
+## Option B
 
-Optamos por criar um `ContextBuilder`.
+Create a ContextBuilder.
 
-O componente será responsável por construir o contexto completo que será enviado ao modelo de IA.
+Responsibility:
 
-Ele deixa de ser apenas um leitor de arquivos e passa a atuar como um engenheiro de contexto.
+- read documents;
+- organize information;
+- remove redundancies;
+- add complementary knowledge;
+- apply templates;
+- structure context for AI.
+
+### Advantages
+
+- represents a domain responsibility;
+- separates infrastructure from AI preparation;
+- facilitates reuse;
+- allows project growth.
+
+### Disadvantages
+
+- initially more abstract component.
 
 ---
 
-# Consequências
+# Decision
 
-No futuro, o ContextBuilder poderá incorporar:
+We chose to create a `ContextBuilder`.
 
-- documentos Markdown;
+The component will be responsible for building the complete context to be sent to the AI model.
+
+It ceases to be just a file reader and starts acting as a context engineer.
+
+---
+
+# Consequences
+
+In the future, the ContextBuilder may incorporate:
+
+- Markdown documents;
 - PDFs;
-- imagens convertidas em texto;
-- atas de reunião;
-- bases de conhecimento;
+- images converted to text;
+- meeting notes;
+- knowledge bases;
 - templates;
 - Security by Design;
 - LGPD;
-- glossários;
-- padrões organizacionais.
+- glossaries;
+- organizational standards.
 
-Nenhum outro componente precisará conhecer essas fontes.
-
----
-
-# Princípio criado
-
-**Contexto é um ativo do sistema.**
-
-O contexto não é uma consequência dos documentos.
-
-Ele é um produto construído pelo PM OS.
+No other component will need to know about these sources.
 
 ---
 
-# Insight da Sprint
+# Principle Created
 
-Uma das principais descobertas desta sprint foi perceber que Context Engineering possui um papel mais importante do que Prompt Engineering.
+**Context is a system asset.**
 
-Prompts orientam o modelo.
+Context is not a consequence of documents.
 
-Contexto determina a qualidade da resposta.
+It is a product built by PM OS.
 
-O PM OS passa a adotar Context Engineering como um dos pilares da arquitetura.
+---
+
+# Sprint Insight
+
+One of the main discoveries of this sprint was realizing that Context Engineering plays a more important role than Prompt Engineering.
+
+Prompts guide the model.
+
+Context determines response quality.
+
+PM OS now adopts Context Engineering as one of the pillars of its architecture.

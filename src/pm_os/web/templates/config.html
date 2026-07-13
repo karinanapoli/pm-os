@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block page_title %}{{ "config.title"|t }}{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3>{{ "config.card_title"|t }}</h3>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="/config" class="form">
+            <div class="form-group">
+                <label for="model">{{ "config.model"|t }}</label>
+                <input type="text" name="model" id="model" value="{{ config.model }}" required>
+                <div class="form-hint">{{ "config.model_hint"|t }}</div>
+            </div>
+
+            <div class="form-group">
+                <label for="ollama_url">{{ "config.ollama_url"|t }}</label>
+                <input type="text" name="ollama_url" id="ollama_url" value="{{ config.ollama_url }}" required>
+                <div class="form-hint">{{ "config.ollama_url_hint"|t }}</div>
+            </div>
+
+            <div class="form-group">
+                <label for="lang">{{ "config.language"|t }}</label>
+                <select name="lang" id="lang">
+                    <option value="en" {% if config.lang == 'en' %}selected{% endif %}>English</option>
+                    <option value="pt-BR" {% if config.lang == 'pt-BR' %}selected{% endif %}>Português (Brasil)</option>
+                </select>
+                <div class="form-hint">{{ "config.language_hint"|t }}</div>
+            </div>
+
+            <button type="submit" class="btn btn-primary">{{ "config.save"|t }}</button>
+        </form>
+    </div>
+</div>
+
+{% if saved %}
+<div class="alert alert-success">{{ "config.saved"|t }}</div>
+{% endif %}
+
+<div class="card">
+    <div class="card-header">
+        <h3>{{ "mcp.title"|t }}</h3>
+    </div>
+    <div class="card-body">
+        <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 20px;">
+            {{ "mcp.desc"|t }}
+        </p>
+
+        <form method="POST" action="/config/mcp/add" class="form" style="margin-bottom: 20px;">
+            <div style="display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap;">
+                <div class="form-group" style="flex: 1; min-width: 160px; margin-bottom: 0;">
+                    <input type="text" name="name" placeholder="{{ 'mcp.name_placeholder'|t }}" required>
+                </div>
+                <div class="form-group" style="flex: 2; min-width: 200px; margin-bottom: 0;">
+                    <input type="url" name="url" placeholder="{{ 'mcp.url_placeholder'|t }}" required>
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm">{{ "mcp.add"|t }}</button>
+            </div>
+        </form>
+
+        {% set mcp_servers = config.mcp_servers or [] %}
+        {% if mcp_servers %}
+        <div>
+            {% for server in mcp_servers %}
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border);">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span class="status-dot {% if server.enabled %}active{% endif %}" style="width: 8px; height: 8px; border-radius: 50%; background: {% if server.enabled %}#48bb78{% else %}#6b6890{% endif %};"></span>
+                    <div>
+                        <strong>{{ server.name }}</strong>
+                        <br>
+                        <span style="color: var(--text-muted); font-size: 12px;">{{ server.url }}</span>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <form method="POST" action="/config/mcp/toggle" style="margin: 0;">
+                        <input type="hidden" name="url" value="{{ server.url }}">
+                        <button type="submit" class="btn btn-ghost btn-sm" style="font-size: 11px;">
+                            {% if server.enabled %}{{ "mcp.disabled"|t }}{% else %}{{ "mcp.enabled"|t }}{% endif %}
+                        </button>
+                    </form>
+                    <form method="POST" action="/config/mcp/delete" style="margin: 0;">
+                        <input type="hidden" name="url" value="{{ server.url }}">
+                        <button type="submit" class="btn btn-ghost btn-sm" style="color: var(--danger);">{{ "mcp.delete"|t }}</button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p style="color: var(--text-muted); font-size: 13px;">{{ "mcp.empty"|t }}</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

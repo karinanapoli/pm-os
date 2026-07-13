@@ -1,29 +1,29 @@
 # Sprint 002 Review
 
-## Objetivo
+## Objective
 
-Construir o primeiro Workflow completo do PM OS.
+Build the first complete PM OS Workflow.
 
 ---
 
-## Entregas
+## Deliverables
 
 - Workflow CreatePRDWorkflow
 - MarkdownWriter
 - Bootstrap
 - Protocols
-- Testes Unitários
-- Pipeline funcional
-- Jornada do Usuário
+- Unit Tests
+- Functional Pipeline
+- User Journey
 - Manifesto
 
 ---
 
-## Resultado
+## Result
 
-O PM OS agora é capaz de executar um Workflow completo utilizando um AIClient Fake.
+PM OS is now capable of executing a complete Workflow using a Fake AIClient.
 
-Fluxo:
+Flow:
 
 Feature
 
@@ -45,9 +45,9 @@ PRD.md
 
 ---
 
-## Próximos passos
+## Next Steps
 
-- Integração com Ollama
-- Context Engineering avançado
+- Ollama integration
+- Advanced Context Engineering
 - Commands
 - MCP

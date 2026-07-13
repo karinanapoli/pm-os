@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block page_title %}{{ initiative.name }}{% endblock %}
+
+{% block topbar_actions %}
+<div style="display: flex; gap: 8px;">
+    <a href="/generate" class="btn btn-primary btn-sm">◇ {{ "nav.generate_prd"|t }}</a>
+    {% if prd_exists %}
+    <a href="/validate/{{ initiative.name }}" class="btn btn-secondary btn-sm">✓ {{ "validate.title"|t }}</a>
+    {% endif %}
+    <form method="POST" action="/initiative/{{ initiative.name }}/delete"
+          onsubmit="return confirm(&#39;{{ "archive.confirm"|t }}&#39;)"
+          style="display:inline;">
+        <button type="submit" class="btn btn-ghost btn-sm" style="color: var(--danger);">✕ {{ "archive.button"|t }}</button>
+    </form>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="stats-row">
+    <div class="stat-card">
+        <div class="stat-label">{{ "initiative.detail.status"|t }}</div>
+        <span class="stat-value" style="font-size: 24px;">
+            <span class="badge badge-{{ metadata.status if metadata else 'unknown' }}">{{ metadata.status if metadata else 'unknown' }}</span>
+        </span>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">{{ "initiative.detail.documents"|t }}</div>
+        <span class="stat-value">{{ docs|length }}</span>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">{{ "initiative.detail.prd"|t }}</div>
+        <span class="stat-value" style="font-size: 20px;">{{ '✅ ' ~ ("initiative.detail.generated"|t) if prd_exists else '⏳ ' ~ ("initiative.detail.not_yet"|t) }}</span>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">{{ "initiative.detail.validation_score"|t }}</div>
+        <span class="stat-value">{{ validation_score }}</span>
+    </div>
+</div>
+
+{# ── Context Documents ── #}
+<div class="card">
+    <div class="card-header">
+        <h3>{{ "initiative.detail.context_docs"|t }}</h3>
+        <span style="font-size: 13px; color: var(--text-muted);">{{ docs|length }} {{ "initiative.detail.files"|t }}</span>
+    </div>
+    <div class="card-body">
+        {% if docs %}
+        <div class="doc-list">
+            {% for doc in docs %}
+            <div class="doc-item">
+                <span class="doc-name">
+                    <span>📄</span>
+                    {{ doc.name }}
+                </span>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span class="doc-size">{{ doc.size }}</span>
+                    <form method="POST" action="/initiative/{{ initiative.name }}/delete-doc" style="display:inline;">
+                        <input type="hidden" name="filename" value="{{ doc.name }}">
+                        <button type="submit" class="doc-delete" title="Delete">✕</button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state" style="padding: 24px;">
+            <div class="empty-desc" style="margin-bottom: 16px;">
+                {{ "initiative.detail.no_docs"|t }}
+            </div>
+        </div>
+        {% endif %}
+
+        <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border);">
+            <form method="POST" action="/initiative/{{ initiative.name }}/upload" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="doc">{{ "initiative.detail.upload"|t }}</label>
+                    <input type="file" name="docs" id="doc" accept=".md,.txt" multiple required style="padding: 8px;">
+                    <div class="form-hint">{{ "initiative.detail.upload_hint"|t }}</div>
+                </div>
+                <button type="submit" class="btn btn-secondary btn-sm">{{ "initiative.detail.upload_cta"|t }}</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+{# ── PRD ── #}
+{% if prd_exists %}
+<div class="card">
+    <div class="card-header">
+        <h3>PRD</h3>
+        <div style="display: flex; gap: 8px;">
+            <a href="/validate/{{ initiative.name }}" class="btn btn-secondary btn-sm">{{ "validate.title"|t }}</a>
+            <a href="/generate" class="btn btn-ghost btn-sm">{{ "initiative.detail.regenerate"|t }}</a>
+        </div>
+    </div>
+    <div class="card-body">
+        <details class="prd-preview">
+            <summary>{{ "initiative.detail.view_prd"|t }}</summary>
+            <pre class="prd-content">{{ prd_content }}</pre>
+        </details>
+    </div>
+</div>
+{% endif %}
+
+{# ── Validation ── #}
+{% if prd_exists and validation_score != '-' %}
+<div class="card">
+    <div class="card-header">
+        <h3>{{ "validate.report"|t }}</h3>
+        <a href="/validate/{{ initiative.name }}" class="btn btn-secondary btn-sm">{{ "initiative.detail.view_full_report"|t }}</a>
+    </div>
+    <div class="card-body">
+        <p style="color: var(--text-secondary); font-size: 14px;">
+            {{ "dashboard.stats.score"|t }}: <strong>{{ validation_score }}</strong>
+        </p>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

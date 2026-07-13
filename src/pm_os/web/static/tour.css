@@ -1,0 +1,130 @@
+/* ── Interactive Tour ── */
+
+.tour-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+}
+
+.tour-overlay.active { display: block; }
+
+.tour-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(13, 11, 27, 0.7);
+}
+
+.tour-highlight {
+    position: absolute;
+    border-radius: 12px;
+    box-shadow: 0 0 0 4px var(--primary), 0 0 32px rgba(124, 92, 231, 0.4);
+    animation: tourPulse 2s ease-in-out infinite;
+    z-index: 2;
+    pointer-events: none;
+    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes tourPulse {
+    0%, 100% { box-shadow: 0 0 0 4px var(--primary), 0 0 32px rgba(124, 92, 231, 0.4); }
+    50% { box-shadow: 0 0 0 6px var(--primary-light), 0 0 48px rgba(124, 92, 231, 0.5); }
+}
+
+.tour-tooltip {
+    position: absolute;
+    z-index: 3;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    padding: 24px 28px;
+    max-width: 380px;
+    box-shadow: var(--shadow), var(--shadow-glow);
+    animation: tourTooltipIn 0.3s ease;
+}
+
+@keyframes tourTooltipIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.tour-tooltip-icon {
+    font-size: 36px;
+    margin-bottom: 8px;
+}
+
+.tour-tooltip h3 {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.tour-tooltip p {
+    font-size: 13.5px;
+    color: var(--text-secondary);
+    line-height: 1.7;
+    margin-bottom: 18px;
+}
+
+.tour-tooltip-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.tour-step-indicator {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+}
+
+.tour-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.tour-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 16px;
+    border-radius: var(--radius-sm);
+    border: none;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: var(--font);
+    transition: all 0.2s ease;
+}
+
+.tour-btn-primary {
+    background: linear-gradient(135deg, var(--primary), #a855f7);
+    color: #fff;
+}
+
+.tour-btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(124, 92, 231, 0.35);
+}
+
+.tour-btn-ghost {
+    background: transparent;
+    color: var(--text-muted);
+}
+
+.tour-btn-ghost:hover {
+    color: var(--text);
+    background: rgba(255,255,255,0.04);
+}
+
+.tour-tooltip.center {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    max-width: 440px;
+}
+
+.tour-tooltip.center .tour-tooltip-footer {
+    justify-content: center;
+}

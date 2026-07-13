@@ -1,35 +1,35 @@
-# ADR-001 — O PM OS terá um Core independente do MCP
+# ADR-001 — PM OS will have a Core independent from the MCP
 
-**Status:** Aceito
+**Status:** Accepted
 
-**Data:** Sprint 001
-
----
-
-# Contexto
-
-No início do projeto, a ideia era construir um servidor MCP capaz de executar workflows para Product Managers.
-
-Durante a Sprint 001 percebemos que concentrar toda a lógica dentro do MCP faria com que a arquitetura ficasse fortemente acoplada ao protocolo.
-
-Isso dificultaria:
-
-- testes;
-- reutilização;
-- evolução do projeto;
-- integração com outras interfaces.
-
-Precisávamos decidir onde a lógica principal deveria viver.
+**Date:** Sprint 001
 
 ---
 
-# Opções consideradas
+# Context
 
-## Opção A
+At the beginning of the project, the idea was to build an MCP server capable of executing workflows for Product Managers.
 
-Toda a lógica dentro do MCP.
+During Sprint 001 we realized that concentrating all logic inside the MCP would make the architecture strongly coupled to the protocol.
 
-Fluxo:
+This would make it difficult to:
+
+- test;
+- reuse;
+- evolve the project;
+- integrate with other interfaces.
+
+We needed to decide where the main logic should live.
+
+---
+
+# Options Considered
+
+## Option A
+
+All logic inside the MCP.
+
+Flow:
 
 Continue
 
@@ -39,26 +39,26 @@ MCP
 
 ↓
 
-Código
+Code
 
-### Vantagens
+### Advantages
 
-- implementação inicial mais rápida.
+- faster initial implementation.
 
-### Desvantagens
+### Disadvantages
 
-- alto acoplamento;
-- difícil reutilização;
-- difícil testar;
-- impossível criar CLI sem duplicar código.
+- high coupling;
+- difficult reuse;
+- hard to test;
+- impossible to create CLI without duplicating code.
 
 ---
 
-## Opção B
+## Option B
 
-Criar um Core independente.
+Create an independent Core.
 
-Fluxo:
+Flow:
 
 Interface
 
@@ -76,56 +76,56 @@ Workflows
 
 ↓
 
-Domínio
+Domain
 
-### Vantagens
+### Advantages
 
-- arquitetura modular;
-- reutilização;
-- testes independentes;
-- possibilidade de criar CLI;
-- possibilidade de criar interface web;
-- possibilidade de trocar Continue por outra interface.
+- modular architecture;
+- reusability;
+- independent testing;
+- possibility to create CLI;
+- possibility to create web interface;
+- possibility to switch Continue for another interface.
 
-### Desvantagens
+### Disadvantages
 
-- exige uma camada extra.
-
----
-
-# Decisão
-
-Optamos pela Opção B.
-
-Todo o conhecimento do PM OS ficará dentro do PM OS Core.
-
-O MCP será apenas uma camada responsável por expor ferramentas.
-
-O Core não conhecerá MCP.
+- requires an extra layer.
 
 ---
 
-# Consequências
+# Decision
 
-Esta decisão permite que, no futuro, o mesmo Core seja utilizado por:
+We chose Option B.
+
+All PM OS knowledge will reside inside the PM OS Core.
+
+The MCP will be only a layer responsible for exposing tools.
+
+The Core will not know about MCP.
+
+---
+
+# Consequences
+
+This decision allows, in the future, the same Core to be used by:
 
 - MCP
 - CLI
 - API
-- Interface Web
+- Web Interface
 - Continue
 - OpenCode
 - Claude Desktop
 - Cursor
 
-Sem alterações na lógica de negócio.
+Without changes to the business logic.
 
 ---
 
-# Princípio criado
+# Principle Created
 
-**O Core nunca dependerá da interface.**
+**The Core will never depend on the interface.**
 
-As interfaces dependerão do Core.
+Interfaces will depend on the Core.
 
-Esse princípio passa a orientar toda a arquitetura do PM OS.
+This principle now guides all PM OS architecture.

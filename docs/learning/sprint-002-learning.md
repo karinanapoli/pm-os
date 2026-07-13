@@ -1,48 +1,48 @@
 # Sprint 002 Learning Journal
 
-## O que aprendemos
+## What we learned
 
-Durante esta Sprint consolidamos diversos conceitos fundamentais de arquitetura.
+During this Sprint we consolidated several fundamental architecture concepts.
 
 ### Workflows
 
-Aprendemos que Workflows representam casos de uso.
+We learned that Workflows represent use cases.
 
-Eles orquestram componentes.
+They orchestrate components.
 
-Não implementam regras de negócio específicas.
+They don't implement specific business rules.
 
 ---
 
 ### Dependency Injection
 
-Aprendemos a receber dependências pelo construtor.
+We learned to receive dependencies through the constructor.
 
-Isso reduz acoplamento.
+This reduces coupling.
 
 ---
 
 ### Protocols
 
-Criamos contratos utilizando typing.Protocol.
+We created contracts using typing.Protocol.
 
-O Core agora depende de comportamento e não de implementações.
+The Core now depends on behavior, not implementations.
 
 ---
 
 ### Composition Root
 
-Introduzimos o Bootstrap.
+We introduced Bootstrap.
 
-Toda montagem da aplicação passa a ocorrer em um único lugar.
+All application assembly now happens in a single place.
 
 ---
 
-### Testes
+### Tests
 
-Criamos os primeiros testes unitários do projeto.
+We created the first unit tests of the project.
 
-Componentes testados:
+Tested components:
 
 - AIClient
 - PromptBuilder
@@ -50,10 +50,10 @@ Componentes testados:
 
 ---
 
-### Produto
+### Product
 
-A maior descoberta da Sprint foi perceber que o PM OS não é um gerador de PRDs.
+The biggest discovery of the Sprint was realizing that PM OS is not a PRD generator.
 
-Ele é um Sistema Operacional para iniciativas de produto.
+It is an Operating System for product initiatives.
 
-O verdadeiro ativo do sistema é o contexto.
+The real asset of the system is the context.

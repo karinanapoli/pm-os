@@ -4,7 +4,7 @@ from pm_os.infrastructure.ai.clients.ollama_client import OllamaConnectionError
 
 OUTPUT_PATH = (
     "workspace/initiatives/"
-    "INT-0001-consulta-inteligente-fornecedores/"
+    "INT-0001-smart-supplier-query/"
     "artifacts/prd.md"
 )
 
@@ -15,12 +15,12 @@ def main() -> None:
     try:
         output_file = workflow.run(OUTPUT_PATH)
 
-        print(f"\nPRD criado com sucesso em:\n{output_file}")
+        print(f"\nPRD successfully created at:\n{output_file}")
 
     except OllamaConnectionError:
         print(
-            "\nNão foi possível conectar ao Ollama.\n\n"
-            "Verifique se o servidor está rodando com:\n\n"
+            "\nCould not connect to Ollama.\n\n"
+            "Make sure the server is running with:\n\n"
             "ollama serve"
         )
 

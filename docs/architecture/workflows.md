@@ -1,26 +1,26 @@
 # PM OS — Workflows
 
-> "Workflows representam capacidades da plataforma. Eles orquestram componentes especializados para transformar conhecimento em artefatos de produto."
+> "Workflows represent platform capabilities. They orchestrate specialized components to transform knowledge into product artifacts."
 
 ---
 
-# Objetivo
+# Objective
 
-Este documento descreve como os Workflows do PM OS são estruturados e como eles utilizam os componentes da plataforma para executar uma capacidade de negócio.
+This document describes how PM OS Workflows are structured and how they use the platform's components to execute a business capability.
 
-No PM OS, um Workflow representa um caso de uso completo do usuário.
+In PM OS, a Workflow represents a complete user use case.
 
-Seu papel é coordenar componentes especializados, mantendo o domínio desacoplado da infraestrutura.
+Its role is to coordinate specialized components, keeping the domain decoupled from infrastructure.
 
 ---
 
-# O que é um Workflow?
+# What is a Workflow?
 
-Um Workflow representa uma **capacidade** da plataforma.
+A Workflow represents a **capability** of the platform.
 
-Cada capacidade entrega um resultado de negócio específico.
+Each capability delivers a specific business result.
 
-Exemplos:
+Examples:
 
 - Create PRD
 - Create Backlog
@@ -30,36 +30,36 @@ Exemplos:
 - AI Review
 - Security Review
 
-Todos os Workflows compartilham a mesma arquitetura.
+All Workflows share the same architecture.
 
-Eles diferem apenas pelo objetivo que executam.
-
----
-
-# Responsabilidades
-
-Um Workflow é responsável por:
-
-- iniciar a execução da capacidade;
-- coordenar os componentes do Core;
-- controlar a ordem de execução;
-- retornar o artefato produzido.
-
-O Workflow **não**:
-
-- implementa regras de IA;
-- acessa diretamente o Workspace;
-- constrói prompts;
-- salva arquivos;
-- conhece implementações concretas.
-
-Sua única responsabilidade é orquestrar componentes especializados.
+They differ only by the objective they execute.
 
 ---
 
-# Fluxo de Execução
+# Responsibilities
 
-O fluxo padrão de um Workflow é:
+A Workflow is responsible for:
+
+- initiating capability execution;
+- coordinating Core components;
+- controlling execution order;
+- returning the produced artifact.
+
+The Workflow **does not**:
+
+- implement AI rules;
+- directly access the Workspace;
+- build prompts;
+- save files;
+- know concrete implementations.
+
+Its only responsibility is to orchestrate specialized components.
+
+---
+
+# Execution Flow
+
+The standard Workflow flow is:
 
 ```text
 Workspace
@@ -87,19 +87,19 @@ Markdown Writer
 Artifact
 ```
 
-Cada componente executa apenas uma responsabilidade.
+Each component executes only one responsibility.
 
 ---
 
-# Exemplo Atual
+# Current Example
 
-Atualmente o PM OS possui uma capability implementada:
+Currently PM OS has one implemented capability:
 
 ```text
 CreatePRDWorkflow
 ```
 
-Seu fluxo é:
+Its flow is:
 
 ```text
 Initiative Repository
@@ -126,9 +126,9 @@ workspace/
 
 ---
 
-# Estrutura Geral
+# General Structure
 
-Todos os Workflows seguem a mesma estrutura.
+All Workflows follow the same structure.
 
 ```python
 Workflow
@@ -154,27 +154,27 @@ AI Client
 Writer
 ```
 
-Essa organização garante consistência entre todas as capacidades da plataforma.
+This organization ensures consistency across all platform capabilities.
 
 ---
 
-# Componentes Utilizados
+# Components Used
 
-| Componente | Responsabilidade |
+| Component | Responsibility |
 |------------|------------------|
-| Initiative Repository | Recuperar a Initiative do Workspace |
-| Context Builder | Consolidar conhecimento |
-| Prompt Builder | Construir o prompt adequado ao Workflow |
-| AI Client | Gerar conteúdo utilizando IA |
-| Markdown Writer | Persistir o artefato produzido |
+| Initiative Repository | Retrieve the Initiative from Workspace |
+| Context Builder | Consolidate knowledge |
+| Prompt Builder | Build the appropriate prompt for the Workflow |
+| AI Client | Generate content using AI |
+| Markdown Writer | Persist the produced artifact |
 
 ---
 
 # Dependency Injection
 
-Todos os componentes são recebidos pelo Workflow através de injeção de dependências.
+All components are received by the Workflow through dependency injection.
 
-Exemplo:
+Example:
 
 ```python
 CreatePRDWorkflow(
@@ -187,15 +187,15 @@ CreatePRDWorkflow(
 )
 ```
 
-Essa abordagem permite substituir implementações sem alterar o Workflow.
+This approach allows replacing implementations without changing the Workflow.
 
 ---
 
-# Observabilidade
+# Observability
 
-Os Workflows registram os principais eventos da execução utilizando o Logger.
+Workflows log the main execution events using the Logger.
 
-Exemplo:
+Example:
 
 ```text
 Loading initiatives...
@@ -206,25 +206,25 @@ Writing artifact...
 Workflow completed.
 ```
 
-Esses logs facilitam diagnóstico, depuração e acompanhamento da execução.
+These logs facilitate diagnosis, debugging, and execution tracking.
 
 ---
 
-# Tratamento de Erros
+# Error Handling
 
-Os Workflows não tratam detalhes técnicos de infraestrutura.
+Workflows do not handle technical infrastructure details.
 
-Erros específicos são encapsulados por componentes especializados, como o `OllamaClient`.
+Specific errors are encapsulated by specialized components, such as `OllamaClient`.
 
-A interface de entrada (CLI, MCP ou API) é responsável por transformar esses erros em mensagens adequadas para o usuário.
+The input interface (CLI, MCP, or API) is responsible for transforming these errors into appropriate user messages.
 
-Essa separação mantém os Workflows focados apenas na orquestração da capacidade.
+This separation keeps Workflows focused only on capability orchestration.
 
 ---
 
-# Princípios Aplicados
+# Applied Principles
 
-Todos os Workflows seguem os seguintes princípios:
+All Workflows follow these principles:
 
 - Single Responsibility Principle
 - Dependency Injection
@@ -236,11 +236,11 @@ Todos os Workflows seguem os seguintes princípios:
 
 ---
 
-# Evolução
+# Evolution
 
-Os próximos Workflows planejados reutilizarão exatamente a mesma arquitetura.
+The next planned Workflows will reuse exactly the same architecture.
 
-Entre eles:
+Among them:
 
 - Create Backlog
 - Create Roadmap
@@ -249,14 +249,14 @@ Entre eles:
 - AI Review
 - Security Review
 
-A adição de uma nova capacidade deverá exigir apenas a criação de um novo Workflow e seus templates específicos, reutilizando os componentes existentes.
+Adding a new capability should require only creating a new Workflow and its specific templates, reusing existing components.
 
 ---
 
-# Resumo
+# Summary
 
-No PM OS, um Workflow representa uma capacidade reutilizável da plataforma.
+In PM OS, a Workflow represents a reusable platform capability.
 
-Ele não implementa regras específicas de IA nem conhece detalhes da infraestrutura.
+It does not implement specific AI rules nor know infrastructure details.
 
-Seu papel é apenas coordenar componentes especializados para transformar conhecimento organizado em artefatos de produto, mantendo a arquitetura simples, modular e preparada para evolução contínua.
+Its role is only to coordinate specialized components to transform organized knowledge into product artifacts, keeping the architecture simple, modular, and ready for continuous evolution.

@@ -1,30 +1,31 @@
-# ADR-003 — Camada de Infraestrutura para Provedores de IA
+# ADR-003 — Infrastructure Layer for AI Providers
 
 ## Status
 
-Aceita
+Accepted
 
 ---
 
-# Contexto
+# Context
 
-O PM OS precisa gerar artefatos utilizando modelos de linguagem.
+PM OS needs to generate artifacts using language models.
 
-Durante as primeiras Sprints, utilizamos um `FakeAIClient` para validar o pipeline sem depender de um LLM real.
+During the first Sprints, we used a `FakeAIClient` to validate the pipeline without depending on a real LLM.
 
-Com a Sprint 003, passamos a integrar o Ollama como primeiro provedor real de IA.
+With Sprint 003, we started integrating Ollama as the first real AI provider.
 
-Entretanto, o PM OS não deve depender diretamente do Ollama, OpenAI, Claude, Gemini ou qualquer outro provedor específico.
+However, PM OS must not depend directly on Ollama, OpenAI, Claude, Gemini, or any other specific provider.
 
-Os Workflows devem depender apenas de uma capacidade abstrata:
+Workflows should depend only on an abstract capability:
 
-> gerar texto a partir de um prompt.
+> generate text from a prompt.
 
 ---
 
-# Decisão
+# Decision
 
-Criamos um contrato `AIClient` em:
+We created an `AIClient` contract at:
 
 ```text
 src/pm_os/contracts/ai_client.py
+```

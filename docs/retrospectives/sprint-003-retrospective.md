@@ -1,78 +1,78 @@
 # Sprint 003 — Retrospective
 
-> "A melhor arquitetura também depende de um bom processo."
+> "The best architecture also depends on a good process."
 
 ---
 
-# Objetivo
+# Objective
 
-Refletir sobre como conduzimos a Sprint, identificar pontos fortes, oportunidades de melhoria e registrar ações para a próxima Sprint.
-
----
-
-# O que funcionou muito bem?
-
-## Arquitetura antes de implementação
-
-Nesta Sprint dedicamos tempo para discutir arquitetura antes de escrever código.
-
-Isso reduziu retrabalho e permitiu tomar decisões mais consistentes.
+Reflect on how we conducted the Sprint, identify strengths, improvement opportunities, and record actions for the next Sprint.
 
 ---
 
-## Desenvolvimento incremental
+# What worked very well?
 
-Em vez de tentar implementar muitas funcionalidades, priorizamos fortalecer a base da plataforma.
+## Architecture before implementation
 
-Essa estratégia aumentou a qualidade do projeto.
+In this Sprint, we dedicated time to discuss architecture before writing code.
 
----
-
-## Documentação contínua
-
-Toda decisão importante foi registrada durante a Sprint.
-
-Isso evitou perda de contexto e manteve a documentação alinhada com o código.
+This reduced rework and allowed more consistent decisions.
 
 ---
 
-## Testes frequentes
+## Incremental development
 
-Cada alteração foi validada antes de seguir para a próxima.
+Instead of trying to implement many features, we prioritized strengthening the platform foundation.
 
-Essa abordagem reduziu erros acumulados.
-
----
-
-# O que poderia melhorar?
-
-## Commits menores
-
-Em alguns momentos acumulamos muitas mudanças antes de realizar um commit.
-
-Na próxima Sprint devemos criar commits menores e mais frequentes.
+This strategy increased project quality.
 
 ---
 
-## Revisão de arquitetura antes da implementação
+## Continuous documentation
 
-Em alguns casos implementamos primeiro e refinamos a arquitetura depois.
+Every important decision was recorded during the Sprint.
 
-O ideal é realizar uma revisão arquitetural antes de iniciar mudanças estruturais.
-
----
-
-## Configuração
-
-Ainda existem configurações hardcoded.
-
-Essa será uma prioridade da Sprint 004.
+This prevented context loss and kept documentation aligned with code.
 
 ---
 
-# Principais aprendizados
+## Frequent testing
 
-Durante esta Sprint aprendemos sobre:
+Each change was validated before moving to the next.
+
+This approach reduced accumulated errors.
+
+---
+
+# What could improve?
+
+## Smaller commits
+
+At times we accumulated many changes before making a commit.
+
+In the next Sprint, we should create smaller and more frequent commits.
+
+---
+
+## Architecture review before implementation
+
+In some cases, we implemented first and refined the architecture later.
+
+The ideal is to perform an architectural review before initiating structural changes.
+
+---
+
+## Configuration
+
+There are still hardcoded configurations.
+
+This will be a priority for Sprint 004.
+
+---
+
+# Main Learnings
+
+During this Sprint we learned about:
 
 - Domain-Driven Design
 - Repository Pattern
@@ -80,26 +80,26 @@ Durante esta Sprint aprendemos sobre:
 - Composition Root
 - Context Engineering
 - Infrastructure Layer
-- Observabilidade
-- Tratamento de erros
-- Arquitetura orientada a capacidades
+- Observability
+- Error handling
+- Capability-oriented architecture
 
 ---
 
-# Ações para a Sprint 004
+# Actions for Sprint 004
 
-- Criar camada de configuração.
-- Melhorar testes de integração.
-- Definir estratégia para múltiplos provedores de IA.
-- Evoluir a CLI.
-- Continuar utilizando revisões arquiteturais antes da implementação.
+- Create configuration layer.
+- Improve integration tests.
+- Define strategy for multiple AI providers.
+- Evolve CLI.
+- Continue using architectural reviews before implementation.
 
 ---
 
-# Conclusão
+# Conclusion
 
-A Sprint 003 consolidou as bases arquiteturais do PM OS.
+Sprint 003 consolidated the architectural foundations of PM OS.
 
-Além das entregas técnicas, houve uma evolução significativa na forma de projetar e discutir arquitetura.
+Beyond technical deliveries, there was a significant evolution in how we design and discuss architecture.
 
-O principal objetivo para as próximas Sprints será manter essa qualidade enquanto adicionamos novas capacidades à plataforma.
+The main goal for the next Sprints will be to maintain this quality while adding new capabilities to the platform.

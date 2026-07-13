@@ -1,16 +1,16 @@
 # Sprint 003 Review
 
-> "A Sprint 003 marcou a transição do PM OS de um projeto experimental para uma plataforma de AI Product Engineering."
+> "Sprint 003 marked the transition of PM OS from an experimental project to an AI Product Engineering platform."
 
 ---
 
-# Objetivo da Sprint
+# Sprint Objective
 
-O objetivo inicial da Sprint era integrar um Large Language Model (LLM) real ao PM OS, substituindo o cliente de IA simulado.
+The initial objective of the Sprint was to integrate a real Large Language Model (LLM) into PM OS, replacing the simulated AI client.
 
-Durante o desenvolvimento, identificamos oportunidades de evolução arquitetural que ampliaram significativamente o escopo da Sprint.
+During development, we identified architectural evolution opportunities that significantly expanded the Sprint scope.
 
-Ao final, a Sprint consolidou as bases arquiteturais da plataforma.
+By the end, the Sprint consolidated the architectural foundations of the platform.
 
 ---
 
@@ -18,94 +18,94 @@ Ao final, a Sprint consolidou as bases arquiteturais da plataforma.
 
 **Create PRD Capability**
 
-Construir a primeira capacidade completa do PM OS, permitindo transformar o contexto de uma iniciativa em um Product Requirements Document (PRD) utilizando um modelo de IA real.
+Build the first complete PM OS capability, allowing the context of an initiative to be transformed into a Product Requirements Document (PRD) using a real AI model.
 
 ---
 
-# Histórias Entregues
+# Stories Delivered
 
 ## ✅ Story 1 — AI Abstraction
 
-### Objetivo
+### Objective
 
-Desacoplar os Workflows das implementações concretas de IA.
+Decouple Workflows from concrete AI implementations.
 
-### Entregas
+### Deliverables
 
-- Criação do `AIClientProtocol`;
-- Implementação do `FakeAIClient`;
-- Implementação do `OllamaClient`;
-- Atualização do Bootstrap para injeção de dependências.
-
----
-
-## ✅ Story 2 — Integração com Ollama
-
-### Objetivo
-
-Substituir o cliente simulado por um modelo de IA executando localmente.
-
-### Entregas
-
-- Integração com Ollama;
-- Execução utilizando o modelo `llama3.2`;
-- Geração real de PRDs.
+- Creation of `AIClientProtocol`;
+- Implementation of `FakeAIClient`;
+- Implementation of `OllamaClient`;
+- Updated Bootstrap for dependency injection.
 
 ---
 
-## ✅ Story 3 — Logging e Observabilidade
+## ✅ Story 2 — Ollama Integration
 
-### Objetivo
+### Objective
 
-Tornar a execução dos Workflows observável.
+Replace the simulated client with a locally running AI model.
 
-### Entregas
+### Deliverables
 
-- Criação do contrato `Logger`;
-- Implementação do `ConsoleLogger`;
-- Logs durante toda a execução do Workflow.
+- Integration with Ollama;
+- Execution using the `llama3.2` model;
+- Real PRD generation.
+
+---
+
+## ✅ Story 3 — Logging and Observability
+
+### Objective
+
+Make Workflow execution observable.
+
+### Deliverables
+
+- Creation of `Logger` contract;
+- Implementation of `ConsoleLogger`;
+- Logs throughout the entire Workflow execution.
 
 ---
 
 ## ✅ Story 4 — Workspace Architecture
 
-### Objetivo
+### Objective
 
-Reestruturar o Workspace para refletir o modelo mental de um Product Manager.
+Restructure the Workspace to reflect a Product Manager's mental model.
 
-### Entregas
+### Deliverables
 
-- Criação do conceito de `workspace`;
-- Introdução de `initiatives`;
-- Estrutura baseada em contexto, artefatos, logs e metadados;
-- Criação da ADR-004.
+- Creation of the `workspace` concept;
+- Introduction of `initiatives`;
+- Structure based on context, artifacts, logs, and metadata;
+- Creation of ADR-004.
 
 ---
 
-## ✅ Story 5 — Refatoração do Domínio
+## ✅ Story 5 — Domain Refactoring
 
-### Objetivo
+### Objective
 
-Alinhar o domínio do PM OS ao problema que ele resolve.
+Align the PM OS domain with the problem it solves.
 
-### Entregas
+### Deliverables
 
 - `Feature` → `Initiative`;
 - `FeatureRepository` → `InitiativeRepository`;
-- Criação da camada `domain`;
-- Criação da camada `repositories`.
+- Creation of `domain` layer;
+- Creation of `repositories` layer.
 
 ---
 
-## ✅ Story 6 — Organização de Artefatos
+## ✅ Story 6 — Artifact Organization
 
-### Objetivo
+### Objective
 
-Armazenar os artefatos junto à Initiative.
+Store artifacts alongside the Initiative.
 
-### Entregas
+### Deliverables
 
-- PRDs passam a ser gerados em:
+- PRDs are now generated at:
 
 ```text
 workspace/
@@ -117,25 +117,25 @@ workspace/
 
 ---
 
-## ✅ Story 7 — Tratamento de Erros
+## ✅ Story 7 — Error Handling
 
-### Objetivo
+### Objective
 
-Melhorar a experiência do usuário em falhas de infraestrutura.
+Improve user experience during infrastructure failures.
 
-### Entregas
+### Deliverables
 
-- Criação de `OllamaConnectionError`;
-- Tratamento amigável de erro na CLI;
-- Validação dos cenários de sucesso e falha.
+- Creation of `OllamaConnectionError`;
+- User-friendly error handling in CLI;
+- Validation of success and failure scenarios.
 
 ---
 
-## ✅ Story 8 — Atualização da Documentação
+## ✅ Story 8 — Documentation Update
 
-### Entregas
+### Deliverables
 
-Atualização dos principais documentos de arquitetura:
+Updated main architecture documents:
 
 - Architecture Overview;
 - Components;
@@ -144,39 +144,39 @@ Atualização dos principais documentos de arquitetura:
 
 ---
 
-# Principais Decisões Arquiteturais
+# Main Architectural Decisions
 
-Durante esta Sprint foram tomadas decisões importantes:
+During this Sprint, important decisions were made:
 
-- AI é tratada como infraestrutura.
-- O domínio passou a ser orientado a Initiatives.
-- O Workspace tornou-se a principal área de trabalho do usuário.
-- Os Workflows representam capacidades da plataforma.
-- O Bootstrap tornou-se o Composition Root da aplicação.
-- Os componentes passaram a depender de contratos.
-
----
-
-# Resultado da Sprint
-
-Ao final da Sprint, o PM OS passou a possuir:
-
-- arquitetura desacoplada;
-- domínio consistente;
-- integração com IA real;
-- observabilidade;
-- tratamento de erros;
-- documentação arquitetural atualizada.
-
-A plataforma está preparada para evoluir com novas capacidades reutilizando a mesma arquitetura.
+- AI is treated as infrastructure.
+- The domain became initiative-oriented.
+- The Workspace became the user's main working area.
+- Workflows represent platform capabilities.
+- Bootstrap became the application's Composition Root.
+- Components started depending on contracts.
 
 ---
 
-# Próxima Sprint
+# Sprint Result
 
-Os próximos objetivos são:
+By the end of the Sprint, PM OS had:
+
+- decoupled architecture;
+- consistent domain;
+- real AI integration;
+- observability;
+- error handling;
+- updated architectural documentation.
+
+The platform is ready to evolve with new capabilities reusing the same architecture.
+
+---
+
+# Next Sprint
+
+The next objectives are:
 
 - Configuration Layer;
 - Integration Tests;
 - Template Engine;
-- Novas Capabilities (Create Backlog, Create Roadmap, etc.).
+- New Capabilities (Create Backlog, Create Roadmap, etc.).

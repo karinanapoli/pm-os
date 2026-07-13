@@ -1,16 +1,16 @@
-# Sprint 001 — Fundação do PM OS Core
+# Sprint 001 — Foundation of PM OS Core
 
-## Objetivo da Sprint
+## Sprint Objective
 
-Criar a fundação técnica e conceitual do PM OS.
+Create the technical and conceptual foundation of PM OS.
 
-Nesta sprint, o objetivo não era ainda gerar um PRD completo com IA, mas sim construir a base do sistema: estrutura do projeto, primeiros componentes do Core e decisões arquiteturais fundamentais.
+In this sprint, the goal was not yet to generate a complete PRD with AI, but to build the system's foundation: project structure, first Core components, and fundamental architectural decisions.
 
 ---
 
-## O que construímos
+## What we built
 
-Criamos a estrutura inicial do projeto `pm-os`, incluindo:
+We created the initial structure of the `pm-os` project, including:
 
 - `features/`
 - `src/pm_os/`
@@ -22,7 +22,7 @@ Criamos a estrutura inicial do projeto `pm-os`, incluindo:
 - `tests/`
 - `docs/`
 
-Também criamos os primeiros componentes do PM OS Core:
+We also created the first PM OS Core components:
 
 - `Feature`
 - `FeatureRepository`
@@ -32,15 +32,15 @@ Também criamos os primeiros componentes do PM OS Core:
 
 ---
 
-## Principal decisão da Sprint
+## Main decision of the Sprint
 
-A principal decisão foi entender que o MCP não deve ser o cérebro do sistema.
+The main decision was understanding that the MCP should not be the brain of the system.
 
-O MCP será apenas uma interface.
+The MCP will be just an interface.
 
-A lógica principal ficará no PM OS Core, escrito em Python.
+The main logic will reside in the PM OS Core, written in Python.
 
-Isso permite que o projeto evolua para diferentes interfaces no futuro, como:
+This allows the project to evolve to different interfaces in the future, such as:
 
 - MCP
 - CLI
@@ -52,9 +52,9 @@ Isso permite que o projeto evolua para diferentes interfaces no futuro, como:
 
 ---
 
-## Pipeline criado
+## Pipeline created
 
-O pipeline inicial ficou assim:
+The initial pipeline looks like this:
 
 ```text
 FeatureRepository
@@ -66,3 +66,4 @@ ContextBuilder
 PromptBuilder
       ↓
 AIClient fake
+```

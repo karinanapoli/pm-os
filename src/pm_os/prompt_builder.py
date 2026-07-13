@@ -16,24 +16,24 @@ class PromptBuilder:
 
     def _build_create_prd_prompt(self, context: str) -> str:
         return f"""
-Você é uma Product Manager experiente.
+You are an experienced Product Manager.
 
-Crie um PRD completo em Markdown com base no contexto abaixo.
+Create a complete PRD in Markdown based on the context below.
 
-O PRD deve conter:
+The PRD must include:
 
-1. Visão geral
-2. Problema
-3. Objetivos
-4. Fora de escopo
-5. Personas / usuários
-6. Requisitos funcionais
-7. Requisitos não funcionais
-8. Métricas de sucesso
-9. Riscos
-10. Perguntas em aberto
+1. Overview
+2. Problem
+3. Objectives
+4. Out of scope
+5. Personas / users
+6. Functional requirements
+7. Non-functional requirements
+8. Success metrics
+9. Risks
+10. Open questions
 
-Contexto:
+Context:
 
 {context}
 """

@@ -1,0 +1,8 @@
+artifacts:
+- prd
+created_at: '2026-07-13'
+id: INT-TESTE
+name: Teste
+status: planning
+workflows:
+- create_prd

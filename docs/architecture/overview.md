@@ -1,34 +1,34 @@
 # PM OS — Architecture Overview
 
-> "A arquitetura do PM OS foi projetada para transformar conhecimento em capacidades reutilizáveis, permitindo que Product Managers utilizem Inteligência Artificial de forma estruturada, escalável e independente de ferramentas específicas."
+> "PM OS architecture was designed to transform knowledge into reusable capabilities, enabling Product Managers to use Artificial Intelligence in a structured, scalable, and tool-independent way."
 
 ---
 
-# Objetivo
+# Objective
 
-O PM OS (Product Manager Operating System) é uma plataforma open source de AI Product Engineering.
+PM OS (Product Manager Operating System) is an open source AI Product Engineering platform.
 
-Seu propósito é apoiar Product Managers durante todo o ciclo de vida de uma iniciativa, organizando conhecimento, executando workflows e gerando artefatos de produto de forma consistente.
+Its purpose is to support Product Managers throughout the entire lifecycle of an initiative, organizing knowledge, executing workflows, and generating product artifacts consistently.
 
-O objetivo do projeto não é apenas integrar um Large Language Model (LLM), mas construir um sistema capaz de evoluir continuamente, mantendo baixo acoplamento, alta coesão e uma arquitetura simples de compreender.
+The project's goal is not just to integrate a Large Language Model (LLM), but to build a system capable of continuous evolution, maintaining low coupling, high cohesion, and a simple-to-understand architecture.
 
 ---
 
-# Visão Geral da Arquitetura
+# Architecture Overview
 
-O PM OS é composto por três grandes blocos:
+PM OS is composed of three main blocks:
 
-1. Interfaces de utilização
+1. User Interfaces
 2. PM OS Core
 3. Workspace
 
-Cada bloco possui responsabilidades bem definidas.
+Each block has well-defined responsibilities.
 
 ```text
-                        Usuário
+                        User
                            │
                            ▼
-        Continue • CLI • MCP • Web (futuro)
+        Continue • CLI • MCP • Web (future)
                            │
                            ▼
 ──────────────────────────────────────────────────
@@ -67,69 +67,69 @@ Configuration
 
 ---
 
-# Princípios Arquiteturais
+# Architectural Principles
 
-Toda decisão arquitetural do PM OS é guiada pelos seguintes princípios.
+Every architectural decision in PM OS is guided by the following principles.
 
-## Contexto antes de Prompt
+## Context before Prompt
 
-Prompts são descartáveis.
+Prompts are disposable.
 
-Contexto é um ativo permanente.
+Context is a permanent asset.
 
-O PM OS investe na organização e consolidação do contexto antes da interação com qualquer modelo de IA.
+PM OS invests in organizing and consolidating context before interacting with any AI model.
 
 ---
 
-## AI é uma Dependência
+## AI is a Dependency
 
-Modelos de IA são serviços externos.
+AI models are external services.
 
-O domínio do PM OS nunca depende diretamente de uma implementação específica.
+The PM OS domain never depends directly on a specific implementation.
 
-Hoje utilizamos Ollama.
+Today we use Ollama.
 
-Amanhã poderemos utilizar OpenAI, Azure OpenAI, Claude ou qualquer outro provedor.
+Tomorrow we may use OpenAI, Azure OpenAI, Claude, or any other provider.
 
 ---
 
 ## Core First
 
-Toda regra de negócio pertence ao PM OS Core.
+Every business rule belongs to the PM OS Core.
 
-Interfaces, MCPs ou aplicações externas nunca implementam lógica de domínio.
-
----
-
-## Baixo Acoplamento
-
-Os componentes se comunicam através de contratos (Protocols).
-
-Isso permite substituir implementações sem alterar os workflows.
+Interfaces, MCPs, or external applications never implement domain logic.
 
 ---
 
-## Alta Coesão
+## Low Coupling
 
-Cada componente possui apenas uma responsabilidade.
+Components communicate through contracts (Protocols).
 
-Essa separação facilita manutenção, testes e evolução da plataforma.
-
----
-
-## Evolução Incremental
-
-O PM OS evolui por pequenas entregas contínuas.
-
-Cada Sprint busca fortalecer a arquitetura antes de adicionar novas capacidades.
+This allows replacing implementations without changing workflows.
 
 ---
 
-# Organização do PM OS Core
+## High Cohesion
 
-O Core concentra toda a inteligência da plataforma.
+Each component has only one responsibility.
 
-Sua estrutura atual é organizada da seguinte forma:
+This separation facilitates maintenance, testing, and evolution of the platform.
+
+---
+
+## Incremental Evolution
+
+PM OS evolves through small continuous deliveries.
+
+Each Sprint seeks to strengthen the architecture before adding new capabilities.
+
+---
+
+# PM OS Core Organization
+
+The Core concentrates all the platform's intelligence.
+
+Its current structure is organized as follows:
 
 ```text
 src/
@@ -145,57 +145,57 @@ src/
     └── context_builder.py
 ```
 
-Cada diretório possui uma responsabilidade específica.
+Each directory has a specific responsibility.
 
-| Componente | Responsabilidade |
+| Component | Responsibility |
 |------------|------------------|
-| `contracts/` | Define os contratos (Protocols) utilizados pela aplicação. |
-| `domain/` | Contém os conceitos centrais do domínio do PM OS. |
-| `repositories/` | Recupera informações do Workspace. |
-| `workflows/` | Orquestra a execução das capacidades da plataforma. |
-| `infrastructure/` | Implementações concretas de serviços externos (Ollama, Logging, etc.). |
-| `writers/` | Responsável por persistir artefatos gerados. |
-| `templates/` | Templates utilizados pelos workflows. |
+| `contracts/` | Defines the contracts (Protocols) used by the application. |
+| `domain/` | Contains the core concepts of the PM OS domain. |
+| `repositories/` | Retrieves information from the Workspace. |
+| `workflows/` | Orchestrates the execution of platform capabilities. |
+| `infrastructure/` | Concrete implementations of external services (Ollama, Logging, etc.). |
+| `writers/` | Responsible for persisting generated artifacts. |
+| `templates/` | Templates used by workflows. |
 
 ---
 
-# O Domínio
+# The Domain
 
-O conceito central do PM OS é a **Initiative**.
+The central concept of PM OS is the **Initiative**.
 
-Uma Initiative representa um problema de negócio ou uma oportunidade de produto.
+An Initiative represents a business problem or a product opportunity.
 
-Ela concentra todo o conhecimento relacionado ao seu ciclo de vida.
+It concentrates all knowledge related to its lifecycle.
 
-Uma Initiative pode conter:
+An Initiative can contain:
 
-- documentos de discovery;
-- atas de reunião;
-- pesquisas;
-- requisitos;
+- discovery documents;
+- meeting notes;
+- research;
+- requirements;
 - PRDs;
 - backlogs;
 - roadmaps;
 - RFCs;
-- métricas;
-- decisões arquiteturais.
+- metrics;
+- architectural decisions.
 
-Essa decisão foi formalizada na **ADR-004 — Workspace Orientado a Iniciativas**.
+This decision was formalized in **ADR-004 — Initiative-Oriented Workspace**.
 
 ---
 
 # Workspace
 
-O Workspace representa a área de trabalho do usuário.
+The Workspace represents the user's working area.
 
-Ele contém todas as iniciativas e os artefatos produzidos pelo PM OS.
+It contains all initiatives and artifacts produced by PM OS.
 
-Estrutura atual:
+Current structure:
 
 ```text
 workspace/
 └── initiatives/
-    └── INT-0001-consulta-inteligente-fornecedores/
+    └── INT-0001-smart-supplier-query/
         ├── context/
         ├── artifacts/
         ├── logs/
@@ -204,23 +204,23 @@ workspace/
 
 ## Context
 
-Armazena todo o conhecimento bruto utilizado pelos workflows.
+Stores all raw knowledge used by workflows.
 
-Exemplos:
+Examples:
 
 - Discovery
-- Entrevistas
-- Reuniões
-- Notas
-- Documentação técnica
+- Interviews
+- Meetings
+- Notes
+- Technical documentation
 
 ---
 
 ## Artifacts
 
-Contém todos os documentos gerados pelo PM OS.
+Contains all documents generated by PM OS.
 
-Exemplos:
+Examples:
 
 - PRD
 - Backlog
@@ -232,31 +232,31 @@ Exemplos:
 
 ## Metadata
 
-Representa a identidade da Initiative.
+Represents the Initiative's identity.
 
-No futuro armazenará informações como:
+In the future it will store information such as:
 
-- identificador;
-- responsável;
+- identifier;
+- owner;
 - status;
 - tags;
-- workflows executados;
-- artefatos gerados.
+- executed workflows;
+- generated artifacts.
 
 ---
 
 ## Logs
 
-Armazena o histórico de execução dos workflows relacionados à Initiative.
+Stores the execution history of workflows related to the Initiative.
 
 ---
 
-# Fluxo de Execução
+# Execution Flow
 
-O principal workflow do PM OS segue a sequência abaixo:
+The main PM OS workflow follows the sequence below:
 
 ```text
-Usuário
+User
     │
     ▼
 Interface
@@ -287,17 +287,17 @@ Markdown Writer
 Artifact
 ```
 
-Cada componente possui uma única responsabilidade e pode evoluir independentemente.
+Each component has a single responsibility and can evolve independently.
 
 ---
 
 # Capabilities
 
-O PM OS é organizado em torno de capacidades reutilizáveis.
+PM OS is organized around reusable capabilities.
 
-Cada capacidade representa um workflow completo de produto.
+Each capability represents a complete product workflow.
 
-Exemplos planejados:
+Planned examples:
 
 - Create PRD
 - Create Backlog
@@ -307,47 +307,47 @@ Exemplos planejados:
 - AI Review
 - Security Review
 
-Todas reutilizam a mesma arquitetura do Core.
+All reuse the same Core architecture.
 
 ---
 
-# Benefícios da Arquitetura
+# Architecture Benefits
 
-A arquitetura foi desenhada para proporcionar:
+The architecture was designed to provide:
 
-- evolução incremental;
-- baixo acoplamento;
-- alta coesão;
-- facilidade de testes;
-- reutilização de componentes;
-- independência entre domínio e infraestrutura;
-- suporte a múltiplos provedores de IA;
-- facilidade de contribuição da comunidade open source.
+- incremental evolution;
+- low coupling;
+- high cohesion;
+- ease of testing;
+- component reusability;
+- independence between domain and infrastructure;
+- support for multiple AI providers;
+- ease of open source community contribution.
 
 ---
 
-# Próximos Passos
+# Next Steps
 
-A arquitetura continuará evoluindo conforme novas capacidades forem adicionadas.
+The architecture will continue evolving as new capabilities are added.
 
-Entre os próximos temas previstos estão:
+Upcoming topics include:
 
-- camada de configuração centralizada;
-- testes de integração;
+- centralized configuration layer;
+- integration tests;
 - Template Engine;
-- múltiplos provedores de IA;
+- multiple AI providers;
 - Vector Store;
-- observabilidade avançada;
-- CLI oficial do PM OS.
+- advanced observability;
+- official PM OS CLI.
 
 ---
 
-# Resumo
+# Summary
 
-O PM OS não é apenas um gerador de documentos.
+PM OS is not just a document generator.
 
-Ele é uma plataforma de AI Product Engineering construída para transformar conhecimento em capacidades reutilizáveis.
+It is an AI Product Engineering platform built to transform knowledge into reusable capabilities.
 
-Sua arquitetura foi projetada para refletir o modelo mental de Product Managers, mantendo uma clara separação entre domínio, infraestrutura e interfaces.
+Its architecture was designed to reflect the mental model of Product Managers, maintaining a clear separation between domain, infrastructure, and interfaces.
 
-Essa abordagem permite que o projeto evolua de forma incremental, mantendo simplicidade, escalabilidade e facilidade de colaboração.
+This approach allows the project to evolve incrementally, maintaining simplicity, scalability, and ease of collaboration.

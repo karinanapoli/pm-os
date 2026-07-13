@@ -1,141 +1,141 @@
 # Sprint 003 — Learning
 
-> "A Sprint 003 marcou a transição do PM OS de um projeto de experimentação para uma plataforma de AI Product Engineering."
+> "Sprint 003 marked the transition of PM OS from an experimentation project to an AI Product Engineering platform."
 
 ---
 
-# Objetivo da Sprint
+# Sprint Objective
 
-O objetivo inicial da Sprint era integrar um Large Language Model (LLM) real ao PM OS, utilizando Ollama como provedor de IA.
+The initial objective of the Sprint was to integrate a real Large Language Model (LLM) into PM OS, using Ollama as the AI provider.
 
-Durante o desenvolvimento, percebemos que a simples integração de um modelo de IA expôs limitações arquiteturais importantes.
+During development, we realized that simply integrating an AI model exposed important architectural limitations.
 
-Ao invés de apenas concluir a funcionalidade, optamos por fortalecer a arquitetura da plataforma.
+Instead of just completing the functionality, we chose to strengthen the platform's architecture.
 
-Essa decisão aumentou o escopo da Sprint, mas estabeleceu uma base muito mais sólida para a evolução do projeto.
-
----
-
-# Principais Aprendizados
-
-## 1. Arquitetura deve refletir o domínio
-
-Inicialmente, o PM OS utilizava o conceito de **Feature** como unidade central do sistema.
-
-Ao longo da Sprint percebemos que esse termo representava uma implementação, mas não o domínio do problema.
-
-Product Managers trabalham sobre **Iniciativas**.
-
-Uma iniciativa concentra contexto, decisões, artefatos e conhecimento ao longo de todo o seu ciclo de vida.
-
-Essa percepção levou à criação da ADR-004 e à adoção do conceito de **Initiative** como elemento central da plataforma.
+This decision increased the Sprint scope but established a much more solid foundation for the project's evolution.
 
 ---
 
-## 2. A arquitetura deve refletir o modelo mental do usuário
+# Main Learnings
 
-Outro aprendizado importante foi compreender que a organização interna do sistema não deve refletir apenas sua implementação.
+## 1. Architecture must reflect the domain
 
-Ela deve refletir a forma como o usuário pensa.
+Initially, PM OS used the concept of **Feature** as the central unit of the system.
 
-A antiga estrutura baseada em:
+Throughout the Sprint we realized that this term represented an implementation, but not the problem domain.
+
+Product Managers work on **Initiatives**.
+
+An initiative concentrates context, decisions, artifacts, and knowledge throughout its entire lifecycle.
+
+This insight led to the creation of ADR-004 and the adoption of **Initiative** as the central element of the platform.
+
+---
+
+## 2. Architecture must reflect the user's mental model
+
+Another important learning was understanding that the internal organization of the system should not only reflect its implementation.
+
+It should reflect how the user thinks.
+
+The old structure based on:
 
 ```text
 features/
 ```
 
-foi substituída por um Workspace orientado a Iniciativas:
+was replaced by an initiative-oriented Workspace:
 
 ```text
 workspace/
 └── initiatives/
 ```
 
-Essa mudança tornou a plataforma mais intuitiva e preparada para colaboração.
+This change made the platform more intuitive and ready for collaboration.
 
 ---
 
-## 3. AI é apenas uma dependência
+## 3. AI is just a dependency
 
-Durante a integração com Ollama ficou evidente que modelos de IA não pertencem ao domínio da aplicação.
+During the integration with Ollama, it became evident that AI models do not belong to the application domain.
 
-Eles são serviços externos.
+They are external services.
 
-A criação da camada de infraestrutura permitiu desacoplar completamente os Workflows das implementações concretas.
+The creation of the infrastructure layer allowed completely decoupling Workflows from concrete implementations.
 
-Hoje o domínio depende apenas de contratos.
+Today the domain depends only on contracts.
 
-Essa decisão permitirá adicionar novos provedores de IA sem alterar a lógica de negócio.
-
----
-
-## 4. Contracts são mais importantes que implementações
-
-Ao introduzir `typing.Protocol`, os componentes passaram a depender de contratos em vez de classes concretas.
-
-Essa mudança reduziu o acoplamento da aplicação e facilitou testes, evolução e substituição de implementações.
-
-Foi um dos principais aprendizados sobre Dependency Inversion durante a Sprint.
+This decision will allow adding new AI providers without changing business logic.
 
 ---
 
-## 5. Workflows representam capacidades
+## 4. Contracts are more important than implementations
 
-No início do projeto os Workflows eram vistos apenas como scripts que executavam uma sequência de passos.
+By introducing `typing.Protocol`, components started depending on contracts instead of concrete classes.
 
-Ao longo da Sprint percebemos que eles representam capacidades reutilizáveis da plataforma.
+This change reduced application coupling and facilitated testing, evolution, and replacement of implementations.
 
-Exemplos:
+It was one of the main learnings about Dependency Inversion during the Sprint.
+
+---
+
+## 5. Workflows represent capabilities
+
+At the beginning of the project, Workflows were seen only as scripts that executed a sequence of steps.
+
+Throughout the Sprint we realized they represent reusable platform capabilities.
+
+Examples:
 
 - Create PRD;
 - Create Backlog;
 - Create Roadmap;
 - Executive Summary.
 
-Todos reutilizam os mesmos componentes do Core.
+All reuse the same Core components.
 
-Essa mudança alterou a forma como o PM OS passou a ser planejado.
-
----
-
-## 6. O Bootstrap é o Composition Root
-
-A Sprint consolidou o Bootstrap como ponto único de montagem da aplicação.
-
-Toda criação de dependências acontece nesse componente.
-
-Isso tornou a arquitetura mais previsível, desacoplada e preparada para futuras expansões.
+This change altered how PM OS started being planned.
 
 ---
 
-## 7. Observabilidade faz parte da arquitetura
+## 6. Bootstrap is the Composition Root
 
-A introdução do Logger demonstrou que observar o comportamento do sistema é tão importante quanto implementar funcionalidades.
+The Sprint consolidated Bootstrap as the single point of application assembly.
 
-Os logs passaram a registrar cada etapa dos Workflows, facilitando depuração, diagnóstico e entendimento do fluxo de execução.
+All dependency creation happens in this component.
 
----
-
-## 8. Tratar erros também é projetar a experiência do usuário
-
-A implementação do `OllamaConnectionError` mostrou que tratamento de erros não é apenas uma preocupação técnica.
-
-É também uma decisão de experiência do usuário.
-
-Separar erros de infraestrutura da forma como eles são apresentados tornou a aplicação mais amigável e preparada para diferentes interfaces.
+This made the architecture more predictable, decoupled, and ready for future expansions.
 
 ---
 
-# Evolução da Arquitetura
+## 7. Observability is part of the architecture
 
-Durante a Sprint o PM OS passou pelas seguintes transformações:
+The introduction of the Logger demonstrated that observing system behavior is as important as implementing features.
+
+Logs now record each stage of Workflows, facilitating debugging, diagnosis, and understanding of the execution flow.
+
+---
+
+## 8. Error handling is also designing user experience
+
+The implementation of `OllamaConnectionError` showed that error handling is not just a technical concern.
+
+It is also a user experience decision.
+
+Separating infrastructure errors from how they are presented made the application more user-friendly and ready for different interfaces.
+
+---
+
+# Architecture Evolution
+
+During the Sprint, PM OS went through the following transformations:
 
 ```text
-Protótipo
+Prototype
 
 ↓
 
-Aplicação
+Application
 
 ↓
 
@@ -143,58 +143,58 @@ Framework
 
 ↓
 
-Plataforma
+Platform
 ```
 
-Essa evolução aconteceu principalmente pela reorganização do domínio e pela separação clara entre:
+This evolution happened mainly through domain reorganization and the clear separation between:
 
-- domínio;
-- infraestrutura;
-- contratos;
+- domain;
+- infrastructure;
+- contracts;
 - workflows;
 - Workspace.
 
 ---
 
-# Evolução da Forma de Pensar
+# Evolution of Thinking
 
-Mais importante do que as mudanças de código foi a mudança na forma de pensar a arquitetura.
+More important than code changes was the change in how we think about architecture.
 
-Ao longo da Sprint, deixamos de focar apenas em "fazer funcionar" e passamos a discutir questões como:
+Throughout the Sprint, we stopped focusing only on "making it work" and started discussing questions like:
 
-- O nome representa corretamente o domínio?
-- Essa decisão facilita a evolução da plataforma?
-- O modelo mental do usuário está refletido na arquitetura?
-- Esse componente possui apenas uma responsabilidade?
-- Essa implementação pode ser substituída no futuro?
+- Does the name correctly represent the domain?
+- Does this decision facilitate platform evolution?
+- Is the user's mental model reflected in the architecture?
+- Does this component have only one responsibility?
+- Can this implementation be replaced in the future?
 
-Essas perguntas passaram a orientar as decisões do projeto.
+These questions started guiding project decisions.
 
 ---
 
-# Dívidas Técnicas Identificadas
+# Technical Debt Identified
 
-Durante a Sprint foram identificadas oportunidades de evolução que serão tratadas nas próximas iterações.
+During the Sprint, opportunities for evolution were identified that will be addressed in future iterations.
 
-Entre elas:
+Among them:
 
-- camada centralizada de configuração;
-- testes de integração;
-- CLI oficial do PM OS;
+- centralized configuration layer;
+- integration tests;
+- official PM OS CLI;
 - Template Engine;
 - Configuration Manager;
-- múltiplos provedores de IA;
-- métricas e telemetria;
-- suporte a Vector Stores.
+- multiple AI providers;
+- metrics and telemetry;
+- Vector Store support.
 
 ---
 
-# Conclusão
+# Conclusion
 
-A Sprint 003 representou um marco importante para o PM OS.
+Sprint 003 represented an important milestone for PM OS.
 
-Mais do que integrar um modelo de IA, ela consolidou a identidade arquitetural da plataforma.
+More than integrating an AI model, it consolidated the architectural identity of the platform.
 
-O projeto deixou de ser apenas um experimento de automação para se tornar uma base consistente para a construção de capacidades reutilizáveis voltadas ao trabalho de Product Managers.
+The project ceased to be just an automation experiment and became a consistent foundation for building reusable capabilities for Product Managers.
 
-As decisões tomadas nesta Sprint servirão como fundamento para todas as próximas evoluções do PM OS.
+The decisions made in this Sprint will serve as the foundation for all future evolutions of PM OS.

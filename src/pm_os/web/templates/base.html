@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ "app.title"|t }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/tour.css">
+</head>
+<body>
+    <div class="layout">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h1 class="logo">PM OS</h1>
+                <span class="logo-sub">{{ "app.subtitle"|t }}</span>
+            </div>
+
+            <div class="sidebar-section">{{ "nav.discovery"|t }}</div>
+            <nav class="sidebar-nav">
+                <a href="/" class="nav-item {% if request.url.path == '/' %}active{% endif %}">
+                    <span class="nav-icon">◈</span>
+                    <span>{{ "nav.dashboard"|t }}</span>
+                </a>
+                <a href="/generate" class="nav-item {% if request.url.path == '/generate' %}active{% endif %}">
+                    <span class="nav-icon">◇</span>
+                    <span>{{ "nav.generate_prd"|t }}</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-section">{{ "nav.workspace"|t }}</div>
+            <nav class="sidebar-nav">
+                <a href="/initiatives/new" class="nav-item {% if request.url.path == '/initiatives/new' %}active{% endif %}">
+                    <span class="nav-icon">+</span>
+                    <span>{{ "nav.new_initiative"|t }}</span>
+                </a>
+                <a href="/product-docs" class="nav-item {% if request.url.path == '/product-docs' %}active{% endif %}">
+                    <span class="nav-icon">📄</span>
+                    <span>{{ "product_docs.title"|t }}</span>
+                </a>
+                <a href="/consult" class="nav-item {% if request.url.path == '/consult' %}active{% endif %}">
+                    <span class="nav-icon">?</span>
+                    <span>{{ "consult.title"|t }}</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-section">{{ "nav.system"|t }}</div>
+            <nav class="sidebar-nav">
+                <a href="/config" class="nav-item {% if request.url.path == '/config' %}active{% endif %}">
+                    <span class="nav-icon">✦</span>
+                    <span>{{ "nav.settings"|t }}</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <span class="model-badge">
+                        <span class="model-dot"></span>
+                        {{ config.model }}
+                    </span>
+                    <a href="/onboarding/show" title="Tour" style="width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.04); color: var(--text-muted); text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.2s ease;" onmouseover="this.style.background='rgba(124,92,231,0.2)'; this.style.color='var(--primary-light)';" onmouseout="this.style.background='rgba(255,255,255,0.04)'; this.style.color='var(--text-muted)';">?</a>
+                </div>
+            </div>
+        </aside>
+
+        <main class="main">
+            <header class="topbar">
+                <h2 class="page-title">{% block page_title %}{{ "dashboard.title"|t }}{% endblock %}</h2>
+                {% block topbar_actions %}{% endblock %}
+            </header>
+            <div class="content">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">{{ "loading.processing"|t }}</div>
+        <div class="loading-sub">{{ "loading.sub"|t }}</div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('form').forEach(function(form) {
+                form.addEventListener('submit', function() {
+                    document.getElementById('loadingOverlay').classList.add('active');
+                });
+            });
+
+            var modals = document.querySelectorAll('.modal-overlay');
+            modals.forEach(function(modal) {
+                modal.addEventListener('click', function(e) {
+                    if (e.target === modal) modal.classList.remove('active');
+                });
+            });
+        });
+    </script>
+</body>
+</html>

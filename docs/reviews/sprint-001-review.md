@@ -1,24 +1,24 @@
 # Sprint Review — Sprint 001
 
-> "A primeira sprint não constrói funcionalidades. Ela constrói fundações."
+> "The first sprint does not build features. It builds foundations."
 
 ---
 
-# Objetivo da Sprint
+# Sprint Objective
 
-Construir a fundação arquitetural do PM OS.
+Build the architectural foundation of PM OS.
 
-Nesta sprint o foco não era integrar IA nem gerar PRDs automaticamente.
+In this sprint, the focus was not on integrating AI or automatically generating PRDs.
 
-O objetivo foi validar a arquitetura, criar os primeiros componentes do Core e estabelecer princípios que guiarão a evolução do projeto.
+The goal was to validate the architecture, create the first Core components, and establish principles that will guide the project's evolution.
 
 ---
 
-# O que foi entregue
+# What was delivered
 
-## Estrutura do projeto
+## Project structure
 
-Foi criada uma estrutura preparada para evolução.
+A structure prepared for evolution was created.
 
 - src/
 - features/
@@ -28,13 +28,13 @@ Foi criada uma estrutura preparada para evolução.
 - skills/
 - tests/
 
-O projeto passou a ser organizado como um pacote Python.
+The project started being organized as a Python package.
 
 ---
 
-## Componentes implementados
+## Implemented components
 
-Durante a Sprint 001 foram implementados:
+During Sprint 001, the following were implemented:
 
 - Feature
 - FeatureRepository
@@ -42,13 +42,13 @@ Durante a Sprint 001 foram implementados:
 - PromptBuilder
 - AIClient (Fake)
 
-Todos os componentes seguem o princípio de responsabilidade única.
+All components follow the single responsibility principle.
 
 ---
 
-## Documentação
+## Documentation
 
-Foram criados os primeiros documentos oficiais do projeto.
+The first official project documents were created.
 
 - Vision
 - Learning Journal
@@ -57,137 +57,137 @@ Foram criados os primeiros documentos oficiais do projeto.
 - Architecture Overview
 - Components
 
-A documentação passa a ser tratada como parte do produto.
+Documentation becomes treated as part of the product.
 
 ---
 
-# O que funcionou muito bem
+# What worked very well
 
-## Separação entre Core e MCP
+## Separation between Core and MCP
 
-Essa foi provavelmente a decisão mais importante da sprint.
+This was probably the most important decision of the sprint.
 
-Ela garante que o PM OS possa evoluir independentemente da interface utilizada.
+It ensures PM OS can evolve independently of the interface used.
 
 ---
 
 ## Context Engineering
 
-A mudança de DocumentLoader para ContextBuilder elevou o nível da arquitetura.
+The shift from DocumentLoader to ContextBuilder elevated the architecture level.
 
-O contexto passa a ser tratado como um produto do sistema.
-
----
-
-## Arquitetura modular
-
-Cada componente possui uma responsabilidade claramente definida.
-
-Isso reduz acoplamento e facilita evolução futura.
+Context is now treated as a product of the system.
 
 ---
 
-## Documentação como produto
+## Modular architecture
 
-Ao registrar visão, decisões e aprendizados desde o início, o projeto se torna muito mais acessível para novos contribuidores.
+Each component has a clearly defined responsibility.
+
+This reduces coupling and facilitates future evolution.
 
 ---
 
-# O que poderia melhorar
+## Documentation as product
 
-## Cobertura de testes
+By recording vision, decisions, and learnings from the start, the project becomes much more accessible to new contributors.
 
-Ainda não existem testes automatizados.
+---
 
-Na Sprint 002 devemos iniciar essa estrutura.
+# What could improve
+
+## Test coverage
+
+There are still no automated tests.
+
+In Sprint 002 we should start this structure.
 
 ---
 
 ## Logging
 
-O projeto ainda utiliza apenas `print()`.
+The project still uses only `print()`.
 
-No futuro será necessário criar um mecanismo padronizado de logs.
-
----
-
-## Tratamento de erros
-
-Ainda não existe tratamento consistente para:
-
-- arquivos inválidos;
-- diretórios inexistentes;
-- documentos vazios;
-- problemas de leitura.
+In the future, a standardized logging mechanism will be needed.
 
 ---
 
-## Configuração
+## Error handling
 
-Os caminhos do projeto ainda estão fixos no código.
+There is still no consistent treatment for:
 
-No futuro eles deverão ser centralizados na pasta `config/`.
+- invalid files;
+- nonexistent directories;
+- empty documents;
+- reading issues.
 
 ---
 
-# Dívida Técnica
+## Configuration
 
-Ainda precisamos implementar:
+Project paths are still hardcoded.
+
+In the future, they should be centralized in the `config/` folder.
+
+---
+
+# Technical Debt
+
+We still need to implement:
 
 - MarkdownWriter
-- Workflow create_prd
-- Integração com Ollama
-- Servidor MCP
-- Templates reais
-- Sistema de configuração
-- Testes automatizados
+- create_prd workflow
+- Ollama integration
+- MCP server
+- Real templates
+- Configuration system
+- Automated tests
 
-Esses itens são esperados para as próximas sprints.
-
----
-
-# Principal aprendizado
-
-A maior descoberta da Sprint 001 foi perceber que construir um sistema de IA não começa pelo modelo.
-
-Começa pela arquitetura.
-
-Antes de pensar em prompts, precisamos definir:
-
-- domínio;
-- componentes;
-- responsabilidades;
-- fluxo de informações;
-- contexto.
-
-Esse aprendizado passa a orientar toda a evolução do PM OS.
+These items are expected for the next sprints.
 
 ---
 
-# Avaliação da Sprint
+# Main Learning
 
-| Critério | Avaliação |
+The biggest discovery of Sprint 001 was realizing that building an AI system does not start with the model.
+
+It starts with architecture.
+
+Before thinking about prompts, we need to define:
+
+- domain;
+- components;
+- responsibilities;
+- information flow;
+- context.
+
+This learning now guides all PM OS evolution.
+
+---
+
+# Sprint Assessment
+
+| Criteria | Assessment |
 |----------|-----------|
-| Arquitetura | ⭐⭐⭐⭐⭐ |
-| Organização | ⭐⭐⭐⭐⭐ |
-| Clareza | ⭐⭐⭐⭐⭐ |
-| Modularidade | ⭐⭐⭐⭐⭐ |
-| Escalabilidade | ⭐⭐⭐⭐⭐ |
-| IA integrada | ⭐☆☆☆☆ |
+| Architecture | ⭐⭐⭐⭐⭐ |
+| Organization | ⭐⭐⭐⭐⭐ |
+| Clarity | ⭐⭐⭐⭐⭐ |
+| Modularity | ⭐⭐⭐⭐⭐ |
+| Scalability | ⭐⭐⭐⭐⭐ |
+| AI integrated | ⭐☆☆☆☆ |
 | Workflows | ⭐⭐☆☆☆ |
 
-Observação:
+Note:
 
-A baixa pontuação em IA e Workflows é esperada.
+The low score in AI and Workflows is expected.
 
-Esses itens ainda não eram objetivo da Sprint 001.
+These items were not yet the goal of Sprint 001.
 
 ---
 
-# Conclusão
+# Conclusion
 
-A Sprint 001 cumpriu seu objetivo.
+Sprint 001 fulfilled its objective.
 
-O PM OS deixou de ser uma ideia baseada em prompts e passou a possuir uma arquitetura clara, modular e preparada para evolução.
+PM OS ceased to be a prompt-based idea and now has a clear, modular architecture ready for evolution.
 
-O projeto agora possui uma base sólida para iniciar a implementação dos primeiros workflows e integrar modelos de IA locais nas próximas sprints.
+The project now has a solid foundation to start implementing the first workflows and integrating local AI models in the next sprints.

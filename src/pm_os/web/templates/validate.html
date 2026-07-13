@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block page_title %}{{ "validate.title"|t }} — {{ initiative.name }}{% endblock %}
+
+{% block topbar_actions %}
+<a href="/initiative/{{ initiative.name }}" class="btn btn-ghost btn-sm">{{ "validate.back"|t }}</a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-body">
+        <p style="margin-bottom: 16px; color: var(--text-secondary); font-size: 14px;">
+            {{ "validate.desc"|t }} <strong>{{ initiative.name }}</strong>,
+            {{ "validate.checking"|t }}
+        </p>
+        <form method="POST" action="/validate/{{ initiative.name }}" class="form">
+            <button type="submit" class="btn btn-primary">{{ "validate.cta"|t }}</button>
+        </form>
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-error">
+    <strong>Error:</strong> {{ error }}
+</div>
+{% endif %}
+
+{% if report %}
+<div class="card">
+    <div class="card-header">
+        <h3>{{ "validate.report"|t }}</h3>
+        <span class="score score-{{ 'high' if report.overall_score >= 7 else 'mid' if report.overall_score >= 5 else 'low' }}">
+            {{ "%.1f"|format(report.overall_score) }}/10
+        </span>
+    </div>
+    <div class="card-body">
+        <p class="report-summary">{{ report.summary }}</p>
+
+        <div class="sections-grid">
+            {% for section in report.sections %}
+            <div class="section-card">
+                <div class="section-header">
+                    <span class="section-name">{{ section.name }}</span>
+                    <span class="score score-{{ 'high' if section.score >= 7 else 'mid' if section.score >= 5 else 'low' }}">
+                        {{ "%.1f"|format(section.score) }}/10
+                    </span>
+                </div>
+                {% if section.issues %}
+                <div class="section-issues">
+                    <strong>Issues:</strong>
+                    <ul>
+                        {% for issue in section.issues %}
+                        <li>{{ issue }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+                {% if section.suggestions %}
+                <div class="section-suggestions">
+                    <strong>Suggestions:</strong>
+                    <ul>
+                        {% for suggestion in section.suggestions %}
+                        <li>{{ suggestion }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+
+        <div style="display: flex; gap: 8px;">
+            <a href="/initiative/{{ initiative.name }}" class="btn btn-secondary btn-sm">{{ "initiative.detail.back"|t }}</a>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

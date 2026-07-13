@@ -1,105 +1,105 @@
 # PM OS Manifesto
 
-> "Não estamos construindo uma ferramenta para substituir Product Managers.
+> "We are not building a tool to replace Product Managers.
 >
-> Estamos construindo uma ferramenta para ampliar sua capacidade de pensar."
+> We are building a tool to amplify their ability to think."
 
 ---
 
-# Nós acreditamos
+# We Believe
 
-Nós acreditamos que Product Managers passam tempo demais organizando informação.
+We believe Product Managers spend too much time organizing information.
 
-Tempo demais copiando documentos.
+Too much time copying documents.
 
-Tempo demais procurando contexto.
+Too much time searching for context.
 
-Tempo demais repetindo tarefas.
+Too much time repeating tasks.
 
-E tempo de menos pensando em problemas.
+And too little time thinking about problems.
 
-A Inteligência Artificial muda esse cenário.
+Artificial Intelligence changes this scenario.
 
-Mas apenas se for utilizada da maneira correta.
-
----
-
-# IA não é o produto
-
-A IA é apenas uma capacidade.
-
-O verdadeiro produto é o sistema que organiza conhecimento, contexto e decisões.
-
-Por isso o PM OS não nasce como um chatbot.
-
-Ele nasce como um sistema operacional para AI Product Engineering.
+But only if used the right way.
 
 ---
 
-# Contexto vale mais do que prompts
+# AI is Not the Product
 
-Prompts são importantes.
+AI is just a capability.
 
-Mas prompts sem contexto produzem respostas superficiais.
+The real product is the system that organizes knowledge, context, and decisions.
 
-Acreditamos que Context Engineering será uma das competências mais importantes para Product Managers na próxima década.
+That's why PM OS is not born as a chatbot.
 
----
-
-# Workflows escalam
-
-Prompts resolvem tarefas.
-
-Workflows resolvem processos.
-
-Queremos construir workflows completos para Product Managers.
-
-Não coleções de prompts.
+It is born as an operating system for AI Product Engineering.
 
 ---
 
-# Documentação é produto
+# Context Matters More Than Prompts
 
-Documentação não deve ser um esforço adicional.
+Prompts are important.
 
-Ela deve ser produzida naturalmente durante o desenvolvimento.
+But prompts without context produce shallow responses.
 
-Cada decisão importante merece ser registrada.
-
-Cada aprendizado merece ser compartilhado.
+We believe Context Engineering will be one of the most important skills for Product Managers in the next decade.
 
 ---
 
-# Aprender construindo
+# Workflows Scale
 
-A melhor forma de aprender IA é construir sistemas utilizando IA.
+Prompts solve tasks.
 
-Por isso o PM OS será, ao mesmo tempo:
+Workflows solve processes.
+
+We want to build complete workflows for Product Managers.
+
+Not collections of prompts.
+
+---
+
+# Documentation is Product
+
+Documentation should not be an additional effort.
+
+It should be produced naturally during development.
+
+Every important decision deserves to be recorded.
+
+Every learning deserves to be shared.
+
+---
+
+# Learn by Building
+
+The best way to learn AI is to build systems using AI.
+
+That's why PM OS will be, at the same time:
 
 - framework;
-- laboratório;
-- livro;
+- laboratory;
+- book;
 - playground;
-- projeto open source.
+- open source project.
 
 ---
 
 # Open Source First
 
-Acreditamos no compartilhamento de conhecimento.
+We believe in sharing knowledge.
 
-Queremos construir um projeto acessível para qualquer pessoa interessada em Product Management e Inteligência Artificial.
+We want to build a project accessible to anyone interested in Product Management and Artificial Intelligence.
 
-O objetivo não é apenas disponibilizar código.
+The goal is not just to make code available.
 
-É compartilhar uma forma de pensar.
+It is to share a way of thinking.
 
 ---
 
-# Nossa ambição
+# Our Ambition
 
-Queremos ajudar Product Managers a deixar de apenas utilizar IA.
+We want to help Product Managers move from just using AI.
 
-Queremos ajudá-los a projetar sistemas baseados em IA.
+We want to help them design AI-powered systems.
 
-Porque acreditamos que esse será um dos papéis mais importantes da próxima geração de Product Managers.
+Because we believe this will be one of the most important roles for the next generation of Product Managers.

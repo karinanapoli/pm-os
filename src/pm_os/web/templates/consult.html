@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block page_title %}{{ "consult.title"|t }}{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3>{{ "consult.card_title"|t }}</h3>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="/consult" class="form">
+            <div class="form-group">
+                <label for="question">{{ "consult.question"|t }}</label>
+                <textarea name="question" id="question" rows="3" placeholder="{{ 'consult.question_placeholder'|t }}" required>{{ question or '' }}</textarea>
+            </div>
+            <div class="form-group">
+                <label for="initiatives">{{ "consult.initiatives"|t }}</label>
+                <select name="initiatives" id="initiatives" multiple style="min-height: 100px;">
+                    {% for name in initiative_names %}
+                    <option value="{{ name }}" {% if not selected_initiatives or name in selected_initiatives %}selected{% endif %}>{{ name }}</option>
+                    {% endfor %}
+                </select>
+                <div class="form-hint">{{ "consult.initiatives_hint"|t }}</div>
+            </div>
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" name="use_product_docs" value="true" checked>
+                    <span>{{ "consult.use_product_docs"|t }}</span>
+                </label>
+                <div class="form-hint">{{ "consult.use_product_docs_hint"|t }}</div>
+            </div>
+            <button type="submit" class="btn btn-primary">{{ "consult.cta"|t }}</button>
+        </form>
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-error">
+    <strong>Error:</strong> {{ error }}
+</div>
+{% endif %}
+
+{% if result %}
+<div class="card">
+    <div class="card-header">
+        <h3>{{ "consult.result_for"|t }} {{ result.initiatives | join(", ") }}</h3>
+    </div>
+    <div class="card-body">
+        <pre class="answer-content" style="white-space: pre-wrap; font-family: inherit; line-height: 1.7;">{{ result.answer }}</pre>
+        {% if result.references %}
+        <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border);">
+            <strong style="color: var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Referências</strong>
+            <ul style="margin-top: 8px; font-size: 13px;">
+                {% for ref in result.references %}
+                <li style="margin-bottom: 4px;">
+                    <a href="/initiative/{{ ref.initiative }}" style="color: var(--primary-light);">{{ ref.initiative }}</a>
+                    {% if ref.document %} — {{ ref.document }}{% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block page_title %}{{ "generate.title"|t }}{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3>{{ "generate.card_title"|t }}</h3>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="/generate" class="form">
+            <div class="form-group">
+                <label for="initiative_name">{{ "generate.initiative"|t }}</label>
+                <select name="initiative_name" id="initiative_name" required>
+                    <option value="">{{ "generate.initiative_select"|t }}</option>
+                    {% for init in initiatives %}
+                    <option value="{{ init.name }}">{{ init.name }}</option>
+                    {% endfor %}
+                </select>
+                <div class="form-hint">O PRD será gerado usando os documentos de contexto desta iniciativa.</div>
+            </div>
+            <div class="form-group">
+                <label for="additional_initiatives">{{ "generate.additional_context"|t }}</label>
+                <select name="additional_initiatives" id="additional_initiatives" multiple style="min-height: 80px;">
+                    {% for init in initiatives %}
+                    <option value="{{ init.name }}">{{ init.name }}</option>
+                    {% endfor %}
+                </select>
+                <div class="form-hint">{{ "generate.additional_hint"|t }}</div>
+            </div>
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" name="use_product_docs" value="true">
+                    <span>{{ "generate.use_product_docs"|t }}</span>
+                </label>
+                <div class="form-hint">{{ "generate.use_product_docs_hint"|t }}</div>
+            </div>
+            <div class="form-group">
+                <label>{{ "generate.model"|t }}</label>
+                <p class="form-hint" style="margin-top: 0;">{{ config.model }} · <a href="/config" style="color: var(--primary-light);">{{ "generate.change"|t }}</a></p>
+            </div>
+            <button type="submit" class="btn btn-primary">{{ "generate.cta"|t }}</button>
+        </form>
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-error">
+    <strong>Error:</strong> {{ error }}
+</div>
+{% endif %}
+
+{% if result %}
+<div class="card">
+    <div class="card-header">
+        <h3>{{ "generate.result_for"|t }} {{ result.initiative }}</h3>
+        {% if result.score is defined %}
+        <span class="score score-{{ 'high' if result.score >= 7 else 'mid' if result.score >= 5 else 'low' }}">
+            {{ "%.1f"|format(result.score|float) }}/10
+        </span>
+        {% endif %}
+    </div>
+    <div class="card-body">
+        {% if result.additional or result.product_docs_used %}
+        <div style="margin-bottom: 16px; display: flex; gap: 8px; flex-wrap: wrap;">
+            {% if result.additional %}
+            <span style="padding: 4px 10px; font-size: 12px; background: rgba(124,92,231,0.1); border: 1px solid rgba(124,92,231,0.2); border-radius: 12px; color: var(--primary-light);">
+                + {{ result.additional | join(", ") }}
+            </span>
+            {% endif %}
+            {% if result.product_docs_used %}
+            <span style="padding: 4px 10px; font-size: 12px; background: rgba(72,187,120,0.1); border: 1px solid rgba(72,187,120,0.2); border-radius: 12px; color: #48bb78;">
+                + Documentação do Produto
+            </span>
+            {% endif %}
+        </div>
+        {% endif %}
+        {% if result.sections %}
+        <div class="sections-grid">
+            {% for section in result.sections %}
+            <div class="section-card">
+                <div class="section-header">
+                    <span class="section-name">{{ section.name }}</span>
+                    <span class="score score-{{ 'high' if section.score >= 7 else 'mid' if section.score >= 5 else 'low' }}">
+                        {{ "%.1f"|format(section.score) }}/10
+                    </span>
+                </div>
+                {% if section.issues %}
+                <div class="section-issues">
+                    <strong>Issues:</strong>
+                    <ul>
+                        {% for issue in section.issues %}
+                        <li>{{ issue }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+                {% if section.suggestions %}
+                <div class="section-suggestions">
+                    <strong>Suggestions:</strong>
+                    <ul>
+                        {% for suggestion in section.suggestions %}
+                        <li>{{ suggestion }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <details class="prd-preview">
+            <summary>{{ "generate.view_prd"|t }}</summary>
+            <pre class="prd-content">{{ result.prd }}</pre>
+        </details>
+
+        <div style="margin-top: 16px; display: flex; gap: 8px;">
+            <a href="/initiative/{{ result.initiative }}" class="btn btn-secondary btn-sm">{{ "generate.view_initiative"|t }}</a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var mainSelect = document.getElementById('initiative_name');
+    var additionalSelect = document.getElementById('additional_initiatives');
+    var allOptions = Array.from(additionalSelect.options).map(function(o) { return {value: o.value, text: o.text}; });
+
+    function filterAdditional() {
+        var selected = mainSelect.value;
+        additionalSelect.innerHTML = '';
+        allOptions.forEach(function(opt) {
+            if (opt.value !== selected) {
+                var o = document.createElement('option');
+                o.value = opt.value;
+                o.text = opt.text;
+                additionalSelect.appendChild(o);
+            }
+        });
+    }
+
+    mainSelect.addEventListener('change', filterAdditional);
+    filterAdditional();
+});
+</script>
+{% endblock %}

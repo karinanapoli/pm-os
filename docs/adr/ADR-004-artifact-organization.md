@@ -1,18 +1,18 @@
-# ADR-004 — Workspace Orientado a Iniciativas
+# ADR-004 — Initiative-Oriented Workspace
 
 ## Status
 
-**Aceita**
+**Accepted**
 
 ---
 
-# Contexto
+# Context
 
-O PM OS nasceu como um conjunto de workflows para geração de artefatos de produto, como PRDs.
+PM OS was born as a set of workflows for generating product artifacts, such as PRDs.
 
-Nas primeiras versões, a organização do Workspace refletia o fluxo de processamento da aplicação, utilizando diretórios separados para entrada, processamento e saída.
+In early versions, the Workspace organization reflected the application's processing flow, using separate directories for input, processing, and output.
 
-Exemplo:
+Example:
 
 ```text
 features/
@@ -21,86 +21,86 @@ features/
 └── 03-prds/
 ```
 
-Embora essa estrutura fosse suficiente para um protótipo, ela apresentava algumas limitações à medida que o projeto evoluiu.
+Although this structure was sufficient for a prototype, it presented some limitations as the project evolved.
 
-Os principais problemas identificados foram:
+The main problems identified were:
 
-- separação artificial entre contexto e artefatos;
-- dificuldade para localizar todas as informações relacionadas a uma mesma iniciativa;
-- risco de colisão de nomes (`PRD.md`, `PRD-final.md`, `PRD-v2.md`);
-- baixa escalabilidade para novos workflows (Backlog, Roadmap, RFC, Executive Summary, etc.);
-- organização baseada na implementação do sistema e não no modelo mental do usuário.
+- artificial separation between context and artifacts;
+- difficulty locating all information related to the same initiative;
+- name collision risk (`PRD.md`, `PRD-final.md`, `PRD-v2.md`);
+- low scalability for new workflows (Backlog, Roadmap, RFC, Executive Summary, etc.);
+- organization based on system implementation rather than the user's mental model.
 
-Durante a Sprint 003 percebemos que o PM OS não está apenas gerando documentos.
+During Sprint 003 we realized that PM OS is not just generating documents.
 
-Ele está gerenciando conhecimento sobre iniciativas de produto.
+It is managing knowledge about product initiatives.
 
-Essa percepção mudou a forma como o domínio passou a ser modelado.
+This insight changed the way the domain was modeled.
 
 ---
 
-# Problema
+# Problem
 
-A estrutura existente organizava arquivos por etapa do processamento.
+The existing structure organized files by processing stage.
 
-Entretanto, Product Managers não trabalham pensando em "pastas de PRD" ou "pastas de backlog".
+However, Product Managers do not work thinking about "PRD folders" or "backlog folders".
 
-Eles trabalham pensando em iniciativas.
+They work thinking about initiatives.
 
-Uma iniciativa concentra todo o conhecimento relacionado a um problema de negócio:
+An initiative concentrates all knowledge related to a business problem:
 
-- pesquisas;
-- documentos de discovery;
-- atas;
-- requisitos;
+- research;
+- discovery documents;
+- meeting notes;
+- requirements;
 - PRDs;
 - backlogs;
 - roadmaps;
 - RFCs;
-- métricas;
-- decisões.
+- metrics;
+- decisions.
 
-Separar esses elementos em diferentes diretórios dificultava a navegação, reduzia a rastreabilidade e criava dependências desnecessárias entre workflows.
+Separating these elements into different directories made navigation difficult, reduced traceability, and created unnecessary dependencies between workflows.
 
 ---
 
-# Decisão
+# Decision
 
-O PM OS passará a utilizar um **Workspace orientado a Iniciativas**.
+PM OS will adopt an **Initiative-oriented Workspace**.
 
-A iniciativa passa a ser a unidade central do domínio.
+The initiative becomes the central unit of the domain.
 
-Cada iniciativa será responsável por armazenar todo o seu ciclo de vida.
+Each initiative will be responsible for storing its entire lifecycle.
 
-Estrutura adotada:
+Adopted structure:
 
 ```text
 workspace/
 └── initiatives/
-    └── INT-0001-consulta-inteligente-fornecedores/
+    └── INT-0001-smart-supplier-query/
         ├── context/
         ├── artifacts/
         ├── logs/
         └── metadata.yaml
 ```
 
-Cada diretório possui uma responsabilidade clara:
+Each directory has a clear responsibility:
 
-| Diretório | Responsabilidade |
+| Directory | Responsibility |
 |------------|------------------|
-| `context/` | Conhecimento bruto da iniciativa (discovery, atas, pesquisas, documentos, imagens, transcrições, etc.) |
-| `artifacts/` | Artefatos produzidos pelos workflows do PM OS (PRD, Backlog, Roadmap, RFC, Executive Summary, etc.) |
-| `logs/` | Logs específicos da iniciativa e execuções dos workflows. |
-| `metadata.yaml` | Fonte de verdade da iniciativa, contendo identificação, status e metadados. |
+| `context/` | Raw knowledge of the initiative (discovery, meeting notes, research, documents, images, transcriptions, etc.) |
+| `artifacts/` | Artifacts produced by PM OS workflows (PRD, Backlog, Roadmap, RFC, Executive Summary, etc.) |
+| `logs/` | Initiative-specific logs and workflow executions. |
+| `metadata.yaml` | Source of truth for the initiative, containing identification, status, and metadata. |
 
-Todos os workflows deverão gerar seus resultados dentro da pasta da própria iniciativa.
+All workflows must generate their results inside the initiative's own folder.
 
-Exemplo:
+Example:
 
 ```text
 workspace/
 └── initiatives/
-    └── INT-0001-consulta-inteligente-fornecedores/
+    └── INT-0001-smart-supplier-query/
         └── artifacts/
             ├── prd.md
             ├── backlog.md
@@ -110,9 +110,9 @@ workspace/
 
 ---
 
-# Alternativas Consideradas
+# Alternatives Considered
 
-## Alternativa 1 — Manter a estrutura atual
+## Alternative 1 — Keep current structure
 
 ```text
 features/
@@ -121,56 +121,56 @@ features/
 └── 03-prds/
 ```
 
-### Vantagens
+### Advantages
 
-- nenhuma refatoração imediata;
-- baixo esforço de implementação.
+- no immediate refactoring;
+- low implementation effort.
 
-### Desvantagens
+### Disadvantages
 
-- estrutura pouco intuitiva para usuários;
-- artefatos separados do contexto;
-- baixa escalabilidade.
+- unintuitive structure for users;
+- artifacts separated from context;
+- low scalability.
 
 ---
 
-## Alternativa 2 — Organizar por Iniciativas (**Escolhida**)
+## Alternative 2 — Organize by Initiatives (**Chosen**)
 
 ```text
 workspace/
 └── initiatives/
 ```
 
-### Vantagens
+### Advantages
 
-- reflete o modelo mental do Product Manager;
-- elimina a necessidade de diretórios globais para artefatos;
-- facilita novos workflows;
-- aumenta a rastreabilidade;
-- reduz colisão de nomes;
-- melhora a experiência para novos usuários do projeto.
+- reflects the Product Manager's mental model;
+- eliminates the need for global artifact directories;
+- facilitates new workflows;
+- increases traceability;
+- reduces name collision;
+- improves experience for new project users.
 
-### Desvantagens
+### Disadvantages
 
-- exige refatoração da arquitetura atual;
-- requer atualização de documentação, testes e código existente.
-
----
-
-# Consequências
-
-A partir desta decisão:
-
-- o Workspace passa a representar o domínio do produto, e não o fluxo interno da aplicação;
-- novos workflows deverão utilizar a pasta da iniciativa como destino padrão;
-- o conceito de `Feature` será gradualmente substituído por `Initiative`;
-- os diretórios globais de artefatos deixam de ser a abordagem recomendada.
+- requires refactoring of the current architecture;
+- requires updating documentation, tests, and existing code.
 
 ---
 
-# Impacto na Arquitetura
+# Consequences
 
-Esta decisão impacta diretamente os seguintes componentes:
+From this decision forward:
+
+- the Workspace now represents the product domain, not the internal application flow;
+- new workflows must use the initiative folder as the default destination;
+- the concept of `Feature` will be gradually replaced by `Initiative`;
+- global artifact directories are no longer the recommended approach.
+
+---
+
+# Architecture Impact
+
+This decision directly impacts the following components:
 
 - Initiative Repository;
 - Context Builder;
@@ -178,62 +178,62 @@ Esta decisão impacta diretamente os seguintes componentes:
 - Markdown Writer;
 - Bootstrap;
 - Templates;
-- Testes de integração.
+- Integration tests.
 
-Esses componentes deverão evoluir para trabalhar utilizando a estrutura orientada a iniciativas.
-
----
-
-# Impacto para o Usuário
-
-Esta mudança torna o PM OS mais intuitivo.
-
-Ao abrir uma iniciativa, o usuário encontrará em um único lugar:
-
-- contexto;
-- documentos;
-- artefatos;
-- histórico;
-- metadados.
-
-A arquitetura passa a refletir a forma como Product Managers organizam seu trabalho.
+These components must evolve to work using the initiative-oriented structure.
 
 ---
 
-# Considerações Futuras
+# User Impact
 
-O arquivo `metadata.yaml` deverá evoluir para armazenar informações como:
+This change makes PM OS more intuitive.
 
-- identificador;
-- nome;
-- responsável;
+When opening an initiative, the user will find in a single place:
+
+- context;
+- documents;
+- artifacts;
+- history;
+- metadata.
+
+The architecture now reflects how Product Managers organize their work.
+
+---
+
+# Future Considerations
+
+The `metadata.yaml` file should evolve to store information such as:
+
+- identifier;
+- name;
+- owner;
 - status;
 - tags;
-- workflows executados;
-- artefatos gerados;
-- datas importantes.
+- executed workflows;
+- generated artifacts;
+- important dates.
 
-Também está prevista a evolução do ciclo de vida das iniciativas:
+The evolution of initiative lifecycle is also planned:
 
 ```text
 Discovery
-Planejamento
-Desenvolvimento
-Entrega
-Concluída
-Arquivada
+Planning
+Development
+Delivery
+Completed
+Archived
 ```
 
 ---
 
-# Motivação da Decisão
+# Decision Motivation
 
-Esta ADR nasceu durante a Sprint 003.
+This ADR was born during Sprint 003.
 
-Inicialmente, o objetivo era apenas alterar o local onde os PRDs eram gerados.
+Initially, the goal was only to change where PRDs were generated.
 
-Durante a discussão percebemos que o problema não estava na geração dos arquivos, mas na forma como o domínio estava sendo modelado.
+During discussion we realized the problem was not in file generation, but in how the domain was being modeled.
 
-Ao adotar uma arquitetura orientada a iniciativas, o PM OS deixa de ser apenas um gerador de documentos e passa a representar um verdadeiro **Operating System para Product Managers**.
+By adopting an initiative-oriented architecture, PM OS ceases to be just a document generator and becomes a true **Operating System for Product Managers**.
 
-Essa decisão estabelece uma base mais consistente para a evolução do projeto e reduz a necessidade de grandes refatorações no futuro.
+This decision establishes a more consistent foundation for the project's evolution and reduces the need for major refactoring in the future.

@@ -1,16 +1,16 @@
 # PM OS Glossary
 
-Este documento reúne os principais conceitos utilizados pelo PM OS.
+This document gathers the main concepts used by PM OS.
 
-Seu objetivo é criar uma linguagem comum entre Product Managers, engenheiros e contribuidores.
+Its goal is to create a common language among Product Managers, engineers, and contributors.
 
 ---
 
 # AI Client
 
-Componente responsável por conversar com um modelo de Inteligência Artificial.
+Component responsible for communicating with an Artificial Intelligence model.
 
-Exemplos futuros:
+Future examples:
 
 - Ollama
 - OpenAI
@@ -21,9 +21,9 @@ Exemplos futuros:
 
 # Builder
 
-Componente responsável por transformar uma entrada em outra representação.
+Component responsible for transforming an input into another representation.
 
-Exemplos:
+Examples:
 
 ContextBuilder
 
@@ -33,37 +33,37 @@ PromptBuilder
 
 # Context
 
-Conjunto organizado de informações preparado para ser enviado ao modelo de IA.
+Organized set of information prepared to be sent to the AI model.
 
-Contexto não é apenas a soma de documentos.
+Context is not just the sum of documents.
 
-É um ativo construído pelo sistema.
+It is an asset built by the system.
 
 ---
 
 # Context Engineering
 
-Disciplina responsável por construir contexto de alta qualidade para modelos de IA.
+Discipline responsible for building high-quality context for AI models.
 
-É um dos pilares do PM OS.
+It is one of the pillars of PM OS.
 
 ---
 
 # Core
 
-Camada central do PM OS.
+Central layer of PM OS.
 
-Contém toda a lógica de negócio.
+Contains all business logic.
 
-Nunca depende de interfaces externas.
+Never depends on external interfaces.
 
 ---
 
 # Domain Model
 
-Objeto que representa um conceito do domínio do Product Management.
+Object that represents a concept from the Product Management domain.
 
-Exemplo:
+Example:
 
 Feature
 
@@ -71,9 +71,9 @@ Feature
 
 # Feature
 
-Unidade de trabalho do PM OS.
+Work unit of PM OS.
 
-Uma Feature pode conter documentos, requisitos, atas, APIs, imagens e qualquer outro insumo relacionado ao desenvolvimento de um produto.
+A Feature can contain documents, requirements, meeting notes, APIs, images, and any other input related to product development.
 
 ---
 
@@ -81,17 +81,17 @@ Uma Feature pode conter documentos, requisitos, atas, APIs, imagens e qualquer o
 
 Model Context Protocol.
 
-Camada responsável por disponibilizar ferramentas do PM OS para diferentes interfaces.
+Layer responsible for making PM OS tools available to different interfaces.
 
-No PM OS o MCP nunca contém regras de negócio.
+In PM OS, the MCP never contains business rules.
 
 ---
 
 # PM OS Core
 
-Núcleo do framework.
+Framework core.
 
-Onde vivem:
+Where the following live:
 
 - Repositories
 - Builders
@@ -104,25 +104,25 @@ Onde vivem:
 
 # Prompt
 
-Conjunto de instruções enviado ao modelo de IA.
+Set of instructions sent to the AI model.
 
-O Prompt informa o que o modelo deve fazer.
+The Prompt tells the model what to do.
 
 ---
 
 # Prompt Engineering
 
-Técnicas utilizadas para estruturar prompts.
+Techniques used to structure prompts.
 
-No PM OS o Prompt Engineering é considerado complementar ao Context Engineering.
+In PM OS, Prompt Engineering is considered complementary to Context Engineering.
 
 ---
 
 # Repository
 
-Componente responsável por acessar fontes de dados.
+Component responsible for accessing data sources.
 
-Exemplo:
+Example:
 
 FeatureRepository.
 
@@ -130,9 +130,9 @@ FeatureRepository.
 
 # Workflow
 
-Sequência organizada de componentes que executam uma tarefa.
+Organized sequence of components that execute a task.
 
-Exemplo:
+Example:
 
 create_prd
 
@@ -160,24 +160,24 @@ MarkdownWriter
 
 # Workspace
 
-Conjunto de arquivos utilizados pelo PM OS.
+Set of files used by PM OS.
 
-Inclui:
+Includes:
 
 - Features
 - Templates
 - Skills
 - Knowledge
-- Configurações
+- Configurations
 
-O Workspace representa a principal fonte de conhecimento do sistema.
+The Workspace represents the main source of knowledge for the system.
 
 ---
 
 # Writer
 
-Componente responsável por persistir resultados.
+Component responsible for persisting results.
 
-Exemplo:
+Example:
 
 MarkdownWriter.

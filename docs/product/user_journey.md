@@ -1,4 +1,4 @@
-# Jornada do Usuário
+# User Journey
 
 ## Status
 
@@ -6,89 +6,89 @@ Draft
 
 ---
 
-# Objetivo
+# Objective
 
-Este documento descreve como um Product Manager utiliza o PM OS desde o momento em que surge uma nova iniciativa até a geração de todos os artefatos do projeto.
+This document describes how a Product Manager uses PM OS from the moment a new initiative emerges to the generation of all project artifacts.
 
-Este documento não descreve a implementação técnica.
+This document does not describe the technical implementation.
 
-Ele descreve a experiência que queremos proporcionar.
+It describes the experience we want to provide.
 
-Todas as decisões de arquitetura devem respeitar esta jornada.
-
----
-
-# A Filosofia do PM OS
-
-O PM OS não existe para gerar PRDs.
-
-O PM OS existe para transformar conhecimento disperso em contexto reutilizável.
-
-Documentos são apenas uma consequência.
-
-O verdadeiro ativo é o contexto.
+All architecture decisions must respect this journey.
 
 ---
 
-# O problema atual
+# The PM OS Philosophy
 
-Hoje um Product Manager sai de uma reunião com informações espalhadas em diversos lugares.
+PM OS does not exist to generate PRDs.
 
-Por exemplo:
+PM OS exists to transform scattered knowledge into reusable context.
 
-- anotações pessoais;
-- gravação da reunião;
-- transcrição;
-- conversa no Slack;
-- documentos técnicos;
+Documents are just a consequence.
+
+The real asset is the context.
+
+---
+
+# The Current Problem
+
+Today a Product Manager leaves a meeting with information scattered across multiple places.
+
+For example:
+
+- personal notes;
+- meeting recording;
+- transcription;
+- Slack conversation;
+- technical documents;
 - RFCs;
-- diagramas;
+- diagrams;
 - Figma;
 - Jira;
-- e-mails;
-- apresentações.
+- emails;
+- presentations.
 
-Antes mesmo de começar a escrever um PRD, o PM precisa gastar horas consolidando todas essas informações.
+Even before starting to write a PRD, the PM needs to spend hours consolidating all this information.
 
-O maior problema não é escrever documentos.
+The biggest problem is not writing documents.
 
-O maior problema é organizar conhecimento.
-
----
-
-# Nossa hipótese
-
-Acreditamos que Product Managers não precisam de um gerador de prompts.
-
-Eles precisam de um sistema capaz de organizar conhecimento, construir contexto e reutilizar esse contexto durante todo o ciclo de vida de uma iniciativa.
+The biggest problem is organizing knowledge.
 
 ---
 
-# A jornada do usuário
+# Our Hypothesis
 
-## Etapa 1 — Surge uma nova iniciativa
+We believe Product Managers do not need a prompt generator.
 
-Tudo começa quando uma nova iniciativa aparece.
-
-Exemplos:
-
-- Novo Dashboard de Segurança
-- IA para Atendimento
-- Marketplace B2B
-- Sistema de MFA
-- Integração com PIX
-
-Nesse momento o usuário ainda não pensa em escrever um PRD.
-
-Ele apenas sabe que uma nova iniciativa começou.
+They need a system capable of organizing knowledge, building context, and reusing that context throughout the entire lifecycle of an initiative.
 
 ---
 
-## Etapa 2 — Criar um Workspace da iniciativa
+# The User Journey
 
-O PM cria um Workspace para essa iniciativa.
+## Stage 1 — A new initiative emerges
 
-Exemplo:
+It all starts when a new initiative appears.
+
+Examples:
+
+- New Security Dashboard
+- AI for Customer Support
+- B2B Marketplace
+- MFA System
+- PIX Integration
+
+At this point, the user is not yet thinking about writing a PRD.
+
+They just know a new initiative has begun.
+
+---
+
+## Stage 2 — Create an initiative Workspace
+
+The PM creates a Workspace for this initiative.
+
+Example:
 
 ```text
 features/
@@ -96,32 +96,32 @@ features/
     dashboard-seguranca/
 ```
 
-Esse Workspace passa a ser o local onde todo o conhecimento será armazenado.
+This Workspace becomes the place where all knowledge will be stored.
 
-Ainda não existe contexto.
+There is no context yet.
 
-Ainda não existe PRD.
+There is no PRD yet.
 
-Existe apenas uma iniciativa.
+There is only an initiative.
 
 ---
 
-## Etapa 3 — Adicionar materiais
+## Stage 3 — Add materials
 
-O usuário simplesmente adiciona tudo o que possui sobre aquela iniciativa.
+The user simply adds everything they have about that initiative.
 
-Exemplos:
+Examples:
 
 ```text
 meeting.mp3
 
-transcricao.md
+transcription.md
 
-notas.md
+notes.md
 
 figma.pdf
 
-arquitetura.png
+architecture.png
 
 jira.md
 
@@ -131,175 +131,237 @@ slack.md
 
 email.md
 
-pesquisa.pdf
+research.pdf
 ```
 
-O PM não precisa decidir o que é importante.
+The PM does not need to decide what is important.
 
-Ele apenas adiciona os materiais.
+They just add the materials.
 
 ---
 
-## Etapa 4 — Construção do contexto
+## Stage 4 — Context building
 
-O PM OS analisa todos os materiais disponíveis.
+PM OS analyzes all available materials.
 
-Ele identifica:
+It identifies:
 
-- objetivos;
-- problemas;
-- decisões;
+- objectives;
+- problems;
+- decisions;
 - stakeholders;
-- requisitos;
-- restrições;
-- riscos;
-- documentos relacionados;
-- conhecimento já existente.
+- requirements;
+- constraints;
+- risks;
+- related documents;
+- existing knowledge.
 
-Ao final dessa etapa o sistema cria um contexto consolidado.
+At the end of this stage, the system creates a consolidated context.
 
-Esse contexto passa a ser a fonte oficial de conhecimento da iniciativa.
+This context becomes the official source of knowledge for the initiative.
 
-Não é um prompt.
+It is not a prompt.
 
-É um ativo do sistema.
-
----
-
-## Etapa 5 — Executar Workflows
-
-Com o contexto consolidado, qualquer workflow pode ser executado.
-
-Exemplos:
-
-- Criar PRD
-- Criar RFC
-- Criar Backlog
-- Criar Roadmap
-- Criar Executive Summary
-- Criar Security Review
-- Criar AI Review
-- Criar Release Notes
-
-Todos os workflows reutilizam exatamente o mesmo contexto.
-
-O usuário não precisa explicar novamente a iniciativa.
+It is a system asset.
 
 ---
 
-## Etapa 6 — Revisão
+## Stage 5 — Execute Workflows
 
-O PM revisa o artefato gerado.
+With the consolidated context, any workflow can be executed.
 
-Pode:
+Examples:
 
-- editar;
-- complementar;
-- aprovar;
-- rejeitar;
-- solicitar uma nova versão.
+- Create PRD
+- Validate PRD
+- Create RFC
+- Create Backlog
+- Create Roadmap
+- Create Executive Summary
+- Create Security Review
+- Create AI Review
+- Create Release Notes
 
-O objetivo não é substituir o Product Manager.
+All workflows reuse exactly the same context.
 
-O objetivo é acelerar a construção de artefatos de alta qualidade.
-
----
-
-## Etapa 7 — Evolução contínua
-
-Conforme a iniciativa evolui, novos materiais podem ser adicionados ao Workspace.
-
-Por exemplo:
-
-- novas reuniões;
-- novos RFCs;
-- novas decisões;
-- novos diagramas;
-- novos requisitos.
-
-O contexto é atualizado continuamente.
-
-Os próximos artefatos sempre utilizam a versão mais recente desse conhecimento.
+The user does not need to explain the initiative again.
 
 ---
 
-# O papel do Contexto
+## Stage 5.5 — Automatic Quality Validation
 
-O contexto é o principal ativo do PM OS.
+Right after generating a PRD, the system **automatically validates its quality**.
 
-Ele representa todo o conhecimento consolidado sobre uma iniciativa.
+No extra command needed.
 
-Os workflows apenas consomem esse contexto.
+The validation evaluates:
 
-Os prompts apenas orientam o modelo.
+- **Metrics** — Are they specific, measurable, and time-bound?
+- **Risks** — Do they have mitigation plans?
+- **Scope** — Is it well-defined? Any contradictions?
+- **Requirements** — Are they clear and testable?
+- **Structure** — Are all required sections present?
+- **Coherence** — Does the PRD tell a consistent story?
 
-O contexto determina a qualidade da resposta.
+The result is a **validation report** saved alongside the PRD:
 
----
+```text
+artifacts/
+├── prd.md
+└── prd-validation.md
+```
 
-# O papel dos Workflows
+The PM sees a summary right in the terminal:
 
-Os workflows representam ações que um Product Manager deseja executar.
+```
+PRD quality score: 6.0/10
+  ⚠ Metrics: 4.0 — not SMART
+  ⚠ Risks: 5.0 — missing mitigation
+  ✅ Scope: 8.0
+```
 
-Exemplos:
-
-- Criar PRD
-- Criar Backlog
-- Criar RFC
-- Criar Story Map
-- Criar Plano de Release
-
-Cada workflow utiliza o mesmo contexto, mas produz artefatos diferentes.
-
----
-
-# O papel da IA
-
-A IA não é o produto.
-
-Ela é apenas uma dependência do sistema.
-
-O PM OS continua responsável por:
-
-- organizar conhecimento;
-- construir contexto;
-- definir prompts;
-- orquestrar workflows;
-- gerar artefatos.
-
-O modelo de IA é apenas o mecanismo responsável pela geração do texto.
+This stage turns quality from subjective opinion into an **observable metric**.
+The PM knows where to focus before even reading the full document.
 
 ---
 
-# Experiência desejada
+## Stage 6 — Review
 
-No futuro, a experiência ideal será simples.
+The PM opens the validation report first.
 
-O usuário poderá escrever algo como:
+They see exactly which sections need attention:
 
-> "Crie um PRD para esta iniciativa."
+- Low metric score → refine success criteria.
+- Low risk score → add mitigation plans.
+- Scope contradiction → fix before socializing.
 
-Ou:
+Then they review the PRD itself with the report as a guide.
 
-> "Atualize o backlog com base na última reunião."
+They can:
 
-Ou:
+- edit;
+- complement;
+- approve;
+- reject;
+- request a new version.
 
-> "Gere um resumo executivo para a diretoria."
+The goal is not to replace the Product Manager.
 
-O PM OS será responsável por encontrar o contexto correto, consolidar as informações necessárias e executar o workflow apropriado.
-
-O usuário não precisará se preocupar com prompts, modelos ou engenharia de contexto.
+The goal is to accelerate the construction of high-quality artifacts.
 
 ---
 
-# Princípios reforçados
+## Stage 7 — Continuous evolution
 
-Esta jornada reforça alguns dos princípios fundamentais do PM OS:
+As the initiative evolves, new materials can be added to the Workspace.
 
-- Contexto é mais importante que prompts.
-- O conhecimento pertence à iniciativa.
-- Workflows representam objetivos de negócio.
-- A IA é uma dependência, não o produto.
-- O PM continua sendo responsável pelas decisões.
-- O PM OS acelera a produção de artefatos sem substituir o pensamento crítico.
+For example:
+
+- new meetings;
+- new RFCs;
+- new decisions;
+- new diagrams;
+- new requirements.
+
+The context is continuously updated.
+
+Future artifacts always use the most recent version of this knowledge.
+
+---
+
+# The Role of Context
+
+Context is the main asset of PM OS.
+
+It represents all consolidated knowledge about an initiative.
+
+Workflows only consume this context.
+
+Prompts only guide the model.
+
+Context determines the quality of the response.
+
+---
+
+# The Role of Workflows
+
+Workflows represent actions a Product Manager wants to execute.
+
+Examples:
+
+- Create PRD
+- Create Backlog
+- Create RFC
+- Create Story Map
+- Create Release Plan
+
+Each workflow uses the same context but produces different artifacts.
+
+---
+
+# The Role of AI
+
+AI is not the product.
+
+It is just a system dependency.
+
+PM OS remains responsible for:
+
+- organizing knowledge;
+- building context;
+- defining prompts;
+- orchestrating workflows;
+- generating artifacts.
+
+The AI model is just the mechanism responsible for text generation.
+
+---
+
+# Desired Experience
+
+In the future, the ideal experience will be simple.
+
+The user could write something like:
+
+> "Create a PRD for this initiative."
+
+The system generates the PRD and **automatically validates its quality**, showing the score.
+
+The user could also ask:
+
+> "Validate the PRD for INT-0001."
+
+To get a fresh quality report on demand.
+
+Or:
+
+> "Update the backlog based on the last meeting."
+
+Or:
+
+> "Generate an executive summary for the board."
+
+Or:
+
+> "What's the quality status of all my initiatives?"
+
+And the Workspace Scanner would reply with scores for every PRD.
+
+PM OS will be responsible for finding the correct context, consolidating the necessary information, and executing the appropriate workflow.
+
+The user will not need to worry about prompts, models, or context engineering.
+
+---
+
+# Reinforced Principles
+
+This journey reinforces some of the fundamental principles of PM OS:
+
+- Context is more important than prompts.
+- Knowledge belongs to the initiative.
+- Workflows represent business objectives.
+- AI is a dependency, not the product.
+- The PM remains responsible for decisions.
+- PM OS accelerates artifact production without replacing critical thinking.
+- **Quality is not subjective** — every artifact gets a validation score.
+- **Validation is automatic** — the system checks quality so the PM doesn't have to.

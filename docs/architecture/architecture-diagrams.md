@@ -1,5 +1,5 @@
 # PM OS — Architecture Diagrams
 
-> Este documento reúne os principais diagramas da arquitetura do PM OS.
+> This document gathers the main diagrams of the PM OS architecture.
 
-> **Status:** Em construção.
+> **Status:** Under construction.

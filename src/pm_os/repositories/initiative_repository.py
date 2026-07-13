@@ -14,6 +14,15 @@ class InitiativeRepository:
     ):
         self.initiatives_path = Path(initiatives_path)
 
+    def list_names(self) -> list[str]:
+        """Returns initiative names without loading documents."""
+        if not self.initiatives_path.exists():
+            return []
+        return sorted(
+            p.name for p in self.initiatives_path.iterdir()
+            if p.is_dir()
+        )
+
     def list_initiatives(self) -> list[Initiative]:
         """
         Lists all initiatives available in the workspace.

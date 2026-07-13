@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block page_title %}{{ "initiative.new.title"|t }}{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3>{{ "initiative.new.title"|t }}</h3>
+    </div>
+    <div class="card-body">
+        {% if error %}
+        <div class="alert alert-error">{{ error }}</div>
+        {% endif %}
+
+        <form method="POST" action="/initiatives/new" class="form">
+            <div class="form-group">
+                <label for="name">{{ "initiative.new.name"|t }}</label>
+                <input type="text" name="name" id="name" placeholder="{{ 'initiative.new.name_placeholder'|t }}" required>
+                <div class="form-hint">Nome curto e descritivo para sua iniciativa.</div>
+            </div>
+
+            <div class="form-group">
+                <label for="id">{{ "initiative.new.id"|t }}</label>
+                <input type="text" name="id" id="id" placeholder="{{ 'initiative.new.id_placeholder'|t }}">
+                <div class="form-hint">Deixe vazio para auto-gerar.</div>
+            </div>
+
+            <div class="form-group">
+                <label for="status">{{ "initiative.new.status"|t }}</label>
+                <select name="status" id="status">
+                    <option value="discovery">{{ "initiative.new.status_discovery"|t }}</option>
+                    <option value="planning">{{ "initiative.new.status_planning"|t }}</option>
+                    <option value="development">{{ "initiative.new.status_development"|t }}</option>
+                    <option value="completed">{{ "initiative.new.status_completed"|t }}</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="context">{{ "initiative.new.context"|t }}</label>
+                <textarea name="context" id="context" placeholder="{{ 'initiative.new.context_placeholder'|t }}" rows="8"></textarea>
+                <div class="form-hint">{{ "initiative.new.context_hint"|t }}</div>
+            </div>
+
+            <button type="submit" class="btn btn-primary">{{ "initiative.new.cta"|t }}</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.getElementById('name').addEventListener('input', function() {
+        var idField = document.getElementById('id');
+        if (!idField.dataset.userEdited) {
+            var name = this.value.trim().toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-|-$/g, '');
+            if (name) idField.value = 'INT-' + name.substring(0, 30);
+        }
+    });
+    document.getElementById('id').addEventListener('input', function() {
+        this.dataset.userEdited = this.value.length > 0 ? 'true' : '';
+    });
+</script>
+{% endblock %}

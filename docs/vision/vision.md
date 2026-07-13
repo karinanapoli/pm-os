@@ -1,110 +1,109 @@
 # PM OS Vision
 
-## Nossa missão
+## Our Mission
 
-Construir um sistema operacional open source para Product Managers que una Inteligência Artificial, Engenharia de Produto e boas práticas de desenvolvimento para acelerar o trabalho de PMs sem substituir seu pensamento crítico.
+Build an open source operating system for Product Managers that unites Artificial Intelligence, Product Engineering, and good development practices to accelerate PMs' work without replacing their critical thinking.
 
-O PM OS não tem como objetivo apenas automatizar tarefas.
+PM OS is not just about automating tasks.
 
-Nosso objetivo é criar um ambiente onde Product Managers possam aprender, construir e evoluir produtos utilizando IA de forma responsável, estruturada e escalável. O PM OS é um Sistema Operacional para iniciativas de produto. Ele organiza conhecimento, constrói contexto e transforma esse contexto em artefatos reutilizáveis ao longo de todo o ciclo de vida da iniciativa."
-
-
----
-
-# O problema
-
-Hoje a maioria das soluções de IA para Product Managers é baseada em prompts isolados.
-
-Exemplos:
-
-- "Crie um PRD."
-- "Gere um backlog."
-- "Escreva uma RFC."
-
-Essas soluções apresentam diversos problemas:
-
-- não possuem contexto do projeto;
-- não reutilizam conhecimento;
-- não seguem workflows reais;
-- não documentam decisões;
-- não são reproduzíveis;
-- são difíceis de evoluir.
-
-Na prática, tornam-se apenas chats inteligentes.
-
-Queremos construir algo diferente.
+Our goal is to create an environment where Product Managers can learn, build, and evolve products using AI in a responsible, structured, and scalable way. PM OS is an Operating System for product initiatives. It organizes knowledge, builds context, and transforms that context into reusable artifacts throughout the entire initiative lifecycle.
 
 ---
 
-# Nossa visão
+# The Problem
 
-Acreditamos que o futuro do Product Management não será baseado em prompts.
+Today, most AI solutions for Product Managers are based on isolated prompts.
 
-Será baseado em sistemas.
+Examples:
 
-Esses sistemas deverão ser capazes de:
+- "Create a PRD."
+- "Generate a backlog."
+- "Write an RFC."
 
-- compreender contexto;
-- organizar conhecimento;
-- executar workflows;
-- documentar decisões;
-- integrar ferramentas;
-- colaborar com Product Managers.
+These solutions have several problems:
 
-A IA deixa de ser um chatbot e passa a atuar como uma camada de engenharia.
+- they lack project context;
+- they don't reuse knowledge;
+- they don't follow real workflows;
+- they don't document decisions;
+- they aren't reproducible;
+- they are hard to evolve.
+
+In practice, they become just smart chats.
+
+We want to build something different.
 
 ---
 
-# O que é o PM OS?
+# Our Vision
 
-O PM OS é um framework open source de AI Product Engineering.
+We believe the future of Product Management will not be based on prompts.
 
-Ele combina:
+It will be based on systems.
+
+These systems should be able to:
+
+- understand context;
+- organize knowledge;
+- execute workflows;
+- document decisions;
+- integrate tools;
+- collaborate with Product Managers.
+
+AI stops being a chatbot and becomes an engineering layer.
+
+---
+
+# What is PM OS?
+
+PM OS is an open source framework for AI Product Engineering.
+
+It combines:
 
 - Product Management
-- Engenharia de Software
-- Inteligência Artificial
+- Software Engineering
+- Artificial Intelligence
 - MCPs
-- LLMs Locais
+- Local LLMs
 - Context Engineering
 - Workflows
 
-Tudo organizado em uma arquitetura modular.
+All organized in a modular architecture.
 
 ---
 
-# O que NÃO queremos construir
+# What We Do NOT Want to Build
 
-Não queremos criar:
+We don't want to create:
 
-- uma coleção de prompts;
-- um chatbot;
-- um clone do ChatGPT;
-- um agente mágico que faz tudo.
+- a collection of prompts;
+- a chatbot;
+- a ChatGPT clone;
+- a magical agent that does everything.
 
-Queremos construir componentes reutilizáveis.
+We want to build reusable components.
 
 ---
 
-# O que queremos construir
+# What We Want to Build
 
-Queremos construir uma plataforma capaz de executar workflows completos.
+We want to build a platform capable of executing complete workflows.
 
-Exemplo:
+Example:
 
 Feature
 
 ↓
 
-Leitura automática de documentos
+Automatic document reading
 
 ↓
 
-Construção de contexto
+Context building
 
 ↓
 
-Geração de PRD
+PRD generation
 
 ↓
 
@@ -120,66 +119,66 @@ RFC
 
 ↓
 
-Revisões
+Reviews
 
 ↓
 
-Documentação
+Documentation
 
 ↓
 
-Métricas
+Metrics
 
-Cada etapa é um componente independente.
+Each step is an independent component.
 
 ---
 
-# Público-alvo
+# Target Audience
 
-Inicialmente:
+Initially:
 
 - Product Managers
 - Technical Product Managers
 - AI Product Managers
 
-Depois:
+Later:
 
 - Product Designers
 - Engineering Managers
 - Tech Leads
-- Arquitetos
-- Times de Plataforma
+- Architects
+- Platform Teams
 
 ---
 
-# Valores do projeto
+# Project Values
 
-Este projeto será guiado pelos seguintes princípios:
+This project will be guided by the following principles:
 
-- Simplicidade
-- Modularidade
-- Transparência
+- Simplicity
+- Modularity
+- Transparency
 - Open Source
-- IA Responsável
-- Segurança por padrão
-- Contexto antes de Prompt
-- Aprender construindo
+- Responsible AI
+- Security by Design
+- Context before Prompt
+- Learn by Building
 
 ---
 
-# Nossa ambição
+# Our Ambition
 
-Queremos que qualquer Product Manager consiga:
+We want every Product Manager to be able to:
 
-- aprender IA;
-- entender MCPs;
-- compreender agentes;
-- criar workflows;
-- gerar documentação;
-- acelerar seu trabalho.
+- learn AI;
+- understand MCPs;
+- comprehend agents;
+- create workflows;
+- generate documentation;
+- accelerate their work.
 
-Tudo isso estudando um único projeto.
+All by studying a single project.
 
-Mais do que um framework.
+More than a framework.
 
-Queremos construir uma referência em AI Product Engineering para Product Managers.
+We want to build a reference in AI Product Engineering for Product Managers.

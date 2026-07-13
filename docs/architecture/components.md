@@ -1,24 +1,24 @@
 # PM OS — Components
 
-> "Componentes pequenos, responsabilidades claras e dependência de contratos. Essa é a base da arquitetura do PM OS."
+> "Small components, clear responsibilities, and contract dependency. That is the foundation of PM OS architecture."
 
 ---
 
-# Objetivo
+# Objective
 
-Este documento descreve os principais componentes do PM OS Core, suas responsabilidades e como eles colaboram para executar as capacidades da plataforma.
+This document describes the main components of the PM OS Core, their responsibilities, and how they collaborate to execute the platform's capabilities.
 
-Cada componente possui uma única responsabilidade e se comunica através de contratos bem definidos, permitindo evolução incremental, baixo acoplamento e alta coesão.
+Each component has a single responsibility and communicates through well-defined contracts, enabling incremental evolution, low coupling, and high cohesion.
 
 ---
 
-# Visão Geral
+# Overview
 
-O PM OS é organizado em torno de componentes especializados.
+PM OS is organized around specialized components.
 
-Cada componente executa apenas uma parte do fluxo de trabalho.
+Each component executes only one part of the workflow.
 
-Nenhum componente implementa responsabilidades pertencentes a outro.
+No component implements responsibilities that belong to another.
 
 ```text
 Workspace
@@ -42,87 +42,87 @@ Infrastructure (Ollama, OpenAI...)
 Markdown Writer
 ```
 
-O Workflow atua apenas como orquestrador desse fluxo.
+The Workflow acts only as an orchestrator of this flow.
 
 ---
 
 # Workspace
 
-## Responsabilidade
+## Responsibility
 
-Representar a área de trabalho do usuário.
+Represent the user's working area.
 
-O Workspace armazena todas as iniciativas, seus contextos, artefatos, metadados e configurações.
+The Workspace stores all initiatives, their contexts, artifacts, metadata, and configurations.
 
-Estrutura atual:
+Current structure:
 
 ```text
 workspace/
 └── initiatives/
-    └── INT-0001-consulta-inteligente-fornecedores/
+    └── INT-0001-smart-supplier-query/
         ├── context/
         ├── artifacts/
         ├── logs/
         └── metadata.yaml
 ```
 
-## Conhece
+## Knows
 
-- iniciativas;
-- artefatos;
-- contexto;
-- configurações.
+- initiatives;
+- artifacts;
+- context;
+- configurations.
 
-## Não conhece
+## Does not know
 
-- IA;
+- AI;
 - workflows;
-- lógica de negócio.
+- business logic.
 
 ---
 
 # Initiative
 
-## Responsabilidade
+## Responsibility
 
-Representar a unidade central do domínio do PM OS.
+Represent the central unit of the PM OS domain.
 
-Uma Initiative agrupa todo o conhecimento relacionado a uma iniciativa de produto durante seu ciclo de vida.
+An Initiative groups all knowledge related to a product initiative during its lifecycle.
 
-Pode conter:
+Can contain:
 
 - discovery;
-- pesquisas;
-- atas;
-- requisitos;
+- research;
+- meeting notes;
+- requirements;
 - PRDs;
 - roadmaps;
 - RFCs;
-- métricas;
-- decisões.
+- metrics;
+- decisions.
 
-## Entrada
+## Input
 
 Workspace.
 
-## Saída
+## Output
 
-Objeto de domínio utilizado pelos Workflows.
+Domain object used by Workflows.
 
-## Conhece
+## Knows
 
-- nome;
-- localização;
-- documentos associados.
+- name;
+- location;
+- associated documents.
 
-## Não conhece
+## Does not know
 
-- IA;
+- AI;
 - prompts;
-- infraestrutura;
+- infrastructure;
 - interfaces.
 
-## Princípios aplicados
+## Applied principles
 
 - Domain-Driven Design
 - Single Responsibility
@@ -131,33 +131,33 @@ Objeto de domínio utilizado pelos Workflows.
 
 # Initiative Repository
 
-## Responsabilidade
+## Responsibility
 
-Recuperar Initiatives disponíveis no Workspace.
+Retrieve Initiatives available in the Workspace.
 
-Converte a estrutura de diretórios em objetos de domínio.
+Converts the directory structure into domain objects.
 
-## Entrada
+## Input
 
 Workspace.
 
-## Saída
+## Output
 
-Lista de objetos `Initiative`.
+List of `Initiative` objects.
 
-## Conhece
+## Knows
 
-- estrutura do Workspace;
-- localização das iniciativas.
+- Workspace structure;
+- initiative locations.
 
-## Não conhece
+## Does not know
 
-- IA;
+- AI;
 - prompts;
 - workflows;
-- artefatos.
+- artifacts.
 
-## Princípios aplicados
+## Applied principles
 
 - Repository Pattern
 - Separation of Concerns
@@ -166,31 +166,31 @@ Lista de objetos `Initiative`.
 
 # Context Builder
 
-## Responsabilidade
+## Responsibility
 
-Consolidar o conhecimento disponível de uma Initiative.
+Consolidate the available knowledge of an Initiative.
 
-Seu objetivo não é apenas ler arquivos, mas construir um contexto reutilizável para qualquer workflow.
+Its goal is not just to read files, but to build reusable context for any workflow.
 
-## Entrada
+## Input
 
-Objeto `Initiative`.
+`Initiative` object.
 
-## Saída
+## Output
 
-Contexto consolidado.
+Consolidated context.
 
-## Conhece
+## Knows
 
-- documentos da Initiative.
+- Initiative documents.
 
-## Não conhece
+## Does not know
 
-- IA;
+- AI;
 - prompts;
-- persistência.
+- persistence.
 
-## Princípios aplicados
+## Applied principles
 
 - Context Engineering
 - Single Responsibility
@@ -199,48 +199,48 @@ Contexto consolidado.
 
 # Prompt Builder
 
-## Responsabilidade
+## Responsibility
 
-Transformar contexto em instruções específicas para um workflow.
+Transform context into specific instructions for a workflow.
 
-Responde à pergunta:
+Answers the question:
 
-> "O que queremos que a IA faça?"
+> "What do we want the AI to do?"
 
-Enquanto o Context Builder responde:
+While the Context Builder answers:
 
-> "O que a IA precisa saber?"
+> "What does the AI need to know?"
 
-## Entrada
+## Input
 
 - workflow;
-- contexto.
+- context.
 
-## Saída
+## Output
 
 Prompt.
 
-## Conhece
+## Knows
 
-- estrutura de cada workflow.
+- structure of each workflow.
 
-## Não conhece
+## Does not know
 
 - Workspace;
-- IA;
-- armazenamento.
+- AI;
+- storage.
 
 ---
 
 # Contracts
 
-## Responsabilidade
+## Responsibility
 
-Definir contratos públicos entre os componentes.
+Define public contracts between components.
 
-O PM OS utiliza `typing.Protocol` para desacoplar o domínio das implementações concretas.
+PM OS uses `typing.Protocol` to decouple the domain from concrete implementations.
 
-Exemplos:
+Examples:
 
 - AIClientProtocol
 - InitiativeRepositoryProtocol
@@ -248,7 +248,7 @@ Exemplos:
 - MarkdownWriterProtocol
 - Logger
 
-## Princípios aplicados
+## Applied principles
 
 - Dependency Inversion Principle
 - Interface Segregation
@@ -257,13 +257,13 @@ Exemplos:
 
 # Infrastructure
 
-## Responsabilidade
+## Responsibility
 
-Implementar integrações com serviços externos.
+Implement integrations with external services.
 
-O domínio nunca depende diretamente dessas implementações.
+The domain never depends directly on these implementations.
 
-Exemplos atuais:
+Current examples:
 
 ```text
 infrastructure/
@@ -275,16 +275,16 @@ infrastructure/
     └── ConsoleLogger
 ```
 
-No futuro poderão existir integrações para:
+In the future there may be integrations for:
 
 - OpenAI;
 - Azure OpenAI;
 - Anthropic;
 - Gemini;
 - Vector Stores;
-- Observabilidade.
+- Observability.
 
-## Princípios aplicados
+## Applied principles
 
 - Ports and Adapters
 - Dependency Injection
@@ -293,38 +293,38 @@ No futuro poderão existir integrações para:
 
 # Markdown Writer
 
-## Responsabilidade
+## Responsibility
 
-Persistir artefatos gerados pelos workflows.
+Persist artifacts generated by workflows.
 
-Não gera conteúdo.
+Does not generate content.
 
-Não conhece IA.
+Does not know AI.
 
-Não conhece contexto.
+Does not know context.
 
-Sua única responsabilidade é salvar arquivos.
+Its only responsibility is to save files.
 
-## Entrada
+## Input
 
-- conteúdo;
-- caminho de saída.
+- content;
+- output path.
 
-## Saída
+## Output
 
-Arquivo Markdown.
+Markdown file.
 
 ---
 
 # Workflow
 
-## Responsabilidade
+## Responsibility
 
-Representar uma capacidade da plataforma.
+Represent a capability of the platform.
 
-Cada Workflow coordena os componentes especializados para entregar um resultado de negócio.
+Each Workflow coordinates specialized components to deliver a business result.
 
-Exemplos atuais e futuros:
+Current and future examples:
 
 - CreatePRDWorkflow
 - CreateBacklogWorkflow
@@ -332,11 +332,11 @@ Exemplos atuais e futuros:
 - CreateRFCWorkflow
 - ExecutiveSummaryWorkflow
 
-O Workflow não implementa regras específicas de IA.
+The Workflow does not implement specific AI rules.
 
-Ele apenas coordena os componentes necessários.
+It only coordinates the necessary components.
 
-## Princípios aplicados
+## Applied principles
 
 - Use Case Pattern
 - Orchestration
@@ -345,13 +345,13 @@ Ele apenas coordena os componentes necessários.
 
 # Logger
 
-## Responsabilidade
+## Responsibility
 
-Registrar os principais eventos durante a execução dos workflows.
+Log the main events during workflow execution.
 
-Seu objetivo é tornar o comportamento do sistema observável.
+Its goal is to make the system's behavior observable.
 
-Exemplo:
+Example:
 
 ```text
 Loading initiatives...
@@ -360,7 +360,7 @@ Generating PRD...
 Writing artifact...
 ```
 
-## Princípios aplicados
+## Applied principles
 
 - Observability
 - Separation of Concerns
@@ -369,15 +369,15 @@ Writing artifact...
 
 # Bootstrap
 
-## Responsabilidade
+## Responsibility
 
-Montar toda a aplicação.
+Assemble the entire application.
 
-O Bootstrap é o **Composition Root** do PM OS.
+Bootstrap is the **Composition Root** of PM OS.
 
-Toda criação de dependências acontece neste componente.
+All dependency creation happens in this component.
 
-Exemplo:
+Example:
 
 ```text
 Workflow
@@ -389,9 +389,9 @@ AIClient (Contract)
 OllamaClient
 ```
 
-Graças ao Bootstrap, é possível substituir implementações sem alterar os Workflows.
+Thanks to Bootstrap, it is possible to replace implementations without changing Workflows.
 
-## Princípios aplicados
+## Applied principles
 
 - Composition Root
 - Dependency Injection
@@ -399,9 +399,9 @@ Graças ao Bootstrap, é possível substituir implementações sem alterar os Wo
 
 ---
 
-# Relação entre os Componentes
+# Component Relationships
 
-O fluxo principal da plataforma é:
+The main platform flow is:
 
 ```text
 Workspace
@@ -425,15 +425,15 @@ Infrastructure
 Markdown Writer
 ```
 
-O Workflow apenas coordena essa sequência.
+The Workflow only coordinates this sequence.
 
-Cada componente permanece independente.
+Each component remains independent.
 
 ---
 
-# Princípios Arquiteturais
+# Architectural Principles
 
-Todos os componentes seguem os seguintes princípios:
+All components follow these principles:
 
 - Single Responsibility Principle
 - Dependency Injection
@@ -447,30 +447,30 @@ Todos os componentes seguem os seguintes princípios:
 
 ---
 
-# Resumo
+# Summary
 
-| Componente | Responsabilidade |
+| Component | Responsibility |
 |------------|------------------|
-| Workspace | Armazenar iniciativas e conhecimento |
-| Initiative | Representar a unidade central do domínio |
-| Initiative Repository | Recuperar iniciativas do Workspace |
-| Context Builder | Consolidar conhecimento |
-| Prompt Builder | Construir prompts |
-| Contracts | Definir contratos públicos |
-| Infrastructure | Implementar integrações externas |
-| AI Client | Gerar conteúdo utilizando IA |
-| Markdown Writer | Persistir artefatos |
-| Workflow | Orquestrar capacidades |
-| Logger | Registrar eventos da execução |
-| Bootstrap | Montar a aplicação |
+| Workspace | Store initiatives and knowledge |
+| Initiative | Represent the central domain unit |
+| Initiative Repository | Retrieve initiatives from Workspace |
+| Context Builder | Consolidate knowledge |
+| Prompt Builder | Build prompts |
+| Contracts | Define public contracts |
+| Infrastructure | Implement external integrations |
+| AI Client | Generate content using AI |
+| Markdown Writer | Persist artifacts |
+| Workflow | Orchestrate capabilities |
+| Logger | Log execution events |
+| Bootstrap | Assemble the application |
 
 ---
 
-# Evolução
+# Evolution
 
-A arquitetura continuará evoluindo conforme novas capacidades forem adicionadas.
+The architecture will continue evolving as new capabilities are added.
 
-Os próximos componentes previstos incluem:
+Upcoming components include:
 
 - Configuration Manager;
 - Template Engine;
@@ -479,10 +479,10 @@ Os próximos componentes previstos incluem:
 - Metrics;
 - Telemetry.
 
-Independentemente do crescimento do projeto, o PM OS continuará seguindo os mesmos princípios:
+Regardless of the project's growth, PM OS will continue following the same principles:
 
-- componentes pequenos;
-- responsabilidades claras;
-- domínio desacoplado da infraestrutura;
-- contexto como principal ativo do sistema;
-- arquitetura orientada a capacidades.
+- small components;
+- clear responsibilities;
+- domain decoupled from infrastructure;
+- context as the main system asset;
+- capability-oriented architecture.

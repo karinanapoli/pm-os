@@ -1,33 +1,33 @@
 # PM OS Documentation
 
-PM OS é um AI Product Manager Operating System open source para Product Managers.
+PM OS is an open source AI Product Manager Operating System for Product Managers.
 
-Este projeto combina:
+This project combines:
 
 - Product Management
 - AI Engineering
 - MCPs
-- LLMs locais
+- Local LLMs
 - Context Engineering
 - Security by Design
 - LGPD
-- Workflows de produto
+- Product workflows
 
-A documentação é parte central do projeto. Ela funciona como um livro vivo que explica não apenas o que foi construído, mas também por que cada decisão foi tomada.
+Documentation is a core part of the project. It works as a living book that explains not only what was built, but also why each decision was made.
 
-## Estrutura
+## Structure
 
-- `vision/` — visão, princípios e glossário do projeto
-- `architecture/` — arquitetura, componentes, fluxos e diagramas
+- `vision/` — vision, principles, and glossary of the project
+- `architecture/` — architecture, components, flows, and diagrams
 - `adr/` — Architecture Decision Records
-- `learning/` — diário de aprendizado por sprint
-- `reviews/` — revisões técnicas por sprint
-- `roadmap/` — evolução planejada do PM OS
-- `contributing/` — guia para contribuição
-- `decisions/` — ideias futuras e decisões ainda em aberto
+- `learning/` — learning journal per sprint
+- `reviews/` — technical reviews per sprint
+- `roadmap/` — planned evolution of PM OS
+- `contributing/` — contribution guide
+- `decisions/` — future ideas and open decisions
 
-## Filosofia
+## Philosophy
 
-O PM OS não é apenas uma ferramenta.
+PM OS is not just a tool.
 
-É um framework para aprender, construir e operar workflows de Product Management com IA.
+It is a framework for learning, building, and operating Product Management workflows with AI.

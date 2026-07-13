@@ -7,12 +7,12 @@ loader = DocumentLoader()
 
 features = repo.list_features()
 
-print("Features encontradas:")
+print("Features found:")
 
 for index, feature in enumerate(features, start=1):
     print(f"{index}. {feature.name}")
 
     context = loader.load_feature_context(feature)
 
-    print("\nContexto consolidado:")
+    print("\nConsolidated context:")
     print(context)

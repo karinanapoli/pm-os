@@ -11,7 +11,7 @@ class DocumentLoader:
             content = document.read_text(encoding="utf-8")
 
             sections.append(
-                f"# Arquivo: {document.name}\n\n{content}"
+                f"# File: {document.name}\n\n{content}"
             )
 
         return "\n\n---\n\n".join(sections)

@@ -1,0 +1,377 @@
+"""
+PM OS Internationalization.
+
+Usage:
+    from pm_os.web.i18n import t, LANGS
+    t("dashboard.title", lang="pt-BR")
+"""
+
+TRANSLATIONS = {
+    "pt-BR": {
+        # Global
+        "app.title": "PM OS — Sistema Operacional de Produto",
+        "app.subtitle": "Product Manager OS",
+        "app.version": "v0.2.0",
+
+        # Sidebar
+        "nav.discovery": "Descoberta",
+        "nav.dashboard": "Dashboard",
+        "nav.generate_prd": "Gerar PRD",
+        "nav.workspace": "Workspace",
+        "nav.new_initiative": "Nova Iniciativa",
+        "nav.system": "Sistema",
+        "nav.settings": "Configurações",
+
+        # Dashboard
+        "dashboard.title": "Dashboard",
+        "dashboard.stats.initiatives": "Iniciativas",
+        "dashboard.stats.prds": "PRDs",
+        "dashboard.stats.docs": "Documentos",
+        "dashboard.stats.score": "Nota Média",
+        "dashboard.empty.title": "Nenhuma iniciativa ainda",
+        "dashboard.empty.desc": "Crie sua primeira iniciativa de produto. Defina o problema, adicione contexto e gere um PRD com IA.",
+        "dashboard.empty.cta": "Criar Iniciativa",
+        "dashboard.initiatives": "Iniciativas",
+        "dashboard.total": "total",
+        "dashboard.no_prd": "Sem PRD",
+        "dashboard.has_prd": "PRD",
+        "dashboard.docs": "docs",
+
+        # Onboarding
+        "onboarding.welcome": "Bem-vindo ao PM OS",
+        "onboarding.desc": "Centralize suas iniciativas, gere PRDs com IA e acompanhe a qualidade de cada entrega — tudo em um lugar.",
+        "onboarding.step1": "Crie sua primeira iniciativa.",
+        "onboarding.step2": "Adicione contexto e gere seu primeiro PRD.",
+        "onboarding.step3": "Valide o PRD e itere. Você está pronto!",
+        "onboarding.cta_create": "Criar Iniciativa",
+        "onboarding.cta_generate": "Gerar PRD",
+        "onboarding.cta_dashboard": "Ir para Dashboard",
+        "onboarding.later": "Pular",
+        "onboarding.step": "Passo",
+
+        # New Initiative
+        "initiative.new.title": "Nova Iniciativa",
+        "initiative.new.name": "Nome da Iniciativa",
+        "initiative.new.name_placeholder": "Ex: Consulta Inteligente de Fornecedores",
+        "initiative.new.id": "ID",
+        "initiative.new.id_placeholder": "Ex: INT-0002 (auto-gerado se vazio)",
+        "initiative.new.status": "Status",
+        "initiative.new.status_discovery": "Descoberta",
+        "initiative.new.status_planning": "Planejamento",
+        "initiative.new.status_development": "Desenvolvimento",
+        "initiative.new.status_completed": "Concluído",
+        "initiative.new.context": "Contexto Inicial (markdown)",
+        "initiative.new.context_placeholder": "Descreva o problema, objetivos e qualquer informação relevante sobre esta iniciativa...",
+        "initiative.new.context_hint": "Será salvo como documento de contexto e usado na geração do PRD.",
+        "initiative.new.cta": "Criar Iniciativa",
+
+        # Initiative Detail
+        "initiative.detail.status": "Status",
+        "initiative.detail.documents": "Documentos",
+        "initiative.detail.prd": "PRD",
+        "initiative.detail.generated": "Gerado",
+        "initiative.detail.not_yet": "Ainda não",
+        "initiative.detail.validation_score": "Score de Validação",
+        "initiative.detail.context_docs": "Documentos de Contexto",
+        "initiative.detail.files": "arquivos",
+        "initiative.detail.no_docs": "Nenhum documento de contexto ainda. Adicione arquivos markdown com descrições do problema, pesquisas ou requisitos.",
+        "initiative.detail.upload": "Upload de Documento de Contexto",
+        "initiative.detail.upload_hint": "Arquivos Markdown (.md) ou texto (.txt).",
+        "initiative.detail.upload_cta": "Upload",
+        "initiative.detail.view_prd": "Ver PRD",
+        "initiative.detail.regenerate": "Regenerar",
+        "initiative.detail.back": "Voltar à Iniciativa",
+        "initiative.detail.view_full_report": "Ver Relatório Completo",
+
+        # Generate
+        "generate.title": "Gerar PRD",
+        "generate.card_title": "Gerar Novo PRD",
+        "generate.initiative": "Iniciativa",
+        "generate.initiative_select": "Selecione uma iniciativa...",
+        "generate.model": "Modelo",
+        "generate.change": "Alterar",
+        "generate.cta": "Gerar PRD + Validar",
+        "generate.result_for": "Resultado para",
+        "generate.view_prd": "Ver PRD Gerado",
+        "generate.view_initiative": "Ver Iniciativa",
+
+        # Validate
+        "validate.title": "Validar PRD",
+        "validate.back": "← Voltar à Iniciativa",
+        "validate.desc": "Executa validação por IA no PRD de",
+        "validate.checking": "Verificando completeza, clareza e alinhamento com melhores práticas.",
+        "validate.cta": "Executar Validação",
+        "validate.report": "Relatório de Validação",
+        "validate.no_prd": "Nenhum PRD encontrado para esta iniciativa.",
+
+        # Config
+        "config.title": "Configurações",
+        "config.card_title": "Configuração",
+        "config.model": "Modelo de IA",
+        "config.model_hint": "Nome do modelo Ollama. A variável de ambiente PM_OS_MODEL sobrescreve esta configuração.",
+        "config.ollama_url": "URL do Ollama",
+        "config.ollama_url_hint": "Padrão: http://localhost:11434",
+        "config.language": "Idioma",
+        "config.language_hint": "Idioma da interface.",
+        "config.save": "Salvar",
+        "config.saved": "Preferências salvas.",
+
+        # MCP
+        "mcp.title": "Servidores MCP",
+        "mcp.desc": "Model Context Protocol (MCP) permite que a IA se conecte a ferramentas e fontes de dados externas.",
+        "mcp.name": "Nome do Servidor",
+        "mcp.name_placeholder": "Ex: Web Search, Database, Docs API",
+        "mcp.url": "URL do Servidor",
+        "mcp.url_placeholder": "http://localhost:3000/mcp",
+        "mcp.add": "Adicionar Servidor",
+        "mcp.empty": "Nenhum servidor MCP configurado.",
+        "mcp.enabled": "Ativo",
+        "mcp.disabled": "Inativo",
+        "mcp.delete": "Remover",
+
+        # Loading
+        "loading.processing": "Gerando com IA...",
+        "loading.sub": "Enquanto isso, revise os documentos de contexto da iniciativa.",
+
+        # Archive
+        "archive.confirm": "Arquivar esta iniciativa? Ela será movida para o arquivo e pode ser restaurada depois.",
+        "archive.button": "Arquivar",
+        "archive.title": "Arquivadas",
+
+        # Consult (Q&A)
+        "consult.title": "Consultar Documentação",
+        "consult.card_title": "Faça uma pergunta sobre a documentação",
+        "consult.question": "Sua pergunta",
+        "consult.question_placeholder": "Ex: Quais são os principais requisitos funcionais mapeados até agora?",
+        "consult.initiatives": "Iniciativas para consultar",
+        "consult.initiatives_hint": "Selecione as iniciativas cujos documentos serão usados como base para responder.",
+        "consult.all": "Todas as iniciativas",
+        "consult.cta": "Consultar",
+        "consult.result_for": "Resposta baseada nos documentos de",
+        "consult.no_answer": "Nenhuma resposta gerada.",
+        "consult.empty_question": "Digite uma pergunta para consultar a documentação.",
+        "consult.empty_initiatives": "Selecione ao menos uma iniciativa para consultar.",
+        "consult.use_product_docs": "Incluir documentação do produto",
+        "consult.use_product_docs_hint": "Adiciona os documentos e links de referência do produto como contexto da consulta.",
+
+        # Cross-initiative context
+        "generate.additional_context": "Contexto Adicional (opcional)",
+        "generate.additional_hint": "Selecione outras iniciativas do mesmo produto para incluir os documentos delas como contexto extra no PRD.",
+        "generate.no_additional": "Nenhuma outra iniciativa disponível.",
+        "generate.use_product_docs": "Incluir documentação do produto",
+        "generate.use_product_docs_hint": "Adiciona os documentos e links de referência do produto como contexto extra no PRD.",
+
+        # Product Docs
+        "product_docs.title": "Documentação do Produto",
+        "product_docs.card_title": "Documentação do Produto",
+        "product_docs.desc": "Gerencie a documentação central do produto. Este conteúdo pode ser consultado via Q&A e incluído como contexto na geração de PRDs.",
+        "product_docs.upload": "Upload de Documentos",
+        "product_docs.upload_hint": "Arquivos Markdown (.md) ou texto (.txt).",
+        "product_docs.upload_cta": "Upload",
+        "product_docs.links": "Links de Referência",
+        "product_docs.links_title": "Título",
+        "product_docs.links_title_placeholder": "Ex: Google Site - Especificação",
+        "product_docs.links_url": "URL",
+        "product_docs.links_url_placeholder": "https://sites.google.com/...",
+        "product_docs.links_add": "Adicionar Link",
+        "product_docs.links_empty": "Nenhum link adicionado.",
+        "product_docs.documents": "Documentos",
+        "product_docs.documents_empty": "Nenhum documento de produto enviado ainda.",
+        "product_docs.delete": "Excluir",
+        "product_docs.back": "← Voltar",
+
+        # Errors
+        "error.ollama": "Não foi possível conectar ao Ollama. Verifique se o servidor está rodando.",
+        "error.not_found": "Iniciativa não encontrada.",
+        "error.exists": "já existe.",
+    },
+
+    "en": {
+        # Global
+        "app.title": "PM OS — Product Manager Operating System",
+        "app.subtitle": "Product Manager OS",
+        "app.version": "v0.2.0",
+
+        # Sidebar
+        "nav.discovery": "Discovery",
+        "nav.dashboard": "Dashboard",
+        "nav.generate_prd": "Generate PRD",
+        "nav.workspace": "Workspace",
+        "nav.new_initiative": "New Initiative",
+        "nav.system": "System",
+        "nav.settings": "Settings",
+
+        # Dashboard
+        "dashboard.title": "Dashboard",
+        "dashboard.stats.initiatives": "Initiatives",
+        "dashboard.stats.prds": "PRDs",
+        "dashboard.stats.docs": "Documents",
+        "dashboard.stats.score": "Avg Score",
+        "dashboard.empty.title": "No initiatives yet",
+        "dashboard.empty.desc": "Create your first product initiative. Define the problem, add context, and generate a PRD with AI.",
+        "dashboard.empty.cta": "Create Initiative",
+        "dashboard.initiatives": "Initiatives",
+        "dashboard.total": "total",
+        "dashboard.no_prd": "No PRD",
+        "dashboard.has_prd": "PRD",
+        "dashboard.docs": "docs",
+
+        # Onboarding
+        "onboarding.welcome": "Welcome to PM OS",
+        "onboarding.desc": "Centralize your initiatives, generate PRDs with AI, and track quality — all in one place.",
+        "onboarding.step1": "Create your first initiative.",
+        "onboarding.step2": "Add context and generate your first PRD.",
+        "onboarding.step3": "Validate the PRD and iterate. You're all set!",
+        "onboarding.cta_create": "Create Initiative",
+        "onboarding.cta_generate": "Generate PRD",
+        "onboarding.cta_dashboard": "Go to Dashboard",
+        "onboarding.later": "Skip",
+        "onboarding.step": "Step",
+
+        # New Initiative
+        "initiative.new.title": "New Initiative",
+        "initiative.new.name": "Initiative Name",
+        "initiative.new.name_placeholder": "e.g. Smart Supplier Query",
+        "initiative.new.id": "ID",
+        "initiative.new.id_placeholder": "e.g. INT-0002 (auto-generated if empty)",
+        "initiative.new.status": "Status",
+        "initiative.new.status_discovery": "Discovery",
+        "initiative.new.status_planning": "Planning",
+        "initiative.new.status_development": "Development",
+        "initiative.new.status_completed": "Completed",
+        "initiative.new.context": "Initial Context (markdown)",
+        "initiative.new.context_placeholder": "Describe the problem, goals, and any relevant information about this initiative...",
+        "initiative.new.context_hint": "This will be saved as a context document and used when generating the PRD.",
+        "initiative.new.cta": "Create Initiative",
+
+        # Initiative Detail
+        "initiative.detail.status": "Status",
+        "initiative.detail.documents": "Documents",
+        "initiative.detail.prd": "PRD",
+        "initiative.detail.generated": "Generated",
+        "initiative.detail.not_yet": "Not yet",
+        "initiative.detail.validation_score": "Validation Score",
+        "initiative.detail.context_docs": "Context Documents",
+        "initiative.detail.files": "files",
+        "initiative.detail.no_docs": "No context documents yet. Add markdown files with problem descriptions, research, or requirements.",
+        "initiative.detail.upload": "Upload Context Document",
+        "initiative.detail.upload_hint": "Markdown (.md) or text (.txt) files.",
+        "initiative.detail.upload_cta": "Upload",
+        "initiative.detail.view_prd": "View PRD",
+        "initiative.detail.regenerate": "Regenerate",
+        "initiative.detail.back": "← Back to Initiative",
+        "initiative.detail.view_full_report": "View Full Report",
+
+        # Generate
+        "generate.title": "Generate PRD",
+        "generate.card_title": "Generate New PRD",
+        "generate.initiative": "Initiative",
+        "generate.initiative_select": "Select an initiative...",
+        "generate.model": "Model",
+        "generate.change": "Change",
+        "generate.cta": "Generate PRD + Validate",
+        "generate.result_for": "Result for",
+        "generate.view_prd": "View Generated PRD",
+        "generate.view_initiative": "View Initiative",
+
+        # Validate
+        "validate.title": "Validate PRD",
+        "validate.back": "← Back to Initiative",
+        "validate.desc": "Runs AI-powered validation on the PRD for",
+        "validate.checking": "checking completeness, clarity, and alignment with best practices.",
+        "validate.cta": "Run Validation",
+        "validate.report": "Validation Report",
+        "validate.no_prd": "No PRD found for this initiative.",
+
+        # Config
+        "config.title": "Settings",
+        "config.card_title": "Configuration",
+        "config.model": "AI Model",
+        "config.model_hint": "Ollama model name. The PM_OS_MODEL environment variable overrides this.",
+        "config.ollama_url": "Ollama URL",
+        "config.ollama_url_hint": "Default: http://localhost:11434",
+        "config.language": "Language",
+        "config.language_hint": "Interface language.",
+        "config.save": "Save",
+        "config.saved": "Preferences saved.",
+
+        # MCP
+        "mcp.title": "MCP Servers",
+        "mcp.desc": "Model Context Protocol (MCP) lets AI connect to external tools and data sources.",
+        "mcp.name": "Server Name",
+        "mcp.name_placeholder": "e.g. Web Search, Database, Docs API",
+        "mcp.url": "Server URL",
+        "mcp.url_placeholder": "http://localhost:3000/mcp",
+        "mcp.add": "Add Server",
+        "mcp.empty": "No MCP servers configured.",
+        "mcp.enabled": "Active",
+        "mcp.disabled": "Inactive",
+        "mcp.delete": "Remove",
+
+        # Loading
+        "loading.processing": "Generating with AI...",
+        "loading.sub": "Meanwhile, review the initiative's context documents.",
+
+        # Archive
+        "archive.confirm": "Archive this initiative? It will be moved to archive and can be restored later.",
+        "archive.button": "Archive",
+        "archive.title": "Archived",
+
+        # Consult (Q&A)
+        "consult.title": "Consult Documentation",
+        "consult.card_title": "Ask a question about the documentation",
+        "consult.question": "Your question",
+        "consult.question_placeholder": "e.g. What are the main functional requirements mapped so far?",
+        "consult.initiatives": "Initiatives to consult",
+        "consult.initiatives_hint": "Select which initiatives' documents to use as the knowledge base.",
+        "consult.all": "All initiatives",
+        "consult.cta": "Consult",
+        "consult.result_for": "Answer based on documents from",
+        "consult.no_answer": "No answer generated.",
+        "consult.empty_question": "Type a question to consult the documentation.",
+        "consult.empty_initiatives": "Select at least one initiative to consult.",
+        "consult.use_product_docs": "Include product docs",
+        "consult.use_product_docs_hint": "Adds product documentation and reference links as query context.",
+
+        # Cross-initiative context
+        "generate.additional_context": "Additional Context (optional)",
+        "generate.additional_hint": "Select other initiatives from the same product to include their documents as extra context in the PRD.",
+        "generate.no_additional": "No other initiatives available.",
+        "generate.use_product_docs": "Include product documentation",
+        "generate.use_product_docs_hint": "Adds product documents and reference links as extra context in the PRD.",
+
+        # Product Docs
+        "product_docs.title": "Product Documentation",
+        "product_docs.card_title": "Product Documentation",
+        "product_docs.desc": "Manage central product documentation. This content can be queried via Q&A and included as context when generating PRDs.",
+        "product_docs.upload": "Upload Documents",
+        "product_docs.upload_hint": "Markdown (.md) or text (.txt) files.",
+        "product_docs.upload_cta": "Upload",
+        "product_docs.links": "Reference Links",
+        "product_docs.links_title": "Title",
+        "product_docs.links_title_placeholder": "e.g. Google Site - Specification",
+        "product_docs.links_url": "URL",
+        "product_docs.links_url_placeholder": "https://sites.google.com/...",
+        "product_docs.links_add": "Add Link",
+        "product_docs.links_empty": "No links added.",
+        "product_docs.documents": "Documents",
+        "product_docs.documents_empty": "No product documents uploaded yet.",
+        "product_docs.delete": "Delete",
+        "product_docs.back": "← Back",
+
+        # Errors
+        "error.ollama": "Could not connect to Ollama. Make sure the server is running.",
+        "error.not_found": "Initiative not found.",
+        "error.exists": "already exists.",
+    },
+}
+
+
+def t(key: str, lang: str = "en") -> str:
+    return TRANSLATIONS.get(lang, {}).get(key, TRANSLATIONS.get("en", {}).get(key, key))
+
+
+LANGS = [
+    ("en", "English"),
+    ("pt-BR", "Português (Brasil)"),
+]

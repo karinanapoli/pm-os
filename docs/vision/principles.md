@@ -1,111 +1,111 @@
 # PM OS Principles
 
-Os princípios abaixo orientam todas as decisões arquiteturais e de produto do PM OS.
+The principles below guide all architectural and product decisions in PM OS.
 
-Quando existir dúvida entre duas soluções, estes princípios deverão prevalecer.
+When in doubt between two solutions, these principles shall prevail.
 
 ---
 
 # 1. Context > Prompt
 
-Sempre priorizamos a qualidade do contexto antes da qualidade do prompt.
+We always prioritize the quality of context over the quality of the prompt.
 
-Prompts orientam modelos.
+Prompts guide models.
 
-Contexto determina a qualidade das respostas.
+Context determines response quality.
 
 ---
 
 # 2. Workflows > Prompts
 
-Nunca construir funcionalidades baseadas apenas em prompts.
+Never build features based solely on prompts.
 
-Todo prompt deve fazer parte de um workflow.
+Every prompt must be part of a workflow.
 
 ---
 
 # 3. AI is a Dependency
 
-A IA é uma dependência do sistema.
+AI is a dependency of the system.
 
-Nunca o centro da arquitetura.
+Never the center of the architecture.
 
-O PM OS deve continuar organizado mesmo que o modelo seja substituído.
+PM OS must remain organized even if the model is replaced.
 
 ---
 
 # 4. Core First
 
-Toda regra de negócio deve permanecer no PM OS Core.
+Every business rule must stay in the PM OS Core.
 
-Interfaces nunca implementam lógica de domínio.
+Interfaces never implement domain logic.
 
 ---
 
 # 5. Low Coupling
 
-Componentes devem depender apenas do que realmente precisam conhecer.
+Components should depend only on what they really need to know.
 
-Mudanças em um componente não devem impactar o restante do sistema.
+Changes in one component should not impact the rest of the system.
 
 ---
 
 # 6. High Cohesion
 
-Cada componente possui apenas uma responsabilidade.
+Each component has only one responsibility.
 
-Se um componente começa a fazer muitas coisas, ele deve ser dividido.
+If a component starts doing too many things, it should be split.
 
 ---
 
 # 7. Composition over Magic
 
-Preferimos pequenos componentes especializados trabalhando juntos.
+We prefer small specialized components working together.
 
-Evitamos componentes gigantes que fazem "tudo".
+We avoid giant components that do "everything".
 
 ---
 
 # 8. Learn by Building
 
-Cada componente do PM OS deve ensinar algum conceito.
+Each PM OS component should teach some concept.
 
-O projeto é também uma ferramenta de aprendizado.
+The project is also a learning tool.
 
 ---
 
 # 9. Open Source by Design
 
-Toda decisão deve considerar clareza, simplicidade e facilidade de contribuição.
+Every decision must consider clarity, simplicity, and ease of contribution.
 
-O projeto deve ser acessível para novos contribuidores.
+The project must be accessible to new contributors.
 
 ---
 
 # 10. Security by Design
 
-Segurança não é uma etapa do workflow.
+Security is not a step in the workflow.
 
-Ela faz parte da arquitetura.
+It is part of the architecture.
 
-Sempre que possível, princípios de segurança devem estar presentes desde o início do desenvolvimento.
+Whenever possible, security principles must be present from the start of development.
 
 ---
 
 # 11. Document Decisions
 
-Toda decisão arquitetural importante deve ser registrada através de um ADR.
+Every important architectural decision must be recorded through an ADR.
 
-Código muda.
+Code changes.
 
-Decisões permanecem.
+Decisions remain.
 
 ---
 
 # 12. Small Iterations
 
-O PM OS evolui através de pequenas sprints.
+PM OS evolves through small sprints.
 
-Cada sprint deve entregar valor.
+Each sprint must deliver value.
 
-Cada sprint deve deixar o projeto melhor do que estava antes.
+Each sprint must leave the project better than it was before.
