@@ -5,34 +5,67 @@
 <div class="card">
     <div class="card-header">
         <h3>{{ "archive.title"|t }}</h3>
+        <span style="font-size:12.5px;color:var(--text-muted)">{{ "archive.subtitle"|t }}</span>
     </div>
     <div class="card-body">
         {% if archived %}
         <div>
             {% for item in archived %}
-            <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border);">
+            <div class="archived-row">
                 <div>
-                    <strong>{{ item.name }}</strong>
-                    <br>
-                    <span style="color: var(--text-muted); font-size: 13px;">
-                        {{ "archive.archived_at"|t }}: {{ item.archived_at }}
-                    </span>
+                    <div class="archived-name">{{ item.name }}</div>
+                    <div class="archived-date">{{ "archive.archived_at"|t }}: {{ item.archived_at }}</div>
                 </div>
                 <div style="display: flex; gap: 8px;">
                     <form method="POST" action="/archived/restore" style="margin: 0;" data-loading="restoring">
                         <input type="hidden" name="name" value="{{ item.name }}">
-                        <button type="submit" class="btn btn-secondary btn-sm">{{ "archive.restore"|t }}</button>
+                        <button type="submit" class="btn btn-secondary btn-sm">↺ {{ "archive.restore"|t }}</button>
                     </form>
-                    <form method="POST" action="/initiative/{{ item.name }}/delete" style="margin: 0;" data-loading="deleting" onsubmit="return confirm('{{ "archive.warning"|t }}')">
-                        <button type="submit" class="btn btn-ghost btn-sm" style="color: var(--danger);">{{ "archive.button"|t }}</button>
-                    </form>
+                    <button type="button" class="btn btn-ghost btn-sm" style="color: var(--coral);" onclick="document.getElementById('permArchiveTarget').value='{{ item.name }}'; PMOS.openModal('perm-archive')">{{ "archive.button"|t }}</button>
                 </div>
             </div>
             {% endfor %}
         </div>
         {% else %}
-        <p style="color: var(--text-muted); font-size: 14px;">{{ "archive.empty"|t }}</p>
+        <div class="empty-state">
+            <div class="empty-icon">🗄</div>
+            <div class="empty-title">{{ "archive.empty_title"|t }}</div>
+            <div class="empty-desc">{{ "archive.empty_desc"|t }}</div>
+        </div>
         {% endif %}
     </div>
 </div>
+
+<div class="modal-overlay" id="modal-perm-archive">
+    <div class="modal modal-sm">
+        <div class="modal-icon-box coral">🗄</div>
+        <div class="modal-title">{{ "archive.warning_title"|t }}</div>
+        <div class="modal-desc">
+            {{ "archive.warning_desc"|t }}
+            <br><span class="seal seal-permanent">{{ "archive.warning_seal"|t }}</span>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-ghost btn-sm" onclick="PMOS.closeModal('perm-archive')">{{ "archive.modal_cancel"|t }}</button>
+            <form method="POST" action="" style="display:inline;" data-loading="deleting" id="permArchiveForm">
+                <input type="hidden" name="name" id="permArchiveTarget" value="">
+                <button type="submit" class="btn btn-coral btn-sm" onclick="PMOS.closeModal('perm-archive')">{{ "archive.button"|t }}</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var permBtn = document.querySelector('[onclick*="permArchiveTarget"]');
+    if (permBtn) {
+        var form = document.getElementById('permArchiveForm');
+        document.querySelectorAll('[onclick*="permArchiveTarget"]').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var name = document.getElementById('permArchiveTarget').value;
+                form.action = '/initiative/' + name + '/delete';
+            });
+        });
+    }
+});
+</script>
 {% endblock %}

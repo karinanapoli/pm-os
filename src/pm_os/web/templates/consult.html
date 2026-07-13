@@ -14,9 +14,13 @@
             </div>
             <div class="form-group">
                 <label>{{ "consult.initiatives"|t }}</label>
+                <div class="check-all-bar">
+                    <span class="hint" id="consultCount">0 {{ "generate.available"|t }}</span>
+                    <button type="button" onclick="toggleAllConsult(true)">{{ "generate.select_all"|t }}</button>
+                </div>
                 <div class="checkbox-group" id="initiatives">
                     {% for name in initiative_names %}
-                    <label class="checkbox-label">
+                    <label class="checkbox-row">
                         <input type="checkbox" name="initiatives" value="{{ name }}" {% if not selected_initiatives or name in selected_initiatives %}checked{% endif %}>
                         <span>{{ name }}</span>
                     </label>
@@ -65,4 +69,23 @@
     </div>
 </div>
 {% endif %}
+<script>
+function toggleAllConsult(checked) {
+    var cbs = document.querySelectorAll('#initiatives input[type=checkbox]');
+    cbs.forEach(function(cb) { cb.checked = checked; });
+}
+document.addEventListener('DOMContentLoaded', function() {
+    var countEl = document.getElementById('consultCount');
+    if (countEl) {
+        var checked = document.querySelectorAll('#initiatives input[type=checkbox]:checked').length;
+        countEl.textContent = checked + ' {{ "generate.available"|t }}';
+        document.querySelectorAll('#initiatives input[type=checkbox]').forEach(function(cb) {
+            cb.addEventListener('change', function() {
+                var c = document.querySelectorAll('#initiatives input[type=checkbox]:checked').length;
+                countEl.textContent = c + ' {{ "generate.available"|t }}';
+            });
+        });
+    }
+});
+</script>
 {% endblock %}

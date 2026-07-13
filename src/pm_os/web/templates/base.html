@@ -6,7 +6,7 @@
     <title>{{ "app.title"|t }}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
     <link rel="stylesheet" href="/static/tour.css">
 </head>
@@ -82,8 +82,63 @@
         <div class="loading-sub" id="loadingSub">{{ "loading.sub"|t }}</div>
     </div>
 
+    <div class="toast-container" id="toastContainer">
+        <div class="toast" id="toast">
+            <span class="toast-icon">✕</span>
+            <span class="toast-text" id="toastText">Ação concluída.</span>
+            <button class="toast-undo" id="toastUndoBtn" style="display:none" onclick="PMOS.hideToast()">{{ "toast.undo"|t }}</button>
+        </div>
+    </div>
+
     <script>
+    window.PMOS = (function() {
+        var toastTimer = null;
+        var undoStack = [];
+
+        function openModal(id) {
+            var el = document.getElementById('modal-' + id);
+            if (el) el.classList.add('active');
+        }
+
+        function closeModal(id) {
+            var el = document.getElementById('modal-' + id);
+            if (el) el.classList.remove('active');
+        }
+
+        function toast(text, undoAction) {
+            clearTimeout(toastTimer);
+            var toastEl = document.getElementById('toast');
+            var textEl = document.getElementById('toastText');
+            var undoBtn = document.getElementById('toastUndoBtn');
+            textEl.textContent = text;
+            if (undoAction) {
+                undoBtn.style.display = 'inline';
+                undoBtn.onclick = function() {
+                    undoAction();
+                    PMOS.hideToast();
+                };
+            } else {
+                undoBtn.style.display = 'none';
+            }
+            toastEl.classList.add('show');
+            toastTimer = setTimeout(function() {
+                toastEl.classList.remove('show');
+            }, undoAction ? 6000 : 3200);
+        }
+
+        function hideToast() {
+            document.getElementById('toast').classList.remove('show');
+        }
+
+        // Close modals on backdrop click
         document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.modal-overlay').forEach(function(modal) {
+                modal.addEventListener('click', function(e) {
+                    if (e.target === modal) modal.classList.remove('active');
+                });
+            });
+
+            // Loading overlay on form submit
             document.querySelectorAll('form').forEach(function(form) {
                 form.addEventListener('submit', function() {
                     var overlay = document.getElementById('loadingOverlay');
@@ -103,14 +158,10 @@
                     overlay.classList.add('active');
                 });
             });
-
-            var modals = document.querySelectorAll('.modal-overlay');
-            modals.forEach(function(modal) {
-                modal.addEventListener('click', function(e) {
-                    if (e.target === modal) modal.classList.remove('active');
-                });
-            });
         });
+
+        return { openModal: openModal, closeModal: closeModal, toast: toast, hideToast: hideToast };
+    })();
     </script>
 </body>
 </html>

@@ -79,10 +79,7 @@
                             {% if server.enabled %}{{ "mcp.deactivate"|t }}{% else %}{{ "mcp.activate"|t }}{% endif %}
                         </button>
                     </form>
-                    <form method="POST" action="/config/mcp/delete" style="margin: 0;" data-loading="deleting" onsubmit="return confirm('{{ "mcp.confirm_delete"|t }}')">
-                        <input type="hidden" name="url" value="{{ server.url }}">
-                        <button type="submit" class="btn btn-ghost btn-sm" style="color: var(--danger);">{{ "mcp.delete"|t }}</button>
-                    </form>
+                    <button type="button" class="btn btn-ghost btn-sm" style="color: var(--danger);" onclick="document.getElementById('mcpDeleteTarget').value='{{ server.url }}'; PMOS.openModal('delete-mcp')">{{ "mcp.delete"|t }}</button>
                 </div>
             </div>
             {% endfor %}
@@ -90,6 +87,24 @@
         {% else %}
         <p style="color: var(--text-muted); font-size: 13px;">{{ "mcp.empty"|t }}</p>
         {% endif %}
+    </div>
+</div>
+
+<div class="modal-overlay" id="modal-delete-mcp">
+    <div class="modal modal-sm">
+        <div class="modal-icon-box coral">✕</div>
+        <div class="modal-title">{{ "mcp.modal_title"|t }}</div>
+        <div class="modal-desc">
+            {{ "mcp.modal_desc"|t }}
+            <br><span class="seal seal-permanent">{{ "mcp.modal_seal"|t }}</span>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-ghost btn-sm" onclick="PMOS.closeModal('delete-mcp')">{{ "mcp.modal_cancel"|t }}</button>
+            <form method="POST" action="/config/mcp/delete" style="display:inline;" data-loading="deleting" id="mcpDeleteForm">
+                <input type="hidden" name="url" id="mcpDeleteTarget" value="">
+                <button type="submit" class="btn btn-coral btn-sm" onclick="PMOS.closeModal('delete-mcp')">{{ "mcp.modal_confirm"|t }}</button>
+            </form>
+        </div>
     </div>
 </div>
 {% endblock %}

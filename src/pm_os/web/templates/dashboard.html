@@ -35,9 +35,10 @@ document.addEventListener('DOMContentLoaded', function() {
         <span class="stat-value">{{ avg_score }}/10</span>
     </div>
     {% if archived_count and archived_count > 0 %}
-    <a href="/archived" class="stat-card" style="border-color: rgba(255,255,255,0.03); opacity: 0.6; text-decoration: none; color: inherit;">
+    <a href="/archived" class="stat-card stat-card-archived" style="text-decoration:none;">
         <div class="stat-label">{{ "dashboard.stats.archived"|t }}</div>
-        <span class="stat-value" style="font-size: 24px; background: none; -webkit-text-fill-color: var(--text-muted);">{{ archived_count }}</span>
+        <span class="stat-value">{{ archived_count }}</span>
+        <div class="stat-cta">{{ "archived.view"|t }} →</div>
     </a>
     {% endif %}
 </div>

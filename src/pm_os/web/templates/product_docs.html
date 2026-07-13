@@ -40,10 +40,7 @@
                     <br>
                     <a href="{{ link.url }}" target="_blank" style="color: var(--primary-light); font-size: 13px;">{{ link.url }}</a>
                 </div>
-                <form method="POST" action="/product-docs/delete-link" style="margin: 0;" data-loading="deleting" onsubmit="return confirm('{{ "archive.confirm_delete"|t }}')">
-                    <input type="hidden" name="url" value="{{ link.url }}">
-                    <button type="submit" class="btn btn-ghost btn-sm" style="color: var(--danger);">{{ "product_docs.delete"|t }}</button>
-                </form>
+                <button type="button" class="btn btn-ghost btn-sm" style="color: var(--danger);" onclick="document.getElementById('deleteLinkTarget').value='{{ link.url }}'; PMOS.openModal('delete-link')">{{ "product_docs.delete"|t }}</button>
             </div>
             {% endfor %}
         </div>
@@ -60,15 +57,49 @@
                     <strong>{{ doc.name }}</strong>
                     <span style="color: var(--text-muted); font-size: 12px; margin-left: 8px;">{{ doc.size }}</span>
                 </div>
-                <form method="POST" action="/product-docs/delete-doc/{{ doc.name }}" style="margin: 0;" data-loading="deleting" onsubmit="return confirm('{{ "archive.confirm_delete"|t }}')">
-                    <button type="submit" class="btn btn-ghost btn-sm" style="color: var(--danger);">{{ "product_docs.delete"|t }}</button>
-                </form>
+                <button type="button" class="btn btn-ghost btn-sm" style="color: var(--danger);" onclick="document.getElementById('deleteDocTarget').value='{{ doc.name }}'; document.getElementById('deleteDocForm').action='/product-docs/delete-doc/{{ doc.name }}'; PMOS.openModal('delete-doc')">{{ "product_docs.delete"|t }}</button>
             </div>
             {% endfor %}
         </div>
         {% else %}
         <p style="color: var(--text-muted); font-size: 13px;">{{ "product_docs.documents_empty"|t }}</p>
         {% endif %}
+    </div>
+</div>
+
+<div class="modal-overlay" id="modal-delete-doc">
+    <div class="modal modal-sm">
+        <div class="modal-icon-box coral">✕</div>
+        <div class="modal-title">{{ "product_docs.delete_confirm_title"|t }}</div>
+        <div class="modal-desc">
+            {{ "product_docs.delete_confirm_desc"|t }}
+            <br><span class="seal seal-permanent">{{ "product_docs.delete_confirm_seal"|t }}</span>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-ghost btn-sm" onclick="PMOS.closeModal('delete-doc')">{{ "archive.delete_cancel"|t }}</button>
+            <form method="POST" action="" style="display:inline;" data-loading="deleting" id="deleteDocForm">
+                <input type="hidden" name="filename" id="deleteDocTarget" value="">
+                <button type="submit" class="btn btn-coral btn-sm" onclick="PMOS.closeModal('delete-doc')">{{ "product_docs.delete"|t }}</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modal-delete-link">
+    <div class="modal modal-sm">
+        <div class="modal-icon-box coral">✕</div>
+        <div class="modal-title">{{ "product_docs.delete_link_title"|t }}</div>
+        <div class="modal-desc">
+            {{ "product_docs.delete_link_desc"|t }}
+            <br><span class="seal seal-permanent">{{ "product_docs.delete_link_seal"|t }}</span>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-ghost btn-sm" onclick="PMOS.closeModal('delete-link')">{{ "archive.delete_cancel"|t }}</button>
+            <form method="POST" action="/product-docs/delete-link" style="display:inline;" data-loading="deleting">
+                <input type="hidden" name="url" id="deleteLinkTarget" value="">
+                <button type="submit" class="btn btn-coral btn-sm" onclick="PMOS.closeModal('delete-link')">{{ "product_docs.delete"|t }}</button>
+            </form>
+        </div>
     </div>
 </div>
 {% endblock %}

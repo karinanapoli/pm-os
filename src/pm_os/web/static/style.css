@@ -30,6 +30,14 @@
     --warning: #f59e0b;
     --danger: #ef4444;
 
+    /* Design tokens v2 — semantic action colors */
+    --amber: #f0a940;
+    --amber-dim: rgba(240, 169, 64, 0.14);
+    --amber-border: rgba(240, 169, 64, 0.3);
+    --coral: #ef5a6f;
+    --coral-dim: rgba(239, 90, 111, 0.14);
+    --coral-border: rgba(239, 90, 111, 0.3);
+
     --border: rgba(255, 255, 255, 0.06);
     --border-light: rgba(255, 255, 255, 0.1);
 
@@ -39,6 +47,7 @@
 
     --shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
     --shadow-glow: 0 0 40px rgba(124, 92, 231, 0.15);
+    --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.5);
 
     --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
     --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
@@ -287,6 +296,31 @@ body {
     transform: translateY(-1px);
 }
 
+.stat-card-archived {
+    background: transparent;
+    border-style: dashed;
+    opacity: 0.85;
+    cursor: pointer;
+}
+
+.stat-card-archived:hover {
+    opacity: 1;
+    border-color: var(--amber);
+}
+
+.stat-card-archived .stat-value {
+    font-size: 22px;
+    color: var(--text-secondary);
+    -webkit-text-fill-color: var(--text-secondary);
+}
+
+.stat-cta {
+    font-size: 11px;
+    color: var(--amber);
+    font-weight: 600;
+    margin-top: 4px;
+}
+
 .stat-label {
     font-size: 12px;
     color: var(--text-muted);
@@ -459,6 +493,26 @@ body {
     background: rgba(255,255,255,0.04);
 }
 
+.btn-amber {
+    background: var(--amber-dim);
+    color: var(--amber);
+    border: 1px solid var(--amber-border);
+}
+
+.btn-amber:hover {
+    background: rgba(240,169,64,0.22);
+}
+
+.btn-coral {
+    background: var(--coral-dim);
+    color: var(--coral);
+    border: 1px solid var(--coral-border);
+}
+
+.btn-coral:hover {
+    background: rgba(239,90,111,0.22);
+}
+
 .btn-sm { padding: 6px 12px; font-size: 12px; }
 .btn-lg { padding: 12px 24px; font-size: 15px; }
 
@@ -466,6 +520,88 @@ body {
     opacity: 0.5;
     cursor: not-allowed;
     transform: none !important;
+}
+
+/* ── Reversibility Seal — signature element ── */
+.seal {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 20px;
+    letter-spacing: 0.01em;
+}
+
+.seal-reversible {
+    background: var(--amber-dim);
+    color: var(--amber);
+}
+
+.seal-permanent {
+    background: var(--coral-dim);
+    color: var(--coral);
+}
+
+/* ── Checkbox Group ── */
+.checkbox-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+}
+
+.checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13.5px;
+    cursor: pointer;
+}
+
+.checkbox-row:last-child {
+    border-bottom: none;
+}
+
+.checkbox-row:hover {
+    background: var(--surface-hover);
+}
+
+.checkbox-row input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--primary);
+    cursor: pointer;
+}
+
+.check-all-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 2px;
+    margin-bottom: 4px;
+}
+
+.check-all-bar .hint {
+    margin: 0;
+}
+
+.check-all-bar button {
+    font-size: 12px;
+    color: var(--primary-light);
+    font-weight: 600;
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+.check-all-bar button:hover {
+    text-decoration: underline;
 }
 
 /* ── Score Badges ── */
@@ -692,6 +828,7 @@ body {
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ── Onboarding Modal ── */
+/* ── Action Modal (confirms, replaces confirm()) ── */
 .modal-overlay {
     display: none;
     position: fixed;
@@ -721,28 +858,109 @@ body {
     to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
-.modal-icon {
-    font-size: 48px;
-    margin-bottom: 16px;
+/* Compact action modal (for confirms, not onboarding) */
+.modal-sm {
+    padding: 24px;
+    max-width: 400px;
 }
 
-.modal h2 {
-    font-size: 24px;
+.modal-icon-box {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 17px;
+    margin-bottom: 14px;
+}
+
+.modal-icon-box.amber { background: var(--amber-dim); color: var(--amber); }
+.modal-icon-box.coral { background: var(--coral-dim); color: var(--coral); }
+
+.modal-title {
+    font-size: 15.5px;
     font-weight: 700;
     margin-bottom: 8px;
 }
 
-.modal p {
+.modal-desc {
+    font-size: 13px;
     color: var(--text-secondary);
-    font-size: 14px;
-    line-height: 1.7;
-    margin-bottom: 24px;
+    line-height: 1.6;
+    margin-bottom: 20px;
+}
+
+.modal-desc .seal {
+    margin-top: 10px;
 }
 
 .modal-actions {
     display: flex;
     gap: 12px;
     justify-content: flex-end;
+}
+
+/* ── Toast ── */
+.toast-container {
+    position: fixed;
+    bottom: 26px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    pointer-events: none;
+}
+
+.toast {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius);
+    padding: 13px 18px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    transform: translateY(20px);
+    pointer-events: none;
+    transition: all 0.25s ease;
+    font-size: 13px;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+.toast-icon {
+    color: var(--coral);
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+.toast-text {
+    flex: 1;
+    color: var(--text);
+}
+
+.toast-undo {
+    color: var(--primary-light);
+    font-weight: 700;
+    font-size: 12.5px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: var(--font);
+    padding: 4px 0;
+}
+
+.toast-undo:hover {
+    text-decoration: underline;
 }
 
 /* ── Steps / Progress ── */

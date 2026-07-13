@@ -20,9 +20,13 @@
             </div>
             <div class="form-group">
                 <label>{{ "generate.additional_context"|t }}</label>
+                <div class="check-all-bar">
+                    <span class="hint" id="additionalCount">{{ initiatives|length }} {{ "generate.available"|t }}</span>
+                    <button type="button" onclick="toggleAllAdditional(true)">{{ "generate.select_all"|t }}</button>
+                </div>
                 <div class="checkbox-group" id="additional_initiatives">
                     {% for init in initiatives %}
-                    <label class="checkbox-label">
+                    <label class="checkbox-row">
                         <input type="checkbox" name="additional_initiatives" value="{{ init.name }}">
                         <span>{{ init.name }}</span>
                     </label>
@@ -125,20 +129,29 @@
 {% endif %}
 
 <script>
+function toggleAllAdditional(checked) {
+    var cbs = document.querySelectorAll('#additional_initiatives input[type=checkbox]');
+    cbs.forEach(function(cb) { cb.checked = checked; });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     var mainSelect = document.getElementById('initiative_name');
     var checkboxGroup = document.getElementById('additional_initiatives');
-    var allLabels = Array.from(checkboxGroup.querySelectorAll('.checkbox-label')).map(function(lbl) {
+    var allLabels = Array.from(checkboxGroup.querySelectorAll('.checkbox-row')).map(function(lbl) {
         var cb = lbl.querySelector('input[type=checkbox]');
         return {label: lbl, cb: cb, value: cb.value, span: lbl.querySelector('span')};
     });
 
     function filterAdditional() {
         var selected = mainSelect.value;
+        var count = 0;
         allLabels.forEach(function(item) {
             item.label.style.display = (item.value !== selected) ? '' : 'none';
             if (item.value === selected) item.cb.checked = false;
+            if (item.label.style.display !== 'none') count++;
         });
+        var countEl = document.getElementById('additionalCount');
+        if (countEl) countEl.textContent = count + ' {{ "generate.available"|t }}';
     }
 
     mainSelect.addEventListener('change', filterAdditional);

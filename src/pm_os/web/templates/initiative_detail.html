@@ -7,11 +7,7 @@
     {% if prd_exists %}
     <a href="/validate/{{ initiative.name }}" class="btn btn-secondary btn-sm">✓ {{ "validate.title"|t }}</a>
     {% endif %}
-    <form method="POST" action="/initiative/{{ initiative.name }}/delete"
-          onsubmit="return confirm(&#39;{{ "archive.confirm"|t }}&#39;)"
-          style="display:inline;">
-        <button type="submit" class="btn btn-ghost btn-sm" style="color: var(--danger);">✕ {{ "archive.button"|t }}</button>
-    </form>
+    <button type="button" class="btn btn-amber btn-sm" onclick="PMOS.openModal('archive')">🗄 {{ "archive.button"|t }}</button>
 </div>
 {% endblock %}
 
@@ -20,7 +16,7 @@
     <div class="stat-card">
         <div class="stat-label">{{ "initiative.detail.status"|t }}</div>
         <span class="stat-value" style="font-size: 24px;">
-            <span class="badge badge-{{ metadata.status if metadata else 'unknown' }}">{{ (metadata.status if metadata else 'unknown')|t }}</span>
+            <span class="badge badge-{{ metadata.status if metadata else 'unknown' }}" style="font-size:12px;padding:4px 12px;">{{ (metadata.status if metadata else 'unknown')|t }}</span>
         </span>
     </div>
     <div class="stat-card">
@@ -54,9 +50,9 @@
                 </span>
                 <div style="display: flex; align-items: center; gap: 12px;">
                     <span class="doc-size">{{ doc.size }}</span>
-                    <form method="POST" action="/initiative/{{ initiative.name }}/delete-doc" style="display:inline;" data-loading="deleting" onsubmit="return confirm('{{ "archive.confirm_delete"|t }}')">
+                    <form method="POST" action="/initiative/{{ initiative.name }}/delete-doc" style="display:inline;" data-loading="deleting" id="deleteDocForm-{{ loop.index0 }}">
                         <input type="hidden" name="filename" value="{{ doc.name }}">
-                        <button type="submit" class="doc-delete" title="Delete">✕</button>
+                        <button type="button" class="doc-delete" title="Delete" onclick="PMOS.openModal('delete-doc')">✕</button>
                     </form>
                 </div>
             </div>
@@ -116,5 +112,54 @@
     </div>
 </div>
 {% endif %}
+
+<div class="modal-overlay" id="modal-archive">
+    <div class="modal modal-sm">
+        <div class="modal-icon-box amber">🗄</div>
+        <div class="modal-title">{{ "archive.modal_title"|t }}</div>
+        <div class="modal-desc">
+            {{ "archive.modal_desc"|t }}
+            <br><span class="seal seal-reversible">{{ "archive.modal_seal"|t }}</span>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-ghost btn-sm" onclick="PMOS.closeModal('archive')">{{ "archive.modal_cancel"|t }}</button>
+            <form method="POST" action="/initiative/{{ initiative.name }}/delete" style="display:inline;">
+                <button type="submit" class="btn btn-amber btn-sm" onclick="PMOS.closeModal('archive')">{{ "archive.modal_confirm"|t }}</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modal-delete-doc">
+    <div class="modal modal-sm">
+        <div class="modal-icon-box coral">✕</div>
+        <div class="modal-title">{{ "archive.delete_title"|t }}</div>
+        <div class="modal-desc">
+            {{ "archive.delete_desc"|t }}
+            <br><span class="seal seal-permanent">{{ "archive.delete_seal"|t }}</span>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-ghost btn-sm" onclick="PMOS.closeModal('delete-doc')">{{ "archive.delete_cancel"|t }}</button>
+            <form id="deleteDocConfirm" method="POST" action="" style="display:inline;">
+                <button type="submit" class="btn btn-coral btn-sm" onclick="PMOS.closeModal('delete-doc')">{{ "archive.delete_confirm"|t }}</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var deleteForms = document.querySelectorAll('[id^="deleteDocForm-"]');
+    deleteForms.forEach(function(form) {
+        var btn = form.querySelector('.doc-delete');
+        if (btn) {
+            btn.addEventListener('click', function() {
+                var confirmForm = document.getElementById('deleteDocConfirm');
+                confirmForm.action = form.action;
+            });
+        }
+    });
+});
+</script>
 
 {% endblock %}
