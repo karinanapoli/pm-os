@@ -1,4 +1,5 @@
 import os
+from datetime import date, timedelta
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, Request, UploadFile
@@ -138,6 +139,37 @@ async def _dashboard(request, force_onboarding=False):
 
     avg_score = round(total_score / scored_count, 1) if scored_count > 0 else 0
 
+    # ── Compute attention items ──
+    lang = config_manager.get("lang", "pt-BR")
+    today = date.today()
+    threshold = timedelta(days=7)
+    attention_items = []
+    for init in initiatives:
+        metadata = scan._load_metadata(init.path)
+        score = scan._read_validation_score(init.path)
+        prd_exists = (init.path / "artifacts" / "prd.md").exists()
+        created_str = (metadata or {}).get("created_at", "")
+        age = 0
+        if created_str:
+            try:
+                created = date.fromisoformat(created_str)
+                age = (today - created).days
+            except ValueError:
+                pass
+
+        if not prd_exists and age > 7:
+            attention_items.append({
+                "name": init.name,
+                "reason": _t("attention.no_prd", lang),
+                "action": "generate",
+            })
+        elif prd_exists and score is not None and score < 7:
+            attention_items.append({
+                "name": init.name,
+                "reason": _t("attention.low_score", lang),
+                "action": "view",
+            })
+
     archive_dir = repo.initiatives_path.parent / "archived"
     archived_count = 0
     if archive_dir.exists():
@@ -158,6 +190,7 @@ async def _dashboard(request, force_onboarding=False):
             show_onboarding=show_onboarding,
             has_validation=has_validation,
             archived_count=archived_count,
+            attention_items=attention_items,
         ),
     )
 

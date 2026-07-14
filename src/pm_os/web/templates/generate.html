@@ -7,13 +7,13 @@
         <h3>{{ "generate.card_title"|t }}</h3>
     </div>
     <div class="card-body">
-        <form method="POST" action="/generate" class="form" data-loading="processing">
+        <form method="POST" action="/generate" class="form" data-loading="processing" id="genForm">
             <div class="form-group">
                 <label for="initiative_name">{{ "generate.initiative"|t }}</label>
-                <select name="initiative_name" id="initiative_name" required>
+                <select name="initiative_name" id="initiative_name" required onchange="updatePreview()">
                     <option value="">{{ "generate.initiative_select"|t }}</option>
                     {% for init in initiatives %}
-                    <option value="{{ init.name }}">{{ init.name }}</option>
+                    <option value="{{ init.name }}" data-docs="{{ init.doc_count }}">{{ init.name }}</option>
                     {% endfor %}
                 </select>
                 <div class="form-hint">{{ "generate.initiative_hint"|t }}</div>
@@ -27,8 +27,9 @@
                 <div class="checkbox-group" id="additional_initiatives">
                     {% for init in initiatives %}
                     <label class="checkbox-row">
-                        <input type="checkbox" name="additional_initiatives" value="{{ init.name }}">
+                        <input type="checkbox" name="additional_initiatives" value="{{ init.name }}" class="gen-extra" data-name="{{ init.name }}" data-docs="{{ init.doc_count }}" onchange="updatePreview()">
                         <span>{{ init.name }}</span>
+                        <span class="doc-size" style="margin-left:auto">{{ init.doc_count }} {{ "dashboard.docs"|t }}</span>
                     </label>
                     {% endfor %}
                 </div>
@@ -36,16 +37,25 @@
             </div>
             <div class="form-group">
                 <label class="checkbox-label">
-                    <input type="checkbox" name="use_product_docs" value="true">
+                    <input type="checkbox" name="use_product_docs" value="true" id="gen-product-docs" onchange="updatePreview()">
                     <span>{{ "generate.use_product_docs"|t }}</span>
                 </label>
                 <div class="form-hint">{{ "generate.use_product_docs_hint"|t }}</div>
             </div>
+
+            {# ── Live context preview ── #}
+            <div class="form-group">
+                <label>{{ "generate.preview_title"|t }}</label>
+                <div class="preview-box" id="genPreview">
+                    <div class="preview-empty">{{ "generate.preview_empty"|t }}</div>
+                </div>
+            </div>
+
             <div class="form-group">
                 <label>{{ "generate.model"|t }}</label>
                 <p class="form-hint" style="margin-top: 0;">{{ config.model }} · <a href="/config" style="color: var(--primary-light);">{{ "generate.change"|t }}</a></p>
             </div>
-            <button type="submit" class="btn btn-ai">{{ "generate.cta"|t }}</button>
+            <button type="submit" class="btn btn-ai" id="genCta">{{ "generate.cta"|t }}</button>
         </form>
     </div>
 </div>
@@ -57,7 +67,7 @@
 {% endif %}
 
 {% if result %}
-<div class="card">
+<div class="card" id="genResult">
     <div class="card-header">
         <h3>{{ "generate.result_for"|t }} {{ result.initiative }}</h3>
         {% if result.score is defined %}
@@ -67,52 +77,28 @@
         {% endif %}
     </div>
     <div class="card-body">
+        <div class="gen-result-box">
+            <span class="gen-result-icon">✅</span>
+            <div>
+                <div style="font-weight:700;font-size:14px;margin-bottom:2px">{{ "generate.result_success"|t }}</div>
+                {% if result.score is defined %}
+                <div style="font-size:12.5px;color:var(--text-secondary)">{{ "generate.result_score"|t }}: <strong style="color:var(--success)">{{ "%.1f"|format(result.score|float) }}/10</strong></div>
+                {% endif %}
+            </div>
+        </div>
+
         {% if result.additional or result.product_docs_used %}
-        <div style="margin-bottom: 16px; display: flex; gap: 8px; flex-wrap: wrap;">
+        <div style="margin-bottom: 16px; margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap;">
             {% if result.additional %}
-            <span style="padding: 4px 10px; font-size: 12px; background: rgba(124,92,231,0.1); border: 1px solid rgba(124,92,231,0.2); border-radius: 12px; color: var(--primary-light);">
+            <span style="padding: 4px 10px; font-size: 12px; background: rgba(110,86,217,0.1); border: 1px solid rgba(110,86,217,0.2); border-radius: 12px; color: var(--primary-light);">
                 + {{ result.additional | join(", ") }}
             </span>
             {% endif %}
             {% if result.product_docs_used %}
-            <span style="padding: 4px 10px; font-size: 12px; background: rgba(72,187,120,0.1); border: 1px solid rgba(72,187,120,0.2); border-radius: 12px; color: #48bb78;">
+            <span style="padding: 4px 10px; font-size: 12px; background: rgba(52,201,143,0.1); border: 1px solid rgba(52,201,143,0.2); border-radius: 12px; color: var(--success);">
                 + {{ "generate.product_docs_badge"|t }}
             </span>
             {% endif %}
-        </div>
-        {% endif %}
-        {% if result.sections %}
-        <div class="sections-grid">
-            {% for section in result.sections %}
-            <div class="section-card">
-                <div class="section-header">
-                    <span class="section-name">{{ section.name }}</span>
-                    <span class="score score-{{ 'high' if section.score >= 7 else 'mid' if section.score >= 5 else 'low' }}">
-                        {{ "%.1f"|format(section.score) }}/10
-                    </span>
-                </div>
-                {% if section.issues %}
-                <div class="section-issues">
-                    <strong>{{ "generate.issues"|t }}:</strong>
-                    <ul>
-                        {% for issue in section.issues %}
-                        <li>{{ issue }}</li>
-                        {% endfor %}
-                    </ul>
-                </div>
-                {% endif %}
-                {% if section.suggestions %}
-                <div class="section-suggestions">
-                    <strong>{{ "generate.suggestions"|t }}:</strong>
-                    <ul>
-                        {% for suggestion in section.suggestions %}
-                        <li>{{ suggestion }}</li>
-                        {% endfor %}
-                    </ul>
-                </div>
-                {% endif %}
-            </div>
-            {% endfor %}
         </div>
         {% endif %}
 
@@ -132,6 +118,39 @@
 function toggleAllAdditional(checked) {
     var cbs = document.querySelectorAll('#additional_initiatives input[type=checkbox]');
     cbs.forEach(function(cb) { cb.checked = checked; });
+    updatePreview();
+}
+
+function updatePreview() {
+    var box = document.getElementById('genPreview');
+    var mainSel = document.getElementById('initiative_name');
+    var mainOpt = mainSel.options[mainSel.selectedIndex];
+    var mainDocs = mainOpt && mainOpt.dataset.docs ? parseInt(mainOpt.dataset.docs) : 0;
+
+    if (!mainSel.value) {
+        box.innerHTML = '<div class="preview-empty">{{ "generate.preview_empty"|t }}</div>';
+        return;
+    }
+
+    var lines = [];
+    var total = mainDocs;
+    lines.push('<div class="preview-line"><span class="dot"></span>' + mainDocs + ' {{ "generate.preview_from"|t }} <strong style="color:var(--text)">' + mainOpt.text + '</strong></div>');
+
+    document.querySelectorAll('.gen-extra:checked').forEach(function(cb) {
+        var d = parseInt(cb.dataset.docs);
+        total += d;
+        lines.push('<div class="preview-line"><span class="dot"></span>' + d + ' {{ "generate.preview_from"|t }} <strong style="color:var(--text)">' + cb.dataset.name + '</strong> ({{ "generate.preview_extra"|t }})</div>');
+    });
+
+    if (document.getElementById('gen-product-docs').checked) {
+        total += 5;
+        lines.push('<div class="preview-line"><span class="dot"></span>{{ "generate.preview_product_docs"|t }}</div>');
+    }
+
+    box.innerHTML =
+        '<div class="preview-title">{{ "generate.preview_heading"|t }}</div>' +
+        lines.join('') +
+        '<div class="preview-total">{{ "generate.preview_total_prefix"|t }} ' + total + ' {{ "generate.preview_total_suffix"|t }}</div>';
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -152,6 +171,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         var countEl = document.getElementById('additionalCount');
         if (countEl) countEl.textContent = count + ' {{ "generate.available"|t }}';
+        updatePreview();
     }
 
     mainSelect.addEventListener('change', filterAdditional);

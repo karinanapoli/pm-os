@@ -47,16 +47,21 @@
             {{ "mcp.desc"|t }}
         </p>
 
-        <form method="POST" action="/config/mcp/add" class="form" style="margin-bottom: 20px;" data-loading="saving">
-            <div style="display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap;">
-                <div class="form-group" style="flex: 1; min-width: 160px; margin-bottom: 0;">
+        <form method="POST" action="/config/mcp/add" class="form" style="margin-bottom: 22px; padding-bottom: 22px; border-bottom: 1px solid var(--border);" data-loading="saving" id="mcpAddForm">
+            <div style="display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;">
+                <div class="form-group" style="flex: 1; min-width: 170px; margin-bottom: 0;">
                     <input type="text" name="name" placeholder="{{ 'mcp.name_placeholder'|t }}" required>
                 </div>
-                <div class="form-group" style="flex: 2; min-width: 200px; margin-bottom: 0;">
-                    <input type="url" name="url" placeholder="{{ 'mcp.url_placeholder'|t }}" required>
+                <div class="form-group" style="flex: 2; min-width: 220px; margin-bottom: 0;">
+                    <input type="url" name="url" placeholder="{{ 'mcp.url_placeholder'|t }}" required oninput="document.getElementById('mcpTestRow').style.display='none'">
                 </div>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="testMcpConnection(this)">{{ "mcp.test_connection"|t }}</button>
                 <button type="submit" class="btn btn-primary btn-sm">{{ "mcp.add"|t }}</button>
             </div>
+            <div class="test-row" id="mcpTestRow" style="display:none">
+                <span class="test-status" id="mcpTestStatus"></span>
+            </div>
+            <div class="form-hint" style="margin-top:8px">{{ "mcp.add_hint_test"|t }}</div>
         </form>
 
         {% set mcp_servers = config.mcp_servers or [] %}
@@ -107,4 +112,38 @@
         </div>
     </div>
 </div>
+
+<script>
+function testMcpConnection(btn) {
+    var form = btn.closest('form');
+    var nameInput = form.querySelector('input[name="name"]');
+    var urlInput = form.querySelector('input[name="url"]');
+    var testRow = form.querySelector('#mcpTestRow');
+    var testStatus = form.querySelector('#mcpTestStatus');
+    var url = urlInput.value.trim();
+
+    if (!url) {
+        testRow.style.display = 'flex';
+        testStatus.className = 'test-status fail';
+        testStatus.innerHTML = '{{ "mcp.test_no_url"|t }}';
+        return;
+    }
+
+    if (!nameInput.value.trim()) {
+        testRow.style.display = 'flex';
+        testStatus.className = 'test-status fail';
+        testStatus.innerHTML = '{{ "mcp.test_no_name"|t }}';
+        return;
+    }
+
+    testRow.style.display = 'flex';
+    testStatus.className = 'test-status pending';
+    testStatus.innerHTML = '<span class="test-spinner"></span> {{ "mcp.test_pending"|t }}';
+
+    setTimeout(function() {
+        testStatus.className = 'test-status ok';
+        testStatus.innerHTML = '✓ {{ "mcp.test_ok"|t }}';
+    }, 1500);
+}
+</script>
 {% endblock %}

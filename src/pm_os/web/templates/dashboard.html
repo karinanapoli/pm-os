@@ -16,6 +16,8 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 {% endif %}
 
+{% if initiatives %}
+
 {# ── Stats Row ── #}
 <div class="stats-row">
     <div class="stat-card">
@@ -23,7 +25,7 @@ document.addEventListener('DOMContentLoaded', function() {
         <span class="stat-value">{{ total }}</span>
     </div>
     <div class="stat-card">
-        <div class="stat-label">{{ "dashboard.stats.prds"|t }}</div>
+        <div class="stat-label" title="{{ 'dashboard.stats.prds_tooltip'|t }}">{{ "dashboard.stats.prds"|t }}</div>
         <span class="stat-value">{{ has_prd }}</span>
     </div>
     <div class="stat-card">
@@ -43,8 +45,32 @@ document.addEventListener('DOMContentLoaded', function() {
     {% endif %}
 </div>
 
+{# ── Attention Panel ── #}
+{% if attention_items %}
+<div class="card attn-card">
+    <div class="card-header">
+        <h3>{{ "dashboard.attention.title"|t }}</h3>
+        <span style="font-size:12.5px;color:var(--text-muted)">{{ attention_items|length }} {{ "dashboard.attention.count"|t }}</span>
+    </div>
+    <div class="card-body">
+        {% for item in attention_items %}
+        <div class="attn-row">
+            <div class="attn-left">
+                <span class="attn-name">{{ item.name }}</span>
+                <span class="attn-reason">{{ item.reason }}</span>
+            </div>
+            {% if item.action == 'generate' %}
+            <a href="/generate" class="btn btn-ai btn-sm">{{ "dashboard.attention.cta_generate"|t }}</a>
+            {% else %}
+            <a href="/initiative/{{ item.name }}" class="btn btn-secondary btn-sm">{{ "dashboard.attention.cta_view"|t }}</a>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
 {# ── Initiatives Grid ── #}
-{% if initiatives %}
 <div class="card">
     <div class="card-header">
         <h3>{{ "dashboard.initiatives"|t }}</h3>
@@ -60,7 +86,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <span>{{ "dashboard.stats.score"|t }}: {{ init.score }}</span>
                 </div>
                 <div style="font-size: 13px; color: var(--text-muted); display: flex; gap: 16px;">
-                    <span>📄 {{ "dashboard.has_prd"|t if init.has_prd else "dashboard.no_prd"|t }}</span>
+                    <span title="{{ 'dashboard.has_prd_tooltip'|t if init.has_prd else 'dashboard.no_prd_tooltip'|t }}">📄 {{ "dashboard.has_prd"|t if init.has_prd else "dashboard.no_prd"|t }}</span>
                     <span>📁 {{ init.doc_count }} {{ "dashboard.docs"|t }}</span>
                 </div>
             </a>
@@ -68,14 +94,36 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
     </div>
 </div>
+
 {% else %}
-<div class="card">
+
+{# ── Empty State (no initiatives) ── #}
+<div class="card" style="margin-top:6vh">
     <div class="card-body">
-        <div class="empty-state">
-            <div class="empty-icon">📋</div>
-            <h2>{{ "dashboard.empty.title"|t }}</h2>
-            <p>{{ "dashboard.empty.desc"|t }}</p>
-            <a href="/initiatives/new" class="btn-primary">{{ "initiative.new.create"|t }}</a>
+        <div class="empty-state" style="max-width:480px;padding:44px 24px 36px">
+            <div class="empty-icon">◇</div>
+            <div class="empty-title" style="font-size:19px">{{ "dashboard.empty.title"|t }}</div>
+            <div class="empty-desc" style="max-width:400px;margin-left:auto;margin-right:auto">{{ "dashboard.empty.desc_full"|t }}</div>
+
+            <div class="onboard-steps">
+                <div class="onboard-step">
+                    <span class="onboard-num">1</span>
+                    <div><strong>{{ "dashboard.empty.step1_title"|t }}</strong><span>{{ "dashboard.empty.step1_desc"|t }}</span></div>
+                </div>
+                <div class="onboard-arrow">→</div>
+                <div class="onboard-step">
+                    <span class="onboard-num ai">2</span>
+                    <div><strong>{{ "dashboard.empty.step2_title"|t }}</strong><span>{{ "dashboard.empty.step2_desc"|t }}</span></div>
+                </div>
+                <div class="onboard-arrow">→</div>
+                <div class="onboard-step">
+                    <span class="onboard-num">3</span>
+                    <div><strong>{{ "dashboard.empty.step3_title"|t }}</strong><span>{{ "dashboard.empty.step3_desc"|t }}</span></div>
+                </div>
+            </div>
+
+            <a href="/initiatives/new" class="btn btn-primary">{{ "dashboard.empty.cta"|t }}</a>
+            <a href="/onboarding/show" class="btn btn-ghost btn-sm" style="display:block;margin:12px auto 0">{{ "dashboard.empty.tour_cta"|t }}</a>
         </div>
     </div>
 </div>
