@@ -264,9 +264,11 @@ async def upload_context_doc(
     uploaded = 0
     for doc in docs:
         if doc.filename:
-            content = await doc.read()
-            (ctx_dir / doc.filename).write_bytes(content)
-            uploaded += 1
+            safe_name = _safe_filename(doc.filename)
+            if safe_name:
+                content = await doc.read()
+                (ctx_dir / safe_name).write_bytes(content)
+                uploaded += 1
 
     if uploaded > 0:
         tracker = ChangeTracker()
@@ -285,11 +287,15 @@ async def delete_context_doc(
     if not selected:
         return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
 
-    doc_path = selected.path / "context" / filename
-    if doc_path.exists():
-        doc_path.unlink()
-        tracker = ChangeTracker()
-        tracker.update_manifest(str(selected.path))
+    safe_name = _safe_filename(filename)
+    if safe_name:
+        doc_path = (selected.path / "context" / safe_name).resolve()
+        ctx_dir = (selected.path / "context").resolve()
+        # Ensure the resolved path is still inside the context directory
+        if str(doc_path).startswith(str(ctx_dir)) and doc_path.exists():
+            doc_path.unlink()
+            tracker = ChangeTracker()
+            tracker.update_manifest(str(selected.path))
 
     return await initiative_detail(request, initiative_name)
 
@@ -321,6 +327,12 @@ async def create_initiative(
     if not init_id:
         safe_name = re.sub(r'[^A-Z0-9]+', '-', name.strip().upper()).strip('-')
         init_id = f"INT-{safe_name[:30]}"
+    else:
+        # Sanitize user-supplied ID: remove path separators and dangerous chars
+        init_id = re.sub(r'[^A-Za-z0-9_-]+', '', init_id).strip('-_.')
+        if not init_id:
+            safe_name = re.sub(r'[^A-Z0-9]+', '-', name.strip().upper()).strip('-')
+            init_id = f"INT-{safe_name[:30]}"
 
     base_path = repo.initiatives_path / init_id
     if base_path.exists():
@@ -843,7 +855,9 @@ async def upload_product_docs(
     ctx.mkdir(parents=True, exist_ok=True)
     for doc in docs:
         if doc.filename:
-            (ctx / doc.filename).write_bytes(await doc.read())
+            safe_name = _safe_filename(doc.filename)
+            if safe_name:
+                (ctx / safe_name).write_bytes(await doc.read())
     return await product_docs_page(request)
 
 
@@ -861,9 +875,12 @@ async def add_product_link(
 
 @app.post("/product-docs/delete-doc/{filename}", response_class=HTMLResponse)
 async def delete_product_doc(request: Request, filename: str):
-    fp = PRODUCT_DOCS_DIR / "context" / filename
-    if fp.exists() and fp.is_file():
-        fp.unlink()
+    safe_name = _safe_filename(filename)
+    if safe_name:
+        fp = (PRODUCT_DOCS_DIR / "context" / safe_name).resolve()
+        ctx_dir = (PRODUCT_DOCS_DIR / "context").resolve()
+        if str(fp).startswith(str(ctx_dir)) and fp.exists() and fp.is_file():
+            fp.unlink()
     return await product_docs_page(request)
 
 
@@ -908,10 +925,15 @@ async def restore_initiative(request: Request, name: str = Form(...)):
     import shutil
     repo = InitiativeRepository()
     archive_dir = repo.initiatives_path.parent / "archived"
-    src = archive_dir / name
+    # Prevent path traversal: reject names with parent dir components
+    clean_name = Path(name).name
+    if not clean_name:
+        return await archived_page(request)
+    src = archive_dir / clean_name
     if src.exists() and src.is_dir():
-        # Extract original name from archive name (format: name_timestamp)
-        original_name = name.rsplit("_", 1)[0] if "_" in name else name
+        # Extract original name from archive name (format: name_YYYYMMDD_HHMMSS)
+        parts = clean_name.rsplit("_", 2)
+        original_name = parts[0] if len(parts) >= 2 else clean_name
         dst = repo.initiatives_path / original_name
         if dst.exists():
             dst = repo.initiatives_path / f"{original_name}_restored"
@@ -922,6 +944,16 @@ async def restore_initiative(request: Request, name: str = Form(...)):
 
 
 # ─── Helpers ───
+
+def _safe_filename(name: str) -> str:
+    """Strip directory components from a filename to prevent path traversal.
+    Returns empty string if the name is unsafe.
+    """
+    # Reject names with parent-dir traversal or absolute paths
+    if ".." in name or name.startswith("/"):
+        return ""
+    return Path(name).name
+
 
 class _SilentLogger:
     def info(self, msg):
