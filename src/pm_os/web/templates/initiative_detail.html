@@ -83,17 +83,24 @@
 {% if prd_exists %}
 <div class="card">
     <div class="card-header">
-        <h3>PRD</h3>
+        <h3>PRD {% if version_label %}<span style="font-size: 12px; color: var(--text-muted); font-weight: 400;">— {{ "prd_versions.view"|t }} {{ version_label }}</span>{% endif %}</h3>
         <div style="display: flex; gap: 8px;">
+            {% if version_label %}
+            <a href="/initiative/{{ initiative.name }}" class="btn btn-ghost btn-sm">{{ "prd_versions.back"|t }}</a>
+            {% else %}
             <a href="/validate/{{ initiative.name }}" class="btn btn-secondary btn-sm">{{ "validate.title"|t }}</a>
             <a href="/generate" class="btn btn-ghost btn-sm">{{ "initiative.detail.regenerate"|t }}</a>
+            {% endif %}
         </div>
     </div>
     <div class="card-body">
-        <details class="prd-preview">
+        <details class="prd-preview" {% if version_label %}open{% endif %}>
             <summary>{{ "initiative.detail.view_prd"|t }}</summary>
             <pre class="prd-content">{{ prd_content }}</pre>
         </details>
+        <div style="margin-top: 12px;">
+            <a href="/initiative/{{ initiative.name }}/prd/download" class="btn btn-ghost btn-sm">⬇ {{ "generate.download_prd"|t }}</a>
+        </div>
     </div>
 </div>
 {% endif %}
@@ -109,6 +116,32 @@
         <p style="color: var(--text-secondary); font-size: 14px;">
             {{ "dashboard.stats.score"|t }}: <strong>{{ validation_score }}</strong>
         </p>
+    </div>
+</div>
+{% endif %}
+
+{# ── PRD Version History ── #}
+{% if prd_versions and prd_versions|length > 0 %}
+<div class="card">
+    <div class="card-header">
+        <h3>{{ "prd_versions.title"|t }}</h3>
+        <span style="font-size: 13px; color: var(--text-muted);">{{ prd_versions|length }} {{ "prd_versions.count"|t }}</span>
+    </div>
+    <div class="card-body">
+        <div class="doc-list">
+            {% for ver in prd_versions %}
+            <div class="doc-item">
+                <span class="doc-name">
+                    <span>📄</span>
+                    {{ ver.timestamp }}
+                </span>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span class="doc-size">{{ (ver.size // 1024) if ver.size > 1024 else ver.size }} {{ "KB" if ver.size > 1024 else "B" }}</span>
+                    <a href="/initiative/{{ initiative.name }}/prd/{{ ver.timestamp }}" class="btn btn-ghost btn-sm">{{ "prd_versions.view"|t }}</a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
     </div>
 </div>
 {% endif %}

@@ -3,7 +3,7 @@ from typing import Optional
 
 from pm_os.contracts.logger import Logger
 from pm_os.contracts.workflow_contracts import (
-    AIClientProtocol,
+    AIClient,
     ContextBuilderProtocol,
     InitiativeRepositoryProtocol,
     MarkdownWriterProtocol,
@@ -28,7 +28,7 @@ class CreatePRDWorkflow:
         initiative_repository: InitiativeRepositoryProtocol,
         context_builder: ContextBuilderProtocol,
         prompt_builder: PromptBuilderProtocol,
-        ai_client: AIClientProtocol,
+        ai_client: AIClient,
         markdown_writer: MarkdownWriterProtocol,
         logger: Logger,
         change_tracker: Optional[ChangeTracker] = None,

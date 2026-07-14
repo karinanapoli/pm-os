@@ -1,25 +1,41 @@
 import json
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Any
 
 CONFIG_DIR = Path(os.getenv("PM_OS_CONFIG_DIR", str(Path.home() / ".pm_os")))
 CONFIG_FILE = CONFIG_DIR / "config.json"
 
-DEFAULT_CONFIG = {
+SCHEMA: dict[str, type] = {
+    "model": str,
+    "ollama_url": str,
+    "lang": str,
+    "onboarding_dismissed": bool,
+    "mcp_servers": list,
+    "auth_enabled": bool,
+    "auth_username": str,
+    "auth_password": str,
+}
+
+DEFAULT_CONFIG: dict[str, Any] = {
     "model": "llama3.2:1b",
     "ollama_url": "http://localhost:11434",
-    "lang": "pt-BR",
+    "lang": "en",
     "onboarding_dismissed": False,
     "mcp_servers": [],
+    "auth_enabled": False,
+    "auth_username": "",
+    "auth_password": "",
 }
 
 
-class ConfigManager:
-    """
-    Manages PM OS configuration persisted in ~/.pm_os/config.json.
-    """
+def _validate(key: str, value: Any) -> None:
+    expected = SCHEMA.get(key)
+    if expected is not None and not isinstance(value, expected):
+        raise TypeError(f"Config '{key}' must be {expected.__name__}, got {type(value).__name__}")
 
+
+class ConfigManager:
     def __init__(self):
         self._config = self._load()
 
@@ -29,18 +45,23 @@ class ConfigManager:
     def get_all(self) -> dict:
         return dict(self._config)
 
-    def set(self, key: str, value: str) -> None:
+    def set(self, key: str, value: Any) -> None:
+        _validate(key, value)
         self._config[key] = value
         self._save()
 
     def set_all(self, updates: dict) -> None:
+        for k, v in updates.items():
+            _validate(k, v)
         self._config.update(updates)
         self._save()
 
     def _load(self) -> dict:
         if CONFIG_FILE.exists():
             try:
-                return {**DEFAULT_CONFIG, **json.loads(CONFIG_FILE.read_text())}
+                raw = json.loads(CONFIG_FILE.read_text())
+                merged = {**DEFAULT_CONFIG, **raw}
+                return {k: v for k, v in merged.items() if k in DEFAULT_CONFIG}
             except (json.JSONDecodeError, OSError):
                 return dict(DEFAULT_CONFIG)
         return dict(DEFAULT_CONFIG)

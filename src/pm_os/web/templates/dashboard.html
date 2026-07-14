@@ -122,7 +122,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
             </div>
 
-            <a href="/initiatives/new" class="btn btn-primary">{{ "dashboard.empty.cta"|t }}</a>
+            <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:4px">
+                <form method="POST" action="/quickstart" data-loading="processing" style="display:inline">
+                    <button type="submit" class="btn btn-ai">{{ "quickstart.cta"|t }}</button>
+                </form>
+                <a href="/initiatives/new" class="btn btn-primary">{{ "dashboard.empty.cta"|t }}</a>
+            </div>
             <a href="/onboarding/show" class="btn btn-ghost btn-sm" style="display:block;margin:12px auto 0">{{ "dashboard.empty.tour_cta"|t }}</a>
         </div>
     </div>

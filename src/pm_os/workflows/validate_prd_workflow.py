@@ -2,7 +2,7 @@ from pathlib import Path
 
 from pm_os.contracts.logger import Logger
 from pm_os.contracts.workflow_contracts import (
-    AIClientProtocol,
+    AIClient,
     InitiativeRepositoryProtocol,
     MarkdownWriterProtocol,
 )
@@ -20,7 +20,7 @@ class ValidatePRDWorkflow:
     def __init__(
         self,
         initiative_repository: InitiativeRepositoryProtocol,
-        ai_client: AIClientProtocol,
+        ai_client: AIClient,
         markdown_writer: MarkdownWriterProtocol,
         logger: Logger,
     ):

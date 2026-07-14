@@ -7,6 +7,8 @@ class SectionEvaluation:
     score: float
     issues: list[str] = field(default_factory=list)
     suggestions: list[str] = field(default_factory=list)
+    rationale: str = ""
+    action_items: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -34,10 +36,20 @@ class ValidationReport:
             lines.append(f"**Score:** {section.score:.1f}/10")
             lines.append("")
 
+            if section.rationale:
+                lines.append(f"**Why this score:** {section.rationale}")
+                lines.append("")
+
             if section.issues:
                 lines.append("**Issues:**")
                 for issue in section.issues:
                     lines.append(f"- {issue}")
+                lines.append("")
+
+            if section.action_items:
+                lines.append("**Action items:**")
+                for item in section.action_items:
+                    lines.append(f"- [ ] {item}")
                 lines.append("")
 
             if section.suggestions:

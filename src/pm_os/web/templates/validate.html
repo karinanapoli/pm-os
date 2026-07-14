@@ -19,21 +19,62 @@
 </div>
 
 {% if error %}
-<div class="alert alert-error">
+<div class="alert alert-error" role="alert">
     <strong>Error:</strong> {{ error }}
 </div>
 {% endif %}
 
 {% if report %}
-<div class="card">
+{% set diff = report.overall_score - previous_score if previous_score is not none else none %}
+<div class="card" aria-live="polite">
     <div class="card-header">
         <h3>{{ "validate.report"|t }}</h3>
-        <span class="score score-{{ 'high' if report.overall_score >= 7 else 'mid' if report.overall_score >= 5 else 'low' }}">
-            {{ "%.1f"|format(report.overall_score) }}/10
-        </span>
+        <div style="display: flex; align-items: center; gap: 8px;">
+            {% if diff is not none %}
+            <span class="score" style="font-size:11px;background:{% if diff > 0 %}rgba(16,185,129,0.15){% elif diff < 0 %}rgba(239,68,68,0.15){% else %}rgba(255,255,255,0.04){% endif %};color:{% if diff > 0 %}var(--success){% elif diff < 0 %}var(--danger){% else %}var(--text-muted){% endif %}">
+                {% if diff > 0 %}↑ +{{ "%.1f"|format(diff) }}{% elif diff < 0 %}↓ {{ "%.1f"|format(diff) }}{% else %}→ 0.0{% endif %}
+            </span>
+            {% endif %}
+            <span class="score score-{{ 'high' if report.overall_score >= 7 else 'mid' if report.overall_score >= 5 else 'low' }}">
+                {{ "%.1f"|format(report.overall_score) }}/10
+            </span>
+        </div>
     </div>
     <div class="card-body">
         <p class="report-summary">{{ report.summary }}</p>
+
+        {# ── Actionable summary ── #}
+        {% set worst_sections = report.sections | selectattr("score", "ne", none) | list | sort(attribute="score") %}
+        {% if worst_sections and worst_sections[0].score < 7 %}
+        <div style="background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.15); border-radius: var(--radius); padding: 14px 18px; margin-bottom: 18px;">
+            <strong style="color: var(--danger); font-size: 13px;">⚠ {{ "validate.focus_areas"|t }}</strong>
+            <ul style="margin: 8px 0 0 16px; font-size: 13px; color: var(--text-secondary);">
+                {% for section in worst_sections %}
+                {% if section.score < 7 %}
+                <li style="margin-bottom: 4px;"><strong>{{ section.name }}</strong> ({{ "%.1f"|format(section.score) }}/10) — {% if section.action_items %}{{ section.action_items[0] }}{% elif section.suggestions %}{{ section.suggestions[0] }}{% else %}{{ "validate.needs_improvement"|t }}{% endif %}</li>
+                {% endif %}
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        {# ── All action items consolidated ── #}
+        {% set ns = namespace(has_actions=false) %}
+        {% for section in report.sections %}
+          {% if section.action_items %}{% set ns.has_actions = true %}{% endif %}
+        {% endfor %}
+        {% if ns.has_actions %}
+        <div style="background: rgba(16,185,129,0.06); border: 1px solid rgba(16,185,129,0.15); border-radius: var(--radius); padding: 14px 18px; margin-bottom: 18px;">
+            <strong style="color: var(--success); font-size: 13px;">{{ "validate.next_steps"|t }}</strong>
+            <ul style="margin: 8px 0 0 16px; font-size: 13px; color: var(--text-secondary);">
+                {% for section in report.sections %}
+                {% for item in section.action_items %}
+                <li style="margin-bottom: 4px;"><label class="checkbox-label" style="font-weight:normal;gap:8px;"><input type="checkbox" onchange="this.nextElementSibling.style.textDecoration=this.checked?'line-through':'none'"><span>{{ item }}</span></label></li>
+                {% endfor %}
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
 
         <div class="sections-grid">
             {% for section in report.sections %}
@@ -44,12 +85,28 @@
                         {{ "%.1f"|format(section.score) }}/10
                     </span>
                 </div>
+                {% if section.rationale %}
+                <div class="section-rationale" style="font-size:13px;color:var(--text-secondary);margin-bottom:10px;padding:10px 14px;background:rgba(255,255,255,0.03);border-radius:var(--radius);border-left:2px solid var(--accent);">
+                    <strong style="color:var(--text);">{{ "validate.rationale"|t }}:</strong>
+                    <p style="margin:4px 0 0 0;">{{ section.rationale }}</p>
+                </div>
+                {% endif %}
                 {% if section.issues %}
                 <div class="section-issues">
                     <strong>{{ "validate.issues"|t }}:</strong>
                     <ul>
                         {% for issue in section.issues %}
                         <li>{{ issue }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+                {% if section.action_items %}
+                <div class="section-actions" style="margin-top:8px;">
+                    <strong style="font-size:13px;">{{ "validate.action_items"|t }}:</strong>
+                    <ul style="font-size:13px;">
+                        {% for item in section.action_items %}
+                        <li style="margin-bottom:3px;"><label class="checkbox-label" style="font-weight:normal;gap:6px;"><input type="checkbox" onchange="this.nextElementSibling.style.textDecoration=this.checked?'line-through':'none'"><span>{{ item }}</span></label></li>
                         {% endfor %}
                     </ul>
                 </div>

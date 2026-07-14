@@ -1,6 +1,6 @@
-# PM OS Documentation
+# PM Studio Documentation
 
-PM OS is an open source AI Product Manager Operating System for Product Managers.
+PM Studio is an open source AI Product Manager Studio for Product Managers.
 
 This project combines:
 

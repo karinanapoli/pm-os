@@ -1,7 +1,7 @@
 import json
 import re
 
-from pm_os.contracts.workflow_contracts import AIClientProtocol
+from pm_os.contracts.workflow_contracts import AIClient
 from pm_os.domain.validation_report import SectionEvaluation, ValidationReport
 
 
@@ -13,7 +13,7 @@ class PRDValidator:
     scope clarity, and overall coherence.
     """
 
-    def __init__(self, ai_client: AIClientProtocol):
+    def __init__(self, ai_client: AIClient):
         self.ai_client = ai_client
 
     def validate(self, prd_content: str) -> ValidationReport:
@@ -32,8 +32,10 @@ Evaluate the following PRD and return a JSON object with:
 - "sections": a list of objects, each with:
   - "name": section name (e.g. "Metrics", "Risks", "Scope", "Requirements")
   - "score": float from 0 to 10
-  - "issues": list of strings describing problems
-  - "suggestions": list of strings with improvement ideas
+  - "rationale": a 2-3 sentence explanation of WHY this section received this score (what's missing, what's good, what's unclear)
+  - "issues": list of strings describing specific problems found
+  - "action_items": list of concrete, prescriptive next steps the PM should take (e.g. "Entreviste o stakeholder X para validar os requisitos", "Adicione métricas de sucesso para a funcionalidade Y", "Analise o impacto da decisão Z no cronograma", "Documente a dependência com o time A"). Each item must be a specific action, not generic advice.
+  - "suggestions": list of strings with general improvement ideas
 
 Evaluation criteria:
 - **Metrics**: Are they specific, measurable, achievable, relevant, time-bound (SMART)?
@@ -42,6 +44,8 @@ Evaluation criteria:
 - **Requirements**: Are they specific, unambiguous, and testable?
 - **Structure**: Are all required sections present and well-organized?
 - **Coherence**: Does the PRD tell a consistent story from problem to solution?
+
+For each section, explain the score rationale and provide 2-3 specific action items the PM can execute immediately.
 
 Return ONLY valid JSON inside a ```json code block.
 
@@ -79,6 +83,8 @@ PRD Content:
                 score=s.get("score", 0.0),
                 issues=s.get("issues", []),
                 suggestions=s.get("suggestions", []),
+                rationale=s.get("rationale", ""),
+                action_items=s.get("action_items", []),
             )
             for s in data.get("sections", [])
         ]

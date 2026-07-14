@@ -35,19 +35,28 @@
                 </label>
                 <div class="form-hint">{{ "consult.use_product_docs_hint"|t }}</div>
             </div>
+            {% if mcp_count and mcp_count > 0 %}
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" name="use_mcp" value="true" checked>
+                    <span>{{ "mcp.use_context"|t }} ({{ mcp_count }})</span>
+                </label>
+                <div class="form-hint">{{ "mcp.use_context_hint"|t }}</div>
+            </div>
+            {% endif %}
             <button type="submit" class="btn btn-ai">{{ "consult.cta"|t }}</button>
         </form>
     </div>
 </div>
 
 {% if error %}
-<div class="alert alert-error">
+<div class="alert alert-error" role="alert">
     <strong>Error:</strong> {{ error }}
 </div>
 {% endif %}
 
 {% if result %}
-<div class="card">
+<div class="card" aria-live="polite">
     <div class="card-header">
         <h3>{{ "consult.result_for"|t }} {{ result.initiatives | join(", ") }}</h3>
     </div>

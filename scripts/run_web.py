@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-PM OS Web Interface.
+PM Studio Web Interface.
 
 Usage:
     python scripts/run_web.py
@@ -18,5 +18,5 @@ if SRC_DIR not in sys.path:
 import uvicorn
 
 if __name__ == "__main__":
-    print("🚀 PM OS Web Interface starting at http://localhost:8000")
+    print("🚀 PM Studio — http://localhost:8000")
     uvicorn.run("pm_os.web.app:app", host="0.0.0.0", port=8000, reload=True)

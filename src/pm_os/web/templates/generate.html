@@ -42,6 +42,15 @@
                 </label>
                 <div class="form-hint">{{ "generate.use_product_docs_hint"|t }}</div>
             </div>
+            {% if mcp_count and mcp_count > 0 %}
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" name="use_mcp" value="true" id="gen-mcp" checked onchange="updatePreview()">
+                    <span>{{ "mcp.use_context"|t }} ({{ mcp_count }})</span>
+                </label>
+                <div class="form-hint">{{ "mcp.use_context_hint"|t }}</div>
+            </div>
+            {% endif %}
 
             {# ── Live context preview ── #}
             <div class="form-group">
@@ -61,13 +70,13 @@
 </div>
 
 {% if error %}
-<div class="alert alert-error">
+<div class="alert alert-error" role="alert">
     <strong>Error:</strong> {{ error }}
 </div>
 {% endif %}
 
 {% if result %}
-<div class="card" id="genResult">
+<div class="card" id="genResult" aria-live="polite">
     <div class="card-header">
         <h3>{{ "generate.result_for"|t }} {{ result.initiative }}</h3>
         {% if result.score is defined %}
@@ -87,7 +96,7 @@
             </div>
         </div>
 
-        {% if result.additional or result.product_docs_used %}
+        {% if result.additional or result.product_docs_used or result.mcp_used %}
         <div style="margin-bottom: 16px; margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap;">
             {% if result.additional %}
             <span style="padding: 4px 10px; font-size: 12px; background: rgba(110,86,217,0.1); border: 1px solid rgba(110,86,217,0.2); border-radius: 12px; color: var(--primary-light);">
@@ -99,6 +108,11 @@
                 + {{ "generate.product_docs_badge"|t }}
             </span>
             {% endif %}
+            {% if result.mcp_used %}
+            <span style="padding: 4px 10px; font-size: 12px; background: rgba(34,184,217,0.1); border: 1px solid rgba(34,184,217,0.2); border-radius: 12px; color: var(--ai-light);">
+                + {{ "mcp.badge"|t }}: {{ result.mcp_used | join(", ") }}
+            </span>
+            {% endif %}
         </div>
         {% endif %}
 
@@ -107,8 +121,70 @@
             <pre class="prd-content">{{ result.prd }}</pre>
         </details>
 
-        <div style="margin-top: 16px; display: flex; gap: 8px;">
+        {# ── Validation report inline ── #}
+        {% if result.sections %}
+        <div style="margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 16px;">
+            <h4 style="font-size:14px;margin:0 0 12px 0;color:var(--text);">{{ "validate.report"|t }}</h4>
+            {% set ns = namespace(has_actions=false) %}
+            {% for section in result.sections %}
+              {% if section.action_items %}{% set ns.has_actions = true %}{% endif %}
+            {% endfor %}
+            {% if ns.has_actions %}
+            <div style="background: rgba(16,185,129,0.06); border: 1px solid rgba(16,185,129,0.15); border-radius: var(--radius); padding: 12px 16px; margin-bottom: 16px;">
+                <strong style="color: var(--success); font-size: 13px;">{{ "validate.next_steps"|t }}</strong>
+                <ul style="margin: 8px 0 0 16px; font-size: 13px; color: var(--text-secondary);">
+                    {% for section in result.sections %}
+                    {% for item in section.action_items %}
+                    <li style="margin-bottom: 3px;"><label class="checkbox-label" style="font-weight:normal;gap:8px;"><input type="checkbox" onchange="this.nextElementSibling.style.textDecoration=this.checked?'line-through':'none'"><span>{{ item }}</span></label></li>
+                    {% endfor %}
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+            <div class="sections-grid" style="margin-top:0;">
+                {% for section in result.sections %}
+                <div class="section-card">
+                    <div class="section-header">
+                        <span class="section-name">{{ section.name }}</span>
+                        <span class="score score-{{ 'high' if section.score >= 7 else 'mid' if section.score >= 5 else 'low' }}">
+                            {{ "%.1f"|format(section.score) }}/10
+                        </span>
+                    </div>
+                    {% if section.rationale %}
+                    <div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;padding:10px 14px;background:rgba(255,255,255,0.03);border-radius:var(--radius);border-left:2px solid var(--accent);">
+                        <strong style="color:var(--text);">{{ "validate.rationale"|t }}:</strong>
+                        <p style="margin:4px 0 0 0;">{{ section.rationale }}</p>
+                    </div>
+                    {% endif %}
+                    {% if section.issues %}
+                    <div class="section-issues">
+                        <strong>{{ "validate.issues"|t }}:</strong>
+                        <ul>
+                            {% for issue in section.issues %}
+                            <li>{{ issue }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                    {% if section.action_items %}
+                    <div style="margin-top:6px;">
+                        <strong style="font-size:13px;">{{ "validate.action_items"|t }}:</strong>
+                        <ul style="font-size:13px;">
+                            {% for item in section.action_items %}
+                            <li style="margin-bottom:2px;"><label class="checkbox-label" style="font-weight:normal;gap:6px;"><input type="checkbox" onchange="this.nextElementSibling.style.textDecoration=this.checked?'line-through':'none'"><span>{{ item }}</span></label></li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <div style="margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap;">
             <a href="/initiative/{{ result.initiative }}" class="btn btn-secondary btn-sm">{{ "generate.view_initiative"|t }}</a>
+            <a href="/initiative/{{ result.initiative }}/prd/download" class="btn btn-ghost btn-sm">⬇ {{ "generate.download_prd"|t }}</a>
         </div>
     </div>
 </div>

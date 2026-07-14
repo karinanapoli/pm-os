@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════
-   PM OS — Product Manager Operating System
+   PM Studio — Product Manager Studio
    Visual Identity v2
    ═══════════════════════════════════════════ */
 
@@ -1311,22 +1311,143 @@ body {
 }
 
 /* ── Responsive ── */
+/* ── Reduced Motion ── */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
 @media (max-width: 768px) {
     .sidebar {
         width: 64px;
         padding: 0;
+        transition: width 0.2s ease;
+        overflow: hidden;
+        z-index: 100;
     }
-    .sidebar .logo { font-size: 16px; }
+    .sidebar:hover,
+    .sidebar:focus-within {
+        width: 200px;
+        overflow-y: auto;
+        box-shadow: 0 0 40px rgba(0,0,0,0.6);
+    }
+    .sidebar .logo { font-size: 16px; white-space: nowrap; }
     .sidebar .logo-sub,
-    .sidebar .nav-item span:not(.nav-icon),
     .sidebar .version,
-    .sidebar .model-badge,
-    .sidebar-section { display: none; }
-    .sidebar .nav-item { justify-content: center; padding: 12px; }
+    .sidebar .model-badge { display: none; }
+    .sidebar-section {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .sidebar .nav-item {
+        justify-content: flex-start;
+        padding: 10px 12px;
+        white-space: nowrap;
+    }
+    .sidebar .nav-item span:not(.nav-icon) {
+        display: inline;
+        opacity: 0;
+        transition: opacity 0.15s ease;
+    }
+    .sidebar:hover .nav-item span:not(.nav-icon),
+    .sidebar:focus-within .nav-item span:not(.nav-icon) {
+        opacity: 1;
+    }
     .sidebar-header { padding: 20px 12px; }
     .content { padding: 16px; }
     .topbar { padding: 20px 16px 0; }
     .stats-row { grid-template-columns: repeat(2, 1fr); }
     .init-grid { grid-template-columns: 1fr; }
     .form-inline { flex-direction: column; }
+}
+
+/* ═══════════════════════════════════════════
+   Timeline / Roadmap
+   ═══════════════════════════════════════════ */
+.timeline-phase .card-header .phase-icon {
+    font-size: 20px;
+    margin-right: 10px;
+    opacity: 0.7;
+}
+.timeline-items {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.timeline-item {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    transition: all 0.2s ease;
+    position: relative;
+    border-left: 3px solid transparent;
+}
+.timeline-item:hover {
+    background: rgba(255,255,255,0.04);
+    border-color: var(--border-light);
+}
+.timeline-item-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+}
+.timeline-item-header h4 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+}
+.timeline-status {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 3px 10px;
+    border-radius: 20px;
+    white-space: nowrap;
+}
+.timeline-status.timeline-live,
+.timeline-item.timeline-live {
+    border-left-color: var(--success);
+}
+.timeline-status.timeline-live {
+    background: rgba(16,185,129,0.12);
+    color: var(--success);
+}
+.timeline-item.timeline-live:hover {
+    border-color: rgba(16,185,129,0.2);
+}
+.timeline-status.timeline-coming_soon,
+.timeline-item.timeline-coming_soon {
+    border-left-color: var(--amber);
+}
+.timeline-status.timeline-coming_soon {
+    background: rgba(240,169,64,0.12);
+    color: var(--amber);
+}
+.timeline-item.timeline-coming_soon:hover {
+    border-color: rgba(240,169,64,0.2);
+}
+.timeline-status.timeline-future,
+.timeline-item.timeline-future {
+    border-left-color: var(--text-muted);
+}
+.timeline-status.timeline-future {
+    background: rgba(255,255,255,0.04);
+    color: var(--text-muted);
+}
+.timeline-item.timeline-future:hover {
+    border-color: rgba(255,255,255,0.1);
+}
+.timeline-desc {
+    margin: 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.5;
 }

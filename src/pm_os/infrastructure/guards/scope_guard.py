@@ -1,7 +1,7 @@
 import json
 import re
 
-from pm_os.contracts.workflow_contracts import AIClientProtocol
+from pm_os.contracts.workflow_contracts import AIClient
 
 
 class ScopeGuard:
@@ -12,7 +12,7 @@ class ScopeGuard:
     missing information, and potential contradictions.
     """
 
-    def __init__(self, ai_client: AIClientProtocol):
+    def __init__(self, ai_client: AIClient):
         self.ai_client = ai_client
 
     def analyze(self, context: str) -> list[dict]:

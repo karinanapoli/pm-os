@@ -19,7 +19,7 @@ class PromptBuilderProtocol(Protocol):
         ...
 
 
-class AIClientProtocol(Protocol):
+class AIClient(Protocol):
     def generate(self, prompt: str) -> str:
         ...
 

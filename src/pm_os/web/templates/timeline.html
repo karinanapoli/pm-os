@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block page_title %}{{ "timeline.title"|t }}{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-body">
+        <p style="color: var(--text-secondary); font-size: 14px;">{{ "timeline.desc"|t }}</p>
+    </div>
+</div>
+
+{% set phases = [
+    {
+        "key": "phase1", "icon": "◈",
+        "features": [
+            {"feat": "prd", "status": "live"},
+            {"feat": "validate", "status": "live"},
+        ]
+    },
+    {
+        "key": "phase2", "icon": "◆",
+        "features": [
+            {"feat": "backlog", "status": "coming_soon"},
+            {"feat": "okr", "status": "coming_soon"},
+            {"feat": "roadmap", "status": "future"},
+        ]
+    },
+    {
+        "key": "phase3", "icon": "◇",
+        "features": [
+            {"feat": "prototype", "status": "coming_soon"},
+            {"feat": "research", "status": "future"},
+        ]
+    },
+    {
+        "key": "phase4", "icon": "✦",
+        "features": [
+            {"feat": "security", "status": "coming_soon"},
+            {"feat": "metrics", "status": "future"},
+            {"feat": "competitors", "status": "future"},
+        ]
+    },
+    {
+        "key": "phase5", "icon": "▸",
+        "features": [
+            {"feat": "release", "status": "future"},
+            {"feat": "abtesting", "status": "future"},
+        ]
+    },
+] %}
+
+{% for phase in phases %}
+<div class="card timeline-phase">
+    <div class="card-header">
+        <span class="phase-icon">{{ phase.icon }}</span>
+        <h3>{{ ("timeline." + phase.key)|t }}</h3>
+    </div>
+    <div class="card-body">
+        <div class="timeline-items">
+            {% for item in phase.features %}
+            {% set status_key = "timeline." + item.status %}
+            <div class="timeline-item timeline-{{ item.status }}" role="article" aria-label="{{ ("timeline.feat_" + item.feat)|t }}">
+                <div class="timeline-item-header">
+                    <span class="timeline-status timeline-{{ item.status }}">{{ status_key|t }}</span>
+                    <h4>{{ ("timeline.feat_" + item.feat)|t }}</h4>
+                </div>
+                <p class="timeline-desc">{{ ("timeline.feat_" + item.feat + "_desc")|t }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+{# ── Spoiler section ── #}
+<div class="card" style="border: 1px solid rgba(139,92,246,0.2); background: linear-gradient(135deg, rgba(139,92,246,0.04), rgba(20,184,166,0.04));">
+    <div class="card-body" style="text-align: center; padding: 24px;">
+        <div style="font-size: 28px; margin-bottom: 8px;">🔮</div>
+        <strong style="color: var(--primary-light); font-size: 14px;">{{ "timeline.spoiler"|t }}</strong>
+        <p style="color: var(--text-secondary); font-size: 14px; margin: 8px 0 0 0; max-width: 600px; margin-left: auto; margin-right: auto;">
+            {{ "timeline.spoiler_text"|t }}
+        </p>
+    </div>
+</div>
+{% endblock %}

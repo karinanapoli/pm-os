@@ -29,13 +29,31 @@
                 <div class="form-hint">{{ "config.language_hint"|t }}</div>
             </div>
 
+            <div class="form-group" style="border-top: 1px solid var(--border); padding-top: 20px; margin-top: 8px;">
+                <label class="checkbox-label" style="font-weight: 600; font-size: 14px;">
+                    <input type="checkbox" name="auth_enabled" value="true" id="authToggle" {% if config.auth_enabled %}checked{% endif %} onchange="document.getElementById('authFields').style.display=this.checked?'block':'none'">
+                    <span>{{ "config.auth_enable"|t }}</span>
+                </label>
+                <div class="form-hint">{{ "config.auth_hint"|t }}</div>
+            </div>
+            <div id="authFields" style="{% if not config.auth_enabled %}display:none{% endif %}; padding-left: 4px;">
+                <div class="form-group">
+                    <label for="auth_username">{{ "config.auth_username"|t }}</label>
+                    <input type="text" name="auth_username" id="auth_username" value="{{ config.auth_username or '' }}" placeholder="admin">
+                </div>
+                <div class="form-group">
+                    <label for="auth_password">{{ "config.auth_password"|t }}</label>
+                    <input type="password" name="auth_password" id="auth_password" value="{{ config.auth_password or '' }}" placeholder="••••••••">
+                </div>
+            </div>
+
             <button type="submit" class="btn btn-primary">{{ "config.save"|t }}</button>
         </form>
     </div>
 </div>
 
 {% if saved %}
-<div class="alert alert-success">{{ "config.saved"|t }}</div>
+<div class="alert alert-success" role="status" aria-live="polite">{{ "config.saved"|t }}</div>
 {% endif %}
 
 <div class="card">
@@ -58,7 +76,7 @@
                 <button type="button" class="btn btn-secondary btn-sm" onclick="testMcpConnection(this)">{{ "mcp.test_connection"|t }}</button>
                 <button type="submit" class="btn btn-primary btn-sm">{{ "mcp.add"|t }}</button>
             </div>
-            <div class="test-row" id="mcpTestRow" style="display:none">
+            <div class="test-row" id="mcpTestRow" style="display:none" aria-live="polite">
                 <span class="test-status" id="mcpTestStatus"></span>
             </div>
             <div class="form-hint" style="margin-top:8px">{{ "mcp.add_hint_test"|t }}</div>

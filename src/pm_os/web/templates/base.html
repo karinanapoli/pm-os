@@ -14,15 +14,27 @@
     <div class="layout">
         <aside class="sidebar">
             <div class="sidebar-header">
-                <h1 class="logo">PM OS</h1>
+                <h1 class="logo">PM Studio</h1>
                 <span class="logo-sub">{{ "app.subtitle"|t }}</span>
             </div>
 
-            <div class="sidebar-section">{{ "nav.discovery"|t }}</div>
+            <div class="sidebar-section">{{ "nav.overview"|t }}</div>
             <nav class="sidebar-nav">
                 <a href="/" class="nav-item {% if request.url.path == '/' %}active{% endif %}">
                     <span class="nav-icon">◈</span>
                     <span>{{ "nav.dashboard"|t }}</span>
+                </a>
+                <a href="/timeline" class="nav-item {% if request.url.path == '/timeline' %}active{% endif %}">
+                    <span class="nav-icon">⊡</span>
+                    <span>{{ "nav.timeline"|t }}</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-section">{{ "nav.create"|t }}</div>
+            <nav class="sidebar-nav">
+                <a href="/initiatives/new" class="nav-item {% if request.url.path == '/initiatives/new' %}active{% endif %}">
+                    <span class="nav-icon">+</span>
+                    <span>{{ "nav.new_initiative"|t }}</span>
                 </a>
                 <a href="/generate" class="nav-item {% if request.url.path == '/generate' %}active{% endif %}">
                     <span class="nav-icon">◇</span>
@@ -32,17 +44,17 @@
 
             <div class="sidebar-section">{{ "nav.workspace"|t }}</div>
             <nav class="sidebar-nav">
-                <a href="/initiatives/new" class="nav-item {% if request.url.path == '/initiatives/new' %}active{% endif %}">
-                    <span class="nav-icon">+</span>
-                    <span>{{ "nav.new_initiative"|t }}</span>
-                </a>
                 <a href="/product-docs" class="nav-item {% if request.url.path == '/product-docs' %}active{% endif %}">
                     <span class="nav-icon">📄</span>
                     <span>{{ "product_docs.title"|t }}</span>
                 </a>
                 <a href="/consult" class="nav-item {% if request.url.path == '/consult' %}active{% endif %}">
-                    <span class="nav-icon">?</span>
-                    <span>{{ "consult.title"|t }}</span>
+                    <span class="nav-icon">◆</span>
+                    <span>{{ "nav.qa"|t }}</span>
+                </a>
+                <a href="/archived" class="nav-item {% if request.url.path == '/archived' %}active{% endif %}">
+                    <span class="nav-icon">▫</span>
+                    <span>{{ "nav.archived"|t }}</span>
                 </a>
             </nav>
 
@@ -76,14 +88,14 @@
         </main>
     </div>
 
-    <div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-overlay" id="loadingOverlay" role="status" aria-live="polite" aria-hidden="true">
         <div class="loading-spinner"></div>
         <div class="loading-text" id="loadingText">{{ "loading.processing"|t }}</div>
         <div class="loading-sub" id="loadingSub">{{ "loading.sub"|t }}</div>
     </div>
 
-    <div class="toast-container" id="toastContainer">
-        <div class="toast" id="toast">
+    <div class="toast-container" id="toastContainer" aria-live="assertive" aria-atomic="true">
+        <div class="toast" id="toast" role="alert">
             <span class="toast-icon">✕</span>
             <span class="toast-text" id="toastText">Ação concluída.</span>
             <button class="toast-undo" id="toastUndoBtn" style="display:none" onclick="PMOS.hideToast()">{{ "toast.undo"|t }}</button>
@@ -163,20 +175,21 @@
                         spinner.classList.remove('ai');
                     }
                     overlay.classList.add('active');
+                    overlay.setAttribute('aria-hidden', 'false');
                 });
             });
 
             // Hide loading overlay on page navigation fail (back/error)
             window.addEventListener('pageshow', function() {
-                document.getElementById('loadingOverlay').classList.remove('active');
-            });
-            // Fallback: hide overlay if form response takes too long (network error)
-            window.addEventListener('beforeunload', function() {
-                // Keep overlay visible during actual navigation
+                var ol = document.getElementById('loadingOverlay');
+                ol.classList.remove('active');
+                ol.setAttribute('aria-hidden', 'true');
             });
             // Safety: hide overlay after 60s regardless
             setTimeout(function() {
-                document.getElementById('loadingOverlay').classList.remove('active');
+                var ol = document.getElementById('loadingOverlay');
+                ol.classList.remove('active');
+                ol.setAttribute('aria-hidden', 'true');
             }, 60000);
         });
 

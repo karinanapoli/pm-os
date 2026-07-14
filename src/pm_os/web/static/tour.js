@@ -1,4 +1,4 @@
-/* ── PM OS Interactive Tour ── */
+/* ── PM Studio Interactive Tour ── */
 
 var PMOSTour = (function() {
     var currentStep = 0;
@@ -6,7 +6,7 @@ var PMOSTour = (function() {
 
     var i18n = {
         'pt-BR': {
-            welcome: 'Bem-vindo ao PM OS',
+            welcome: 'Bem-vindo ao PM Studio',
             welcome_desc: 'Seu hub de iniciativas de produto. Em menos de um minuto você conhece os principais recursos.',
             sidebar: 'Menu de navegação',
             sidebar_desc: 'Acesse o Dashboard, gere PRDs, crie iniciativas e ajuste as configurações.',
@@ -14,14 +14,14 @@ var PMOSTour = (function() {
             stats_desc: 'Aqui você vê o total de iniciativas, PRDs gerados, documentos carregados e a nota média das validações.',
             initiative: 'Cartão de iniciativa',
             initiative_desc: 'Cada iniciativa é um cartão. Clique para ver detalhes, documentos e o PRD.',
-            generate: 'Gerar PRD',
+            generate: 'Gerar documentação',
             generate_desc: 'Com um clique, a IA gera um PRD completo usando os documentos de contexto da iniciativa.',
             new_init: 'Nova iniciativa',
             new_init_desc: 'Crie uma iniciativa com nome, status e contexto inicial.',
             settings: 'Ajustes',
             settings_desc: 'Configure o modelo de IA, URL do Ollama e idioma da interface.',
             done: '🎉 Tudo pronto!',
-            done_desc: 'Agora você conhece o PM OS. Crie sua primeira iniciativa e comece a construir.',
+            done_desc: 'Agora você conhece o PM Studio. Crie sua primeira iniciativa e comece a construir.',
             skip: 'Pular',
             next: 'Próximo',
             prev: 'Anterior',
@@ -30,7 +30,7 @@ var PMOSTour = (function() {
             of: 'de',
         },
         'en': {
-            welcome: 'Welcome to PM OS',
+            welcome: 'Welcome to PM Studio',
             welcome_desc: 'Your product initiative hub. Get to know the main features in under a minute.',
             sidebar: 'Navigation menu',
             sidebar_desc: 'Access the Dashboard, generate PRDs, create initiatives, and adjust settings.',
@@ -45,7 +45,7 @@ var PMOSTour = (function() {
             settings: 'Settings',
             settings_desc: 'Configure the AI model, Ollama URL, and interface language.',
             done: '🎉 All set!',
-            done_desc: 'Now you know PM OS. Create your first initiative and start building.',
+            done_desc: 'Now you know PM Studio. Create your first initiative and start building.',
             skip: 'Skip',
             next: 'Next',
             prev: 'Previous',
