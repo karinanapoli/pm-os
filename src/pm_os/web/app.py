@@ -16,6 +16,8 @@ from pm_os.infrastructure.ai.clients.ollama_client import (
     OllamaClient,
     OllamaConnectionError,
 )
+from pm_os.infrastructure.ai.clients.openai_client import OpenAIClient
+from pm_os.infrastructure.ai.clients.anthropic_client import AnthropicClient
 from pm_os.infrastructure.tracking.change_tracker import ChangeTracker
 from pm_os.infrastructure.validators.prd_validator import PRDValidator
 from pm_os.repositories.initiative_repository import InitiativeRepository
@@ -131,6 +133,17 @@ def _ctx(request, **extra):
 
 def _build_ai_client():
     cfg = config_manager.get_all()
+    provider = cfg.get("ai_provider", "ollama")
+    if provider == "openai":
+        return OpenAIClient(
+            model=cfg.get("openai_model", "gpt-4o-mini"),
+            api_key=cfg.get("openai_api_key", ""),
+        )
+    if provider == "anthropic":
+        return AnthropicClient(
+            model=cfg.get("anthropic_model", "claude-3-haiku-20240307"),
+            api_key=cfg.get("anthropic_api_key", ""),
+        )
     return OllamaClient(
         model=cfg.get("model", "llama3.2"),
         base_url=cfg.get("ollama_url", "http://localhost:11434"),
@@ -870,6 +883,11 @@ async def save_config(
     auth_enabled: str = Form(""),
     auth_username: str = Form(""),
     auth_password: str = Form(""),
+    ai_provider: str = Form("ollama"),
+    openai_api_key: str = Form(""),
+    openai_model: str = Form(""),
+    anthropic_api_key: str = Form(""),
+    anthropic_model: str = Form(""),
 ):
     config_manager.set("model", model)
     config_manager.set("ollama_url", ollama_url)
@@ -879,6 +897,18 @@ async def save_config(
         config_manager.set("auth_username", auth_username)
     if auth_password:
         config_manager.set("auth_password", auth_password)
+    if ai_provider:
+        config_manager.set("ai_provider", ai_provider)
+    if ai_provider == "openai":
+        if openai_api_key:
+            config_manager.set("openai_api_key", openai_api_key)
+        if openai_model:
+            config_manager.set("openai_model", openai_model)
+    if ai_provider == "anthropic":
+        if anthropic_api_key:
+            config_manager.set("anthropic_api_key", anthropic_api_key)
+        if anthropic_model:
+            config_manager.set("anthropic_model", anthropic_model)
     return templates.TemplateResponse(
         "config.html",
         _ctx(request, saved=True),

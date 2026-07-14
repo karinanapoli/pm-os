@@ -16,6 +16,15 @@
 | qwen2.5:7b | 4.7 GB | ✅ Available |
 | gemma4:e2b | 7.2 GB | ⏳ Downloading in bg |
 
+## AI Providers
+| Provider | Status | Config |
+|----------|--------|--------|
+| Ollama (local) | ✅ Default | `http://localhost:11434` |
+| OpenAI | ✅ Supported | API key + model in Settings |
+| Anthropic | ✅ Supported | API key + model in Settings |
+
+Provider is selected in Settings → AI Provider. API keys can also be set via `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` environment variables. Config is stored in `~/.pm_os/config.json`.
+
 ## Visual Identity (v2)
 - Dark theme (`#0f0d1e` bg, `#16132b` cards)
 - Purple/teal gradient accents

@@ -184,6 +184,15 @@ TRANSLATIONS = {
         "config.auth_hint": "Exige login e senha para acessar o PM Studio. Recomendado para uso em equipe.",
         "config.auth_username": "Usuário",
         "config.auth_password": "Senha",
+        "config.ai_provider": "Provedor de IA",
+        "config.ai_provider_hint": "Escolha qual serviço de IA será usado para gerar e validar documentos.",
+        "config.openai_model": "Modelo OpenAI",
+        "config.openai_model_hint": "Ex: gpt-4o-mini, gpt-4o, gpt-4-turbo",
+        "config.openai_api_key": "Chave da API OpenAI",
+        "config.anthropic_model": "Modelo Anthropic",
+        "config.anthropic_model_hint": "Ex: claude-3-haiku-20240307, claude-3-sonnet-20240229",
+        "config.anthropic_api_key": "Chave da API Anthropic",
+        "config.api_key_hint": "Deixe em branco para usar a variável de ambiente.",
 
         # MCP
         "mcp.title": "Servidores MCP",
@@ -539,6 +548,15 @@ TRANSLATIONS = {
         "config.auth_hint": "Requires login and password to access PM Studio. Recommended for team use.",
         "config.auth_username": "Username",
         "config.auth_password": "Password",
+        "config.ai_provider": "AI Provider",
+        "config.ai_provider_hint": "Choose which AI service will be used to generate and validate documents.",
+        "config.openai_model": "OpenAI Model",
+        "config.openai_model_hint": "e.g. gpt-4o-mini, gpt-4o, gpt-4-turbo",
+        "config.openai_api_key": "OpenAI API Key",
+        "config.anthropic_model": "Anthropic Model",
+        "config.anthropic_model_hint": "e.g. claude-3-haiku-20240307, claude-3-sonnet-20240229",
+        "config.anthropic_api_key": "Anthropic API Key",
+        "config.api_key_hint": "Leave blank to use the environment variable.",
 
         # MCP
         "mcp.title": "MCP Servers",

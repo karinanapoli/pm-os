@@ -15,6 +15,11 @@ SCHEMA: dict[str, type] = {
     "auth_enabled": bool,
     "auth_username": str,
     "auth_password": str,
+    "ai_provider": str,
+    "openai_api_key": str,
+    "openai_model": str,
+    "anthropic_api_key": str,
+    "anthropic_model": str,
 }
 
 DEFAULT_CONFIG: dict[str, Any] = {
@@ -26,6 +31,11 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "auth_enabled": False,
     "auth_username": "",
     "auth_password": "",
+    "ai_provider": "ollama",
+    "openai_api_key": "",
+    "openai_model": "gpt-4o-mini",
+    "anthropic_api_key": "",
+    "anthropic_model": "claude-3-haiku-20240307",
 }
 
 
