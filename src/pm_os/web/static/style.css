@@ -584,7 +584,7 @@ body {
 }
 
 .checkbox-row:hover {
-    background: var(--surface-hover);
+    background: var(--bg-card-hover);
 }
 
 .checkbox-row input[type="checkbox"] {

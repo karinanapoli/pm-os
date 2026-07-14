@@ -40,7 +40,7 @@
                     <br>
                     <a href="{{ link.url }}" target="_blank" style="color: var(--primary-light); font-size: 13px;">{{ link.url }}</a>
                 </div>
-                <button type="button" class="btn btn-ghost btn-sm" style="color: var(--danger);" onclick="document.getElementById('deleteLinkTarget').value='{{ link.url }}'; PMOS.openModal('delete-link')">{{ "product_docs.delete"|t }}</button>
+                <button type="button" class="btn btn-ghost btn-sm" style="color: var(--danger);" data-target="deleteLinkTarget" data-open="delete-link" data-value="{{ link.url }}">{{ "product_docs.delete"|t }}</button>
             </div>
             {% endfor %}
         </div>
@@ -57,7 +57,7 @@
                     <strong>{{ doc.name }}</strong>
                     <span style="color: var(--text-muted); font-size: 12px; margin-left: 8px;">{{ doc.size }}</span>
                 </div>
-                <button type="button" class="btn btn-ghost btn-sm" style="color: var(--danger);" onclick="document.getElementById('deleteDocTarget').value='{{ doc.name }}'; document.getElementById('deleteDocForm').action='/product-docs/delete-doc/{{ doc.name }}'; PMOS.openModal('delete-doc')">{{ "product_docs.delete"|t }}</button>
+                <button type="button" class="btn btn-ghost btn-sm" style="color: var(--danger);" data-target="deleteDocTarget" data-action="/product-docs/delete-doc/{{ doc.name }}" data-open="delete-doc" data-value="{{ doc.name }}">{{ "product_docs.delete"|t }}</button>
             </div>
             {% endfor %}
         </div>
@@ -66,6 +66,23 @@
         {% endif %}
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('[data-target]').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var target = document.getElementById(this.dataset.target);
+            if (target) target.value = this.dataset.value;
+            var action = this.dataset.action;
+            if (action) {
+                var form = document.getElementById('deleteDocForm');
+                if (form) form.action = action;
+            }
+            PMOS.openModal(this.dataset.open);
+        });
+    });
+});
+</script>
 
 <div class="modal-overlay" id="modal-delete-doc">
     <div class="modal modal-sm">

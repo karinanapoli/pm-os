@@ -45,7 +45,7 @@ class CreatePRDWorkflow:
         self.scope_guard = scope_guard
         self.prd_validator = prd_validator
 
-    def run(self, output_path: str) -> Path:
+    def run(self, output_path: str, initiative_name: Optional[str] = None) -> Path:
         self.logger.info("Loading initiatives from workspace.")
 
         initiatives = self.initiative_repository.list_initiatives()
@@ -53,7 +53,16 @@ class CreatePRDWorkflow:
         if not initiatives:
             raise ValueError("No initiatives found in the workspace.")
 
-        initiative = initiatives[0]
+        initiative = None
+        if initiative_name:
+            for i in initiatives:
+                if i.name == initiative_name:
+                    initiative = i
+                    break
+            if not initiative:
+                raise ValueError(f"Initiative '{initiative_name}' not found.")
+        else:
+            initiative = initiatives[0]
         self.logger.info(f"Selected initiative: {initiative.name}")
 
         if self.change_tracker:

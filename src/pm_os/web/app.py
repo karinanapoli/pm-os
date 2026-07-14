@@ -126,10 +126,12 @@ async def _dashboard(request, force_onboarding=False):
             total_score += score
             scored_count += 1
 
+        display_name = metadata.get("name", init.name) if metadata else init.name
         status = metadata.get("status", "unknown") if metadata else "unknown"
         score_str = f"{score}/10" if score is not None else "-"
         rows.append({
             "name": init.name,
+            "display_name": display_name,
             "status": status,
             "owner": metadata.get("owner", "-") if metadata else "-",
             "score": score_str,
@@ -145,30 +147,33 @@ async def _dashboard(request, force_onboarding=False):
     threshold = timedelta(days=7)
     attention_items = []
     for init in initiatives:
-        metadata = scan._load_metadata(init.path)
-        score = scan._read_validation_score(init.path)
-        prd_exists = (init.path / "artifacts" / "prd.md").exists()
-        created_str = (metadata or {}).get("created_at", "")
-        age = 0
-        if created_str:
-            try:
-                created = date.fromisoformat(created_str)
-                age = (today - created).days
-            except ValueError:
-                pass
+            meta = scan._load_metadata(init.path)
+            score = scan._read_validation_score(init.path)
+            prd_exists = (init.path / "artifacts" / "prd.md").exists()
+            display_name = meta.get("name", init.name) if meta else init.name
+            created_str = (meta or {}).get("created_at", "")
+            age = 0
+            if created_str:
+                try:
+                    created = date.fromisoformat(created_str)
+                    age = (today - created).days
+                except ValueError:
+                    pass
 
-        if not prd_exists and age > 7:
-            attention_items.append({
-                "name": init.name,
-                "reason": _t("attention.no_prd", lang),
-                "action": "generate",
-            })
-        elif prd_exists and score is not None and score < 7:
-            attention_items.append({
-                "name": init.name,
-                "reason": _t("attention.low_score", lang),
-                "action": "view",
-            })
+            if not prd_exists and age > 7:
+                attention_items.append({
+                    "name": init.name,
+                    "display_name": display_name,
+                    "reason": _t("attention.no_prd", lang),
+                    "action": "generate",
+                })
+            elif prd_exists and score is not None and score < 7:
+                attention_items.append({
+                    "name": init.name,
+                    "display_name": display_name,
+                    "reason": _t("attention.low_score", lang),
+                    "action": "view",
+                })
 
     archive_dir = repo.initiatives_path.parent / "archived"
     archived_count = 0
@@ -233,6 +238,7 @@ async def initiative_detail(request: Request, initiative_name: str):
         "initiative_detail.html",
         _ctx(request,
             initiative=selected,
+            initiative_display_name=metadata.get("name", selected.name),
             metadata=metadata,
             docs=docs,
             prd_exists=prd_exists,
@@ -356,9 +362,10 @@ async def create_initiative(
 async def generate_page(request: Request):
     repo = InitiativeRepository()
     initiatives = repo.list_initiatives()
+    product_docs_count = _count_product_docs()
     return templates.TemplateResponse(
         "generate.html",
-        _ctx(request, initiatives=initiatives, result=None, error=None),
+        _ctx(request, initiatives=initiatives, result=None, error=None, product_docs_count=product_docs_count),
     )
 
 
@@ -382,7 +389,8 @@ async def generate_prd(
         return templates.TemplateResponse(
             "generate.html",
             _ctx(request, initiatives=initiatives, result=None,
-                 error=f"Initiative '{initiative_name}' {_t('error.not_found', _get_lang())}"),
+                 error=f"Initiative '{initiative_name}' {_t('error.not_found', _get_lang())}",
+                 product_docs_count=_count_product_docs()),
         )
 
     # Filter out the main initiative from additional list
@@ -446,14 +454,16 @@ async def generate_prd(
                      "additional": used_additional,
                      "product_docs_used": used_product_docs,
                  },
-                 error=None),
+                 error=None,
+                 product_docs_count=_count_product_docs()),
         )
 
     except OllamaConnectionError:
         return templates.TemplateResponse(
             "generate.html",
             _ctx(request, initiatives=initiatives, result=None,
-                 error=_t("error.ollama", _get_lang())),
+                 error=_t("error.ollama", _get_lang()),
+                 product_docs_count=_count_product_docs()),
         )
 
 
@@ -756,6 +766,14 @@ Pergunta: {question}"""
 # ─── Product Documentation ───
 
 PRODUCT_DOCS_DIR = Path("workspace/product-docs")
+
+
+def _count_product_docs() -> int:
+    """Returns the number of product doc files (without reading content)."""
+    ctx = PRODUCT_DOCS_DIR / "context"
+    if ctx.exists():
+        return sum(1 for f in ctx.iterdir() if f.is_file() and f.suffix in (".md", ".txt"))
+    return 0
 
 
 def _load_product_docs() -> list[dict]:

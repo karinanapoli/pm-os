@@ -21,7 +21,7 @@
                         <input type="hidden" name="name" value="{{ item.name }}">
                         <button type="submit" class="btn btn-secondary btn-sm">↺ {{ "archive.restore"|t }}</button>
                     </form>
-                    <button type="button" class="btn btn-ghost btn-sm" style="color: var(--coral);" onclick="document.getElementById('permArchiveTarget').value='{{ item.name }}'; PMOS.openModal('perm-archive')">{{ "archive.button"|t }}</button>
+                    <button type="button" class="btn btn-ghost btn-sm" style="color: var(--coral);" data-target="permArchiveTarget" data-open="perm-archive" data-value="{{ item.name }}">{{ "archive.button"|t }}</button>
                 </div>
             </div>
             {% endfor %}
@@ -56,16 +56,15 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    var permBtn = document.querySelector('[onclick*="permArchiveTarget"]');
-    if (permBtn) {
-        var form = document.getElementById('permArchiveForm');
-        document.querySelectorAll('[onclick*="permArchiveTarget"]').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                var name = document.getElementById('permArchiveTarget').value;
-                form.action = '/initiative/' + name + '/delete';
-            });
+    var form = document.getElementById('permArchiveForm');
+    document.querySelectorAll('[data-target="permArchiveTarget"]').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var target = document.getElementById('permArchiveTarget');
+            if (target) target.value = this.dataset.value;
+            form.action = '/initiative/' + this.dataset.value + '/delete';
+            PMOS.openModal('perm-archive');
         });
-    }
+    });
 });
 </script>
 {% endblock %}

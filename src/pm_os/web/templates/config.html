@@ -84,7 +84,7 @@
                             {% if server.enabled %}{{ "mcp.deactivate"|t }}{% else %}{{ "mcp.activate"|t }}{% endif %}
                         </button>
                     </form>
-                    <button type="button" class="btn btn-ghost btn-sm" style="color: var(--danger);" onclick="document.getElementById('mcpDeleteTarget').value='{{ server.url }}'; PMOS.openModal('delete-mcp')">{{ "mcp.delete"|t }}</button>
+                    <button type="button" class="btn btn-ghost btn-sm" style="color: var(--danger);" data-target="mcpDeleteTarget" data-open="delete-mcp" data-value="{{ server.url }}">{{ "mcp.delete"|t }}</button>
                 </div>
             </div>
             {% endfor %}
@@ -114,6 +114,16 @@
 </div>
 
 <script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('[data-target]').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var target = document.getElementById(this.dataset.target);
+            if (target) target.value = this.dataset.value;
+            PMOS.openModal(this.dataset.open);
+        });
+    });
+});
+
 function testMcpConnection(btn) {
     var form = btn.closest('form');
     var nameInput = form.querySelector('input[name="name"]');
@@ -140,10 +150,24 @@ function testMcpConnection(btn) {
     testStatus.className = 'test-status pending';
     testStatus.innerHTML = '<span class="test-spinner"></span> {{ "mcp.test_pending"|t }}';
 
-    setTimeout(function() {
-        testStatus.className = 'test-status ok';
-        testStatus.innerHTML = '✓ {{ "mcp.test_ok"|t }}';
-    }, 1500);
+    testRow.style.display = 'flex';
+    testStatus.className = 'test-status pending';
+    testStatus.innerHTML = '<span class="test-spinner"></span> {{ "mcp.test_pending"|t }}';
+
+    var controller = new AbortController();
+    var timeout = setTimeout(function() { controller.abort(); }, 5000);
+
+    fetch(url, { method: 'GET', mode: 'no-cors', signal: controller.signal })
+        .then(function(resp) {
+            clearTimeout(timeout);
+            testStatus.className = 'test-status ok';
+            testStatus.innerHTML = '✓ {{ "mcp.test_ok"|t }}';
+        })
+        .catch(function(err) {
+            clearTimeout(timeout);
+            testStatus.className = 'test-status fail';
+            testStatus.innerHTML = '✕ {{ "mcp.test_fail"|t }}';
+        });
 }
 </script>
 {% endblock %}

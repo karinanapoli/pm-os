@@ -56,7 +56,7 @@ document.addEventListener('DOMContentLoaded', function() {
         {% for item in attention_items %}
         <div class="attn-row">
             <div class="attn-left">
-                <span class="attn-name">{{ item.name }}</span>
+                <span class="attn-name">{{ item.display_name or item.name }}</span>
                 <span class="attn-reason">{{ item.reason }}</span>
             </div>
             {% if item.action == 'generate' %}
@@ -80,7 +80,7 @@ document.addEventListener('DOMContentLoaded', function() {
         <div class="init-grid">
             {% for init in initiatives %}
             <a href="/initiative/{{ init.name }}" class="init-card">
-                <div class="init-card-name">{{ init.name }}</div>
+                <div class="init-card-name">{{ init.display_name or init.name }}</div>
                 <div class="init-card-meta">
                     <span class="init-card-status {{ init.status }}">{{ init.status|t }}</span>
                     <span>{{ "dashboard.stats.score"|t }}: {{ init.score }}</span>

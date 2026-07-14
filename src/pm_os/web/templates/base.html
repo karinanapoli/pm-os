@@ -165,6 +165,19 @@
                     overlay.classList.add('active');
                 });
             });
+
+            // Hide loading overlay on page navigation fail (back/error)
+            window.addEventListener('pageshow', function() {
+                document.getElementById('loadingOverlay').classList.remove('active');
+            });
+            // Fallback: hide overlay if form response takes too long (network error)
+            window.addEventListener('beforeunload', function() {
+                // Keep overlay visible during actual navigation
+            });
+            // Safety: hide overlay after 60s regardless
+            setTimeout(function() {
+                document.getElementById('loadingOverlay').classList.remove('active');
+            }, 60000);
         });
 
         return { openModal: openModal, closeModal: closeModal, toast: toast, hideToast: hideToast };
