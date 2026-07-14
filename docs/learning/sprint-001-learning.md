@@ -1,8 +1,8 @@
-# Sprint 001 — Foundation of PM OS Core
+# Sprint 001 — Foundation of PM Studio Core
 
 ## Sprint Objective
 
-Create the technical and conceptual foundation of PM OS.
+Create the technical and conceptual foundation of PM Studio.
 
 In this sprint, the goal was not yet to generate a complete PRD with AI, but to build the system's foundation: project structure, first Core components, and fundamental architectural decisions.
 
@@ -22,7 +22,7 @@ We created the initial structure of the `pm-os` project, including:
 - `tests/`
 - `docs/`
 
-We also created the first PM OS Core components:
+We also created the first PM Studio Core components:
 
 - `Feature`
 - `FeatureRepository`
@@ -38,7 +38,7 @@ The main decision was understanding that the MCP should not be the brain of the 
 
 The MCP will be just an interface.
 
-The main logic will reside in the PM OS Core, written in Python.
+The main logic will reside in the PM Studio Core, written in Python.
 
 This allows the project to evolve to different interfaces in the future, such as:
 

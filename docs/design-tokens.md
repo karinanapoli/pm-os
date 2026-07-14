@@ -1,4 +1,4 @@
-# PM OS — Design Tokens & Component Spec
+# PM Studio — Design Tokens & Component Spec
 
 > Versão 2.0 — Sistema de cores semânticas, modais de confirmação, toast e selo de reversibilidade.
 > Baseado no protótipo navegável `pmos-redesign.html` e nas 11 correções do audit de UX.

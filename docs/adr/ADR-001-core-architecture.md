@@ -1,4 +1,4 @@
-# ADR-001 — PM OS will have a Core independent from the MCP
+# ADR-001 — PM Studio will have a Core independent from the MCP
 
 **Status:** Accepted
 
@@ -68,7 +68,7 @@ MCP
 
 ↓
 
-PM OS Core
+PM Studio Core
 
 ↓
 
@@ -97,7 +97,7 @@ Domain
 
 We chose Option B.
 
-All PM OS knowledge will reside inside the PM OS Core.
+All PM Studio knowledge will reside inside the PM Studio Core.
 
 The MCP will be only a layer responsible for exposing tools.
 
@@ -128,4 +128,4 @@ Without changes to the business logic.
 
 Interfaces will depend on the Core.
 
-This principle now guides all PM OS architecture.
+This principle now guides all PM Studio architecture.

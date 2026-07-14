@@ -8,7 +8,7 @@
 
 # Context
 
-PM OS was born as a set of workflows for generating product artifacts, such as PRDs.
+PM Studio was born as a set of workflows for generating product artifacts, such as PRDs.
 
 In early versions, the Workspace organization reflected the application's processing flow, using separate directories for input, processing, and output.
 
@@ -31,7 +31,7 @@ The main problems identified were:
 - low scalability for new workflows (Backlog, Roadmap, RFC, Executive Summary, etc.);
 - organization based on system implementation rather than the user's mental model.
 
-During Sprint 003 we realized that PM OS is not just generating documents.
+During Sprint 003 we realized that PM Studio is not just generating documents.
 
 It is managing knowledge about product initiatives.
 
@@ -66,7 +66,7 @@ Separating these elements into different directories made navigation difficult, 
 
 # Decision
 
-PM OS will adopt an **Initiative-oriented Workspace**.
+PM Studio will adopt an **Initiative-oriented Workspace**.
 
 The initiative becomes the central unit of the domain.
 
@@ -89,7 +89,7 @@ Each directory has a clear responsibility:
 | Directory | Responsibility |
 |------------|------------------|
 | `context/` | Raw knowledge of the initiative (discovery, meeting notes, research, documents, images, transcriptions, etc.) |
-| `artifacts/` | Artifacts produced by PM OS workflows (PRD, Backlog, Roadmap, RFC, Executive Summary, etc.) |
+| `artifacts/` | Artifacts produced by PM Studio workflows (PRD, Backlog, Roadmap, RFC, Executive Summary, etc.) |
 | `logs/` | Initiative-specific logs and workflow executions. |
 | `metadata.yaml` | Source of truth for the initiative, containing identification, status, and metadata. |
 
@@ -186,7 +186,7 @@ These components must evolve to work using the initiative-oriented structure.
 
 # User Impact
 
-This change makes PM OS more intuitive.
+This change makes PM Studio more intuitive.
 
 When opening an initiative, the user will find in a single place:
 
@@ -234,6 +234,6 @@ Initially, the goal was only to change where PRDs were generated.
 
 During discussion we realized the problem was not in file generation, but in how the domain was being modeled.
 
-By adopting an initiative-oriented architecture, PM OS ceases to be just a document generator and becomes a true **Operating System for Product Managers**.
+By adopting an initiative-oriented architecture, PM Studio ceases to be just a document generator and becomes a true **Operating System for Product Managers**.
 
 This decision establishes a more consistent foundation for the project's evolution and reduces the need for major refactoring in the future.

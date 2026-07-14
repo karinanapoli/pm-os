@@ -1,12 +1,12 @@
 # Sprint 003 Review
 
-> "Sprint 003 marked the transition of PM OS from an experimental project to an AI Product Engineering platform."
+> "Sprint 003 marked the transition of PM Studio from an experimental project to an AI Product Engineering platform."
 
 ---
 
 # Sprint Objective
 
-The initial objective of the Sprint was to integrate a real Large Language Model (LLM) into PM OS, replacing the simulated AI client.
+The initial objective of the Sprint was to integrate a real Large Language Model (LLM) into PM Studio, replacing the simulated AI client.
 
 During development, we identified architectural evolution opportunities that significantly expanded the Sprint scope.
 
@@ -18,7 +18,7 @@ By the end, the Sprint consolidated the architectural foundations of the platfor
 
 **Create PRD Capability**
 
-Build the first complete PM OS capability, allowing the context of an initiative to be transformed into a Product Requirements Document (PRD) using a real AI model.
+Build the first complete PM Studio capability, allowing the context of an initiative to be transformed into a Product Requirements Document (PRD) using a real AI model.
 
 ---
 
@@ -86,7 +86,7 @@ Restructure the Workspace to reflect a Product Manager's mental model.
 
 ### Objective
 
-Align the PM OS domain with the problem it solves.
+Align the PM Studio domain with the problem it solves.
 
 ### Deliverables
 
@@ -159,7 +159,7 @@ During this Sprint, important decisions were made:
 
 # Sprint Result
 
-By the end of the Sprint, PM OS had:
+By the end of the Sprint, PM Studio had:
 
 - decoupled architecture;
 - consistent domain;

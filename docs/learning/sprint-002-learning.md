@@ -52,7 +52,7 @@ Tested components:
 
 ### Product
 
-The biggest discovery of the Sprint was realizing that PM OS is not a PRD generator.
+The biggest discovery of the Sprint was realizing that PM Studio is not a PRD generator.
 
 It is an Operating System for product initiatives.
 

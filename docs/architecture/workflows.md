@@ -1,4 +1,4 @@
-# PM OS — Workflows
+# PM Studio — Workflows
 
 > "Workflows represent platform capabilities. They orchestrate specialized components to transform knowledge into product artifacts."
 
@@ -6,9 +6,9 @@
 
 # Objective
 
-This document describes how PM OS Workflows are structured and how they use the platform's components to execute a business capability.
+This document describes how PM Studio Workflows are structured and how they use the platform's components to execute a business capability.
 
-In PM OS, a Workflow represents a complete user use case.
+In PM Studio, a Workflow represents a complete user use case.
 
 Its role is to coordinate specialized components, keeping the domain decoupled from infrastructure.
 
@@ -93,7 +93,7 @@ Each component executes only one responsibility.
 
 # Current Example
 
-Currently PM OS has one implemented capability:
+Currently PM Studio has one implemented capability:
 
 ```text
 CreatePRDWorkflow
@@ -255,7 +255,7 @@ Adding a new capability should require only creating a new Workflow and its spec
 
 # Summary
 
-In PM OS, a Workflow represents a reusable platform capability.
+In PM Studio, a Workflow represents a reusable platform capability.
 
 It does not implement specific AI rules nor know infrastructure details.
 

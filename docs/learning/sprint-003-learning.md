@@ -1,12 +1,12 @@
 # Sprint 003 — Learning
 
-> "Sprint 003 marked the transition of PM OS from an experimentation project to an AI Product Engineering platform."
+> "Sprint 003 marked the transition of PM Studio from an experimentation project to an AI Product Engineering platform."
 
 ---
 
 # Sprint Objective
 
-The initial objective of the Sprint was to integrate a real Large Language Model (LLM) into PM OS, using Ollama as the AI provider.
+The initial objective of the Sprint was to integrate a real Large Language Model (LLM) into PM Studio, using Ollama as the AI provider.
 
 During development, we realized that simply integrating an AI model exposed important architectural limitations.
 
@@ -20,7 +20,7 @@ This decision increased the Sprint scope but established a much more solid found
 
 ## 1. Architecture must reflect the domain
 
-Initially, PM OS used the concept of **Feature** as the central unit of the system.
+Initially, PM Studio used the concept of **Feature** as the central unit of the system.
 
 Throughout the Sprint we realized that this term represented an implementation, but not the problem domain.
 
@@ -94,7 +94,7 @@ Examples:
 
 All reuse the same Core components.
 
-This change altered how PM OS started being planned.
+This change altered how PM Studio started being planned.
 
 ---
 
@@ -128,7 +128,7 @@ Separating infrastructure errors from how they are presented made the applicatio
 
 # Architecture Evolution
 
-During the Sprint, PM OS went through the following transformations:
+During the Sprint, PM Studio went through the following transformations:
 
 ```text
 Prototype
@@ -180,7 +180,7 @@ Among them:
 
 - centralized configuration layer;
 - integration tests;
-- official PM OS CLI;
+- official PM Studio CLI;
 - Template Engine;
 - Configuration Manager;
 - multiple AI providers;
@@ -191,10 +191,10 @@ Among them:
 
 # Conclusion
 
-Sprint 003 represented an important milestone for PM OS.
+Sprint 003 represented an important milestone for PM Studio.
 
 More than integrating an AI model, it consolidated the architectural identity of the platform.
 
 The project ceased to be just an automation experiment and became a consistent foundation for building reusable capabilities for Product Managers.
 
-The decisions made in this Sprint will serve as the foundation for all future evolutions of PM OS.
+The decisions made in this Sprint will serve as the foundation for all future evolutions of PM Studio.

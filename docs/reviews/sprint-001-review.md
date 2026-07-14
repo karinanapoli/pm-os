@@ -6,7 +6,7 @@
 
 # Sprint Objective
 
-Build the architectural foundation of PM OS.
+Build the architectural foundation of PM Studio.
 
 In this sprint, the focus was not on integrating AI or automatically generating PRDs.
 
@@ -67,7 +67,7 @@ Documentation becomes treated as part of the product.
 
 This was probably the most important decision of the sprint.
 
-It ensures PM OS can evolve independently of the interface used.
+It ensures PM Studio can evolve independently of the interface used.
 
 ---
 
@@ -160,7 +160,7 @@ Before thinking about prompts, we need to define:
 - information flow;
 - context.
 
-This learning now guides all PM OS evolution.
+This learning now guides all PM Studio evolution.
 
 ---
 
@@ -188,6 +188,6 @@ These items were not yet the goal of Sprint 001.
 
 Sprint 001 fulfilled its objective.
 
-PM OS ceased to be a prompt-based idea and now has a clear, modular architecture ready for evolution.
+PM Studio ceased to be a prompt-based idea and now has a clear, modular architecture ready for evolution.
 
 The project now has a solid foundation to start implementing the first workflows and integrating local AI models in the next sprints.

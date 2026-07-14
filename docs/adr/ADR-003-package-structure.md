@@ -8,13 +8,13 @@ Accepted
 
 # Context
 
-PM OS needs to generate artifacts using language models.
+PM Studio needs to generate artifacts using language models.
 
 During the first Sprints, we used a `FakeAIClient` to validate the pipeline without depending on a real LLM.
 
 With Sprint 003, we started integrating Ollama as the first real AI provider.
 
-However, PM OS must not depend directly on Ollama, OpenAI, Claude, Gemini, or any other specific provider.
+However, PM Studio must not depend directly on Ollama, OpenAI, Claude, Gemini, or any other specific provider.
 
 Workflows should depend only on an abstract capability:
 

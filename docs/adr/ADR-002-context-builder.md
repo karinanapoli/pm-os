@@ -1,4 +1,4 @@
-# ADR-002 — PM OS will use Context Engineering instead of Document Loading
+# ADR-002 — PM Studio will use Context Engineering instead of Document Loading
 
 **Status:** Accepted
 
@@ -8,7 +8,7 @@
 
 # Context
 
-During the initial implementation of PM OS, the need arose to read all documents from a Feature to send them to the AI model.
+During the initial implementation of PM Studio, the need arose to read all documents from a Feature to send them to the AI model.
 
 The first idea was to create a component called `DocumentLoader`.
 
@@ -120,7 +120,7 @@ No other component will need to know about these sources.
 
 Context is not a consequence of documents.
 
-It is a product built by PM OS.
+It is a product built by PM Studio.
 
 ---
 
@@ -132,4 +132,4 @@ Prompts guide the model.
 
 Context determines response quality.
 
-PM OS now adopts Context Engineering as one of the pillars of its architecture.
+PM Studio now adopts Context Engineering as one of the pillars of its architecture.

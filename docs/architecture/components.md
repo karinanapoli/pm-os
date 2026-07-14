@@ -1,12 +1,12 @@
-# PM OS — Components
+# PM Studio — Components
 
-> "Small components, clear responsibilities, and contract dependency. That is the foundation of PM OS architecture."
+> "Small components, clear responsibilities, and contract dependency. That is the foundation of PM Studio architecture."
 
 ---
 
 # Objective
 
-This document describes the main components of the PM OS Core, their responsibilities, and how they collaborate to execute the platform's capabilities.
+This document describes the main components of the PM Studio Core, their responsibilities, and how they collaborate to execute the platform's capabilities.
 
 Each component has a single responsibility and communicates through well-defined contracts, enabling incremental evolution, low coupling, and high cohesion.
 
@@ -14,7 +14,7 @@ Each component has a single responsibility and communicates through well-defined
 
 # Overview
 
-PM OS is organized around specialized components.
+PM Studio is organized around specialized components.
 
 Each component executes only one part of the workflow.
 
@@ -85,7 +85,7 @@ workspace/
 
 ## Responsibility
 
-Represent the central unit of the PM OS domain.
+Represent the central unit of the PM Studio domain.
 
 An Initiative groups all knowledge related to a product initiative during its lifecycle.
 
@@ -238,7 +238,7 @@ Prompt.
 
 Define public contracts between components.
 
-PM OS uses `typing.Protocol` to decouple the domain from concrete implementations.
+PM Studio uses `typing.Protocol` to decouple the domain from concrete implementations.
 
 Examples:
 
@@ -373,7 +373,7 @@ Writing artifact...
 
 Assemble the entire application.
 
-Bootstrap is the **Composition Root** of PM OS.
+Bootstrap is the **Composition Root** of PM Studio.
 
 All dependency creation happens in this component.
 
@@ -479,7 +479,7 @@ Upcoming components include:
 - Metrics;
 - Telemetry.
 
-Regardless of the project's growth, PM OS will continue following the same principles:
+Regardless of the project's growth, PM Studio will continue following the same principles:
 
 - small components;
 - clear responsibilities;

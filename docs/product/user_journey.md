@@ -8,7 +8,7 @@ Draft
 
 # Objective
 
-This document describes how a Product Manager uses PM OS from the moment a new initiative emerges to the generation of all project artifacts.
+This document describes how a Product Manager uses PM Studio from the moment a new initiative emerges to the generation of all project artifacts.
 
 This document does not describe the technical implementation.
 
@@ -18,11 +18,11 @@ All architecture decisions must respect this journey.
 
 ---
 
-# The PM OS Philosophy
+# The PM Studio Philosophy
 
-PM OS does not exist to generate PRDs.
+PM Studio does not exist to generate PRDs.
 
-PM OS exists to transform scattered knowledge into reusable context.
+PM Studio exists to transform scattered knowledge into reusable context.
 
 Documents are just a consequence.
 
@@ -142,7 +142,7 @@ They just add the materials.
 
 ## Stage 4 — Context building
 
-PM OS analyzes all available materials.
+PM Studio analyzes all available materials.
 
 It identifies:
 
@@ -271,7 +271,7 @@ Future artifacts always use the most recent version of this knowledge.
 
 # The Role of Context
 
-Context is the main asset of PM OS.
+Context is the main asset of PM Studio.
 
 It represents all consolidated knowledge about an initiative.
 
@@ -305,7 +305,7 @@ AI is not the product.
 
 It is just a system dependency.
 
-PM OS remains responsible for:
+PM Studio remains responsible for:
 
 - organizing knowledge;
 - building context;
@@ -347,7 +347,7 @@ Or:
 
 And the Workspace Scanner would reply with scores for every PRD.
 
-PM OS will be responsible for finding the correct context, consolidating the necessary information, and executing the appropriate workflow.
+PM Studio will be responsible for finding the correct context, consolidating the necessary information, and executing the appropriate workflow.
 
 The user will not need to worry about prompts, models, or context engineering.
 
@@ -355,13 +355,13 @@ The user will not need to worry about prompts, models, or context engineering.
 
 # Reinforced Principles
 
-This journey reinforces some of the fundamental principles of PM OS:
+This journey reinforces some of the fundamental principles of PM Studio:
 
 - Context is more important than prompts.
 - Knowledge belongs to the initiative.
 - Workflows represent business objectives.
 - AI is a dependency, not the product.
 - The PM remains responsible for decisions.
-- PM OS accelerates artifact production without replacing critical thinking.
+- PM Studio accelerates artifact production without replacing critical thinking.
 - **Quality is not subjective** — every artifact gets a validation score.
 - **Validation is automatic** — the system checks quality so the PM doesn't have to.

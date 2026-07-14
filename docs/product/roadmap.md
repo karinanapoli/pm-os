@@ -1,6 +1,6 @@
-# PM OS — Product Roadmap
+# PM Studio — Product Roadmap
 
-> "The PM OS Roadmap is organized by platform capabilities. Each capability represents a reusable functional evolution for Product Managers."
+> "The PM Studio Roadmap is organized by platform capabilities. Each capability represents a reusable functional evolution for Product Managers."
 
 ---
 
@@ -8,7 +8,7 @@
 
 Build an open source AI Product Engineering platform capable of supporting Product Managers throughout the entire product development cycle.
 
-PM OS evolution happens through incremental capabilities, reusing a common architecture and maintaining low coupling between its components.
+PM Studio evolution happens through incremental capabilities, reusing a common architecture and maintaining low coupling between its components.
 
 ---
 
@@ -55,7 +55,7 @@ Platform Evolution
 
 # Long-Term Vision
 
-PM OS should evolve into a platform composed of several reusable capabilities.
+PM Studio should evolve into a platform composed of several reusable capabilities.
 
 Each new capability should reuse existing Core components, preserving the architecture built in the first Sprints.
 
@@ -77,4 +77,4 @@ A new capability will only be added when it:
 - represents a complete use case;
 - provides value for Product Managers;
 - does not increase platform coupling;
-- respects PM OS architectural principles.
+- respects PM Studio architectural principles.

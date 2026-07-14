@@ -2,7 +2,7 @@
 
 ## Objective
 
-Build the first complete PM OS Workflow.
+Build the first complete PM Studio Workflow.
 
 ---
 
@@ -21,7 +21,7 @@ Build the first complete PM OS Workflow.
 
 ## Result
 
-PM OS is now capable of executing a complete Workflow using a Fake AIClient.
+PM Studio is now capable of executing a complete Workflow using a Fake AIClient.
 
 Flow:
 

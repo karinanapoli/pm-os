@@ -1,4 +1,4 @@
-# PM OS Manifesto
+# PM Studio Manifesto
 
 > "We are not building a tool to replace Product Managers.
 >
@@ -30,7 +30,7 @@ AI is just a capability.
 
 The real product is the system that organizes knowledge, context, and decisions.
 
-That's why PM OS is not born as a chatbot.
+That's why PM Studio is not born as a chatbot.
 
 It is born as an operating system for AI Product Engineering.
 
@@ -74,7 +74,7 @@ Every learning deserves to be shared.
 
 The best way to learn AI is to build systems using AI.
 
-That's why PM OS will be, at the same time:
+That's why PM Studio will be, at the same time:
 
 - framework;
 - laboratory;

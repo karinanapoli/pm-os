@@ -1,6 +1,6 @@
-# PM OS Glossary
+# PM Studio Glossary
 
-This document gathers the main concepts used by PM OS.
+This document gathers the main concepts used by PM Studio.
 
 Its goal is to create a common language among Product Managers, engineers, and contributors.
 
@@ -45,13 +45,13 @@ It is an asset built by the system.
 
 Discipline responsible for building high-quality context for AI models.
 
-It is one of the pillars of PM OS.
+It is one of the pillars of PM Studio.
 
 ---
 
 # Core
 
-Central layer of PM OS.
+Central layer of PM Studio.
 
 Contains all business logic.
 
@@ -71,7 +71,7 @@ Feature
 
 # Feature
 
-Work unit of PM OS.
+Work unit of PM Studio.
 
 A Feature can contain documents, requirements, meeting notes, APIs, images, and any other input related to product development.
 
@@ -81,13 +81,13 @@ A Feature can contain documents, requirements, meeting notes, APIs, images, and 
 
 Model Context Protocol.
 
-Layer responsible for making PM OS tools available to different interfaces.
+Layer responsible for making PM Studio tools available to different interfaces.
 
-In PM OS, the MCP never contains business rules.
+In PM Studio, the MCP never contains business rules.
 
 ---
 
-# PM OS Core
+# PM Studio Core
 
 Framework core.
 
@@ -114,7 +114,7 @@ The Prompt tells the model what to do.
 
 Techniques used to structure prompts.
 
-In PM OS, Prompt Engineering is considered complementary to Context Engineering.
+In PM Studio, Prompt Engineering is considered complementary to Context Engineering.
 
 ---
 
@@ -160,7 +160,7 @@ MarkdownWriter
 
 # Workspace
 
-Set of files used by PM OS.
+Set of files used by PM Studio.
 
 Includes:
 

@@ -1,12 +1,12 @@
-# PM OS Vision
+# PM Studio Vision
 
 ## Our Mission
 
 Build an open source operating system for Product Managers that unites Artificial Intelligence, Product Engineering, and good development practices to accelerate PMs' work without replacing their critical thinking.
 
-PM OS is not just about automating tasks.
+PM Studio is not just about automating tasks.
 
-Our goal is to create an environment where Product Managers can learn, build, and evolve products using AI in a responsible, structured, and scalable way. PM OS is an Operating System for product initiatives. It organizes knowledge, builds context, and transforms that context into reusable artifacts throughout the entire initiative lifecycle.
+Our goal is to create an environment where Product Managers can learn, build, and evolve products using AI in a responsible, structured, and scalable way. PM Studio is an Operating System for product initiatives. It organizes knowledge, builds context, and transforms that context into reusable artifacts throughout the entire initiative lifecycle.
 
 ---
 
@@ -54,9 +54,9 @@ AI stops being a chatbot and becomes an engineering layer.
 
 ---
 
-# What is PM OS?
+# What is PM Studio?
 
-PM OS is an open source framework for AI Product Engineering.
+PM Studio is an open source framework for AI Product Engineering.
 
 It combines:
 

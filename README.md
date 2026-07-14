@@ -22,12 +22,12 @@ Documentation is a core part of the project. It works as a living book that expl
 - `adr/` — Architecture Decision Records
 - `learning/` — learning journal per sprint
 - `reviews/` — technical reviews per sprint
-- `roadmap/` — planned evolution of PM OS
+- `roadmap/` — planned evolution of PM Studio
 - `contributing/` — contribution guide
 - `decisions/` — future ideas and open decisions
 
 ## Philosophy
 
-PM OS is not just a tool.
+PM Studio is not just a tool.
 
 It is a framework for learning, building, and operating Product Management workflows with AI.

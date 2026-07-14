@@ -1,5 +1,5 @@
 """
-PM OS Internationalization.
+PM Studio Internationalization.
 
 Usage:
     from pm_os.web.i18n import t, LANGS

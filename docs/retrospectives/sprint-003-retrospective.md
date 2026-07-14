@@ -98,7 +98,7 @@ During this Sprint we learned about:
 
 # Conclusion
 
-Sprint 003 consolidated the architectural foundations of PM OS.
+Sprint 003 consolidated the architectural foundations of PM Studio.
 
 Beyond technical deliveries, there was a significant evolution in how we design and discuss architecture.
 

@@ -1,6 +1,6 @@
-# PM OS Principles
+# PM Studio Principles
 
-The principles below guide all architectural and product decisions in PM OS.
+The principles below guide all architectural and product decisions in PM Studio.
 
 When in doubt between two solutions, these principles shall prevail.
 
@@ -30,13 +30,13 @@ AI is a dependency of the system.
 
 Never the center of the architecture.
 
-PM OS must remain organized even if the model is replaced.
+PM Studio must remain organized even if the model is replaced.
 
 ---
 
 # 4. Core First
 
-Every business rule must stay in the PM OS Core.
+Every business rule must stay in the PM Studio Core.
 
 Interfaces never implement domain logic.
 
@@ -68,7 +68,7 @@ We avoid giant components that do "everything".
 
 # 8. Learn by Building
 
-Each PM OS component should teach some concept.
+Each PM Studio component should teach some concept.
 
 The project is also a learning tool.
 
@@ -104,7 +104,7 @@ Decisions remain.
 
 # 12. Small Iterations
 
-PM OS evolves through small sprints.
+PM Studio evolves through small sprints.
 
 Each sprint must deliver value.
 

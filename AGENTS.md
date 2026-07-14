@@ -1,7 +1,7 @@
-# PM OS — Session Summary
+# PM Studio — Session Summary
 
 ## Context
-- **Project**: PM OS, an open-source AI Product Manager Operating System
+- **Project**: PM Studio, an open-source AI Product Manager Operating System
 - **Mentor recommended**: gemma4:e2b model (still downloading in bg)
 - **Language**: pt-BR default, English also supported
 - **Target**: Product Managers
