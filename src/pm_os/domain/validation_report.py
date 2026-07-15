@@ -17,17 +17,36 @@ class ValidationReport:
     summary: str
     sections: list[SectionEvaluation] = field(default_factory=list)
 
-    def to_markdown(self) -> str:
+    def to_markdown(self, lang: str = "en") -> str:
+        if lang == "pt-BR":
+            title = "Relatório de Validação de PRD"
+            score_label = "**Nota Geral:**"
+            summary_label = "## Resumo"
+            breakdown_label = "## Detalhamento por Seção"
+            rationale_label = "**Por que esta nota:**"
+            issues_label = "**Problemas:**"
+            action_label = "**Ações necessárias:**"
+            suggestions_label = "**Sugestões:**"
+        else:
+            title = "PRD Validation Report"
+            score_label = "**Overall Score:**"
+            summary_label = "## Summary"
+            breakdown_label = "## Section Breakdown"
+            rationale_label = "**Why this score:**"
+            issues_label = "**Issues:**"
+            action_label = "**Action items:**"
+            suggestions_label = "**Suggestions:**"
+
         lines = [
-            "# PRD Validation Report",
+            f"# {title}",
             "",
-            f"**Overall Score:** {self.overall_score:.1f}/10",
+            f"{score_label} {self.overall_score:.1f}/10",
             "",
-            "## Summary",
+            summary_label,
             "",
             self.summary,
             "",
-            "## Section Breakdown",
+            breakdown_label,
             "",
         ]
 
@@ -37,23 +56,23 @@ class ValidationReport:
             lines.append("")
 
             if section.rationale:
-                lines.append(f"**Why this score:** {section.rationale}")
+                lines.append(f"{rationale_label} {section.rationale}")
                 lines.append("")
 
             if section.issues:
-                lines.append("**Issues:**")
+                lines.append(f"{issues_label}")
                 for issue in section.issues:
                     lines.append(f"- {issue}")
                 lines.append("")
 
             if section.action_items:
-                lines.append("**Action items:**")
+                lines.append(f"{action_label}")
                 for item in section.action_items:
                     lines.append(f"- [ ] {item}")
                 lines.append("")
 
             if section.suggestions:
-                lines.append("**Suggestions:**")
+                lines.append(f"{suggestions_label}")
                 for suggestion in section.suggestions:
                     lines.append(f"- {suggestion}")
                 lines.append("")

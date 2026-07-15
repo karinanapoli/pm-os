@@ -86,6 +86,8 @@ Critérios de avaliação:
 
 Para cada seção, explique o rationale da nota e forneça 2 a 3 itens de ação específicos que o PM pode executar imediatamente.
 
+IMPORTANTE: Responda EM PORTUGUÊS. Todos os campos de texto (summary, rationale, issues, action_items, suggestions) devem estar em português brasileiro.
+
 Retorne APENAS JSON válido dentro de um bloco de código ```json.
 
 Conteúdo do PRD:

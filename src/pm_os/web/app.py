@@ -762,7 +762,7 @@ async def generate_prd(
         report = validator.validate(prd_content)
 
         report_path = str(artifacts_dir / "prd-validation.md")
-        MarkdownWriter().write(content=report.to_markdown(), output_path=report_path)
+        MarkdownWriter().write(content=report.to_markdown(lang=_get_lang()), output_path=report_path)
 
         tracker = ChangeTracker()
         tracker.update_manifest(str(selected.path))
@@ -872,7 +872,7 @@ async def validate_prd(request: Request, initiative_name: str):
                 (artifacts_dir / f"prd-validation-{version_ts}.md").write_text(f.read(), encoding="utf-8")
 
         report_path = str(artifacts_dir / "prd-validation.md")
-        MarkdownWriter().write(content=report.to_markdown(), output_path=report_path)
+        MarkdownWriter().write(content=report.to_markdown(lang=_get_lang()), output_path=report_path)
 
         return templates.TemplateResponse(
             "validate.html",
