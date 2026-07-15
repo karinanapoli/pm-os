@@ -9,6 +9,7 @@ from fastapi import FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from jinja2 import Environment, pass_context
 
@@ -31,6 +32,20 @@ from pm_os.writers.markdown_writer import MarkdownWriter
 
 app = FastAPI(title="PM Studio")
 app.add_middleware(SessionMiddleware, secret_key=os.getenv("PM_OS_SECRET", "pm-studio-dev-secret"))
+
+
+class _NoCacheMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        ct = response.headers.get("content-type", "")
+        if ct.startswith("text/html"):
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
+        return response
+
+
+app.add_middleware(_NoCacheMiddleware)
 
 HERE = Path(__file__).parent
 app.mount("/static", StaticFiles(directory=str(HERE / "static")), name="static")
