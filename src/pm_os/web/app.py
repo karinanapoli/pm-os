@@ -733,7 +733,7 @@ async def generate_prd(
                 used_mcp_servers.append(mc['name'])
 
         context = "\n\n".join(context_parts) if context_parts else ""
-        prompt = PromptBuilder().build("create_prd", context)
+        prompt = PromptBuilder().build("create_prd", context, lang=_get_lang())
 
         prd_content = ai_client.generate(prompt)
 
@@ -758,7 +758,7 @@ async def generate_prd(
 
         MarkdownWriter().write(content=prd_content, output_path=str(prd_md))
 
-        validator = PRDValidator(ai_client=ai_client)
+        validator = PRDValidator(ai_client=ai_client, lang=_get_lang())
         report = validator.validate(prd_content)
 
         report_path = str(artifacts_dir / "prd-validation.md")
@@ -858,7 +858,7 @@ async def validate_prd(request: Request, initiative_name: str):
         from datetime import datetime as _dt
 
         ai_client = _build_ai_client()
-        validator = PRDValidator(ai_client=ai_client)
+        validator = PRDValidator(ai_client=ai_client, lang=_get_lang())
         prd_content = prd_path.read_text(encoding="utf-8")
         report = validator.validate(prd_content)
 

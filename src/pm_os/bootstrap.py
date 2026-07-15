@@ -29,7 +29,7 @@ def create_prd_workflow() -> CreatePRDWorkflow:
         logger=ConsoleLogger(),
         change_tracker=ChangeTracker(),
         scope_guard=ScopeGuard(ai_client=ai_client),
-        prd_validator=PRDValidator(ai_client=ai_client),
+        prd_validator=PRDValidator(ai_client=ai_client, lang="en"),
     )
 
 
