@@ -71,11 +71,11 @@
                     <span class="model-badge">
                         <span class="model-dot"></span>
                         {% if config.ai_provider == 'openai' %}
-                            {{ config.openai_model or 'gpt-4o-mini' }}
+                            OpenAI · {{ config.openai_model or 'gpt-4o-mini' }}
                         {% elif config.ai_provider == 'anthropic' %}
-                            {{ config.anthropic_model or 'claude-3-haiku' }}
+                            Anthropic · {{ config.anthropic_model or 'claude-3-haiku' }}
                         {% else %}
-                            {{ config.model }}
+                            Ollama · {{ config.model }}
                         {% endif %}
                     </span>
                     <a href="/onboarding/show" title="Tour" style="width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.04); color: var(--text-muted); text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.2s ease;" onmouseover="this.style.background='rgba(124,92,231,0.2)'; this.style.color='var(--primary-light)';" onmouseout="this.style.background='rgba(255,255,255,0.04)'; this.style.color='var(--text-muted)';">?</a>

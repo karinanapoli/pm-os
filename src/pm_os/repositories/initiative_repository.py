@@ -55,7 +55,7 @@ class InitiativeRepository:
             if context_path.exists():
                 for document_path in context_path.iterdir():
                     if document_path.is_file() and document_path.suffix in (".md", ".txt"):
-                        documents.append(document_path.read_text())
+                        documents.append(document_path.read_text(encoding="utf-8"))
 
             initiatives.append(
                 Initiative(

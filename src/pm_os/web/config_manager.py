@@ -69,7 +69,7 @@ class ConfigManager:
     def _load(self) -> dict:
         if CONFIG_FILE.exists():
             try:
-                raw = json.loads(CONFIG_FILE.read_text())
+                raw = json.loads(CONFIG_FILE.read_text(encoding="utf-8"))
                 merged = {**DEFAULT_CONFIG, **raw}
                 return {k: v for k, v in merged.items() if k in DEFAULT_CONFIG}
             except (json.JSONDecodeError, OSError):

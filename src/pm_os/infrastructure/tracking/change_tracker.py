@@ -38,7 +38,7 @@ class ChangeTracker:
         current_files = self._scan_files(initiative_path)
         manifest_path = initiative_path / ".context_manifest.json"
         manifest_path.write_text(
-            json.dumps(current_files, indent=2, sort_keys=True),
+            json.dumps(current_files, indent=2, sort_keys=True, ensure_ascii=False),
             encoding="utf-8",
         )
 
