@@ -20,6 +20,7 @@ SCHEMA: dict[str, type] = {
     "openai_model": str,
     "anthropic_api_key": str,
     "anthropic_model": str,
+    "custom_providers": list,
 }
 
 DEFAULT_CONFIG: dict[str, Any] = {
@@ -36,6 +37,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "openai_model": "gpt-4o-mini",
     "anthropic_api_key": "",
     "anthropic_model": "claude-3-haiku-20240307",
+    "custom_providers": [],
 }
 
 

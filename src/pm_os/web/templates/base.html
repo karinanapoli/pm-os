@@ -70,12 +70,22 @@
                 <div style="display: flex; align-items: center; justify-content: space-between;">
                     <span class="model-badge">
                         <span class="model-dot"></span>
-                        {% if config.ai_provider == 'openai' %}
+                        {% set ai_provider = config.ai_provider or 'ollama' %}
+                        {% if ai_provider == 'openai' %}
                             OpenAI · {{ config.openai_model or 'gpt-4o-mini' }}
-                        {% elif config.ai_provider == 'anthropic' %}
+                        {% elif ai_provider == 'anthropic' %}
                             Anthropic · {{ config.anthropic_model or 'claude-3-haiku' }}
                         {% else %}
-                            Ollama · {{ config.model }}
+                            {% set ns = namespace(custom_found=false) %}
+                            {% for p in (config.custom_providers or []) %}
+                                {% if p.name == ai_provider %}
+                                    {{ p.name }} · {{ p.model }}
+                                    {% set ns.custom_found = true %}
+                                {% endif %}
+                            {% endfor %}
+                            {% if not ns.custom_found %}
+                                Ollama · {{ config.model }}
+                            {% endif %}
                         {% endif %}
                     </span>
                     <a href="/onboarding/show" title="Tour" style="width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.04); color: var(--text-muted); text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.2s ease;" onmouseover="this.style.background='rgba(124,92,231,0.2)'; this.style.color='var(--primary-light)';" onmouseout="this.style.background='rgba(255,255,255,0.04)'; this.style.color='var(--text-muted)';">?</a>

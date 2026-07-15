@@ -144,6 +144,14 @@ def _build_ai_client():
             model=cfg.get("anthropic_model", "claude-3-haiku-20240307"),
             api_key=cfg.get("anthropic_api_key", ""),
         )
+    # Check custom providers
+    for cp in cfg.get("custom_providers") or []:
+        if cp.get("name") == provider:
+            return OpenAIClient(
+                model=cp.get("model", ""),
+                api_key=cp.get("api_key", ""),
+                base_url=cp.get("base_url", "https://api.openai.com/v1"),
+            )
     return OllamaClient(
         model=cfg.get("model", "llama3.2"),
         base_url=cfg.get("ollama_url", "http://localhost:11434"),
@@ -962,6 +970,57 @@ async def delete_mcp_server(
 ):
     servers = [s for s in _get_mcp_servers() if s["url"] != url]
     _save_mcp_servers(servers)
+    return templates.TemplateResponse(
+        "config.html",
+        _ctx(request, saved=True),
+    )
+
+
+# ─── Custom Provider Management ───
+
+
+def _get_custom_providers() -> list[dict]:
+    return config_manager.get("custom_providers") or []
+
+
+def _save_custom_providers(providers: list[dict]):
+    config_manager.set("custom_providers", providers)
+
+
+@app.post("/config/provider/add", response_class=HTMLResponse)
+async def add_custom_provider(
+    request: Request,
+    name: str = Form(...),
+    model: str = Form(...),
+    api_key: str = Form(""),
+    base_url: str = Form(...),
+):
+    providers = _get_custom_providers()
+    # Avoid duplicates by name
+    providers = [p for p in providers if p["name"] != name]
+    providers.append({
+        "name": name,
+        "model": model,
+        "api_key": api_key,
+        "base_url": base_url,
+    })
+    _save_custom_providers(providers)
+    return templates.TemplateResponse(
+        "config.html",
+        _ctx(request, saved=True),
+    )
+
+
+@app.post("/config/provider/delete", response_class=HTMLResponse)
+async def delete_custom_provider(
+    request: Request,
+    name: str = Form(...),
+):
+    providers = [p for p in _get_custom_providers() if p["name"] != name]
+    _save_custom_providers(providers)
+    # If the deleted provider was selected, reset to ollama
+    if config_manager.get("ai_provider") == name:
+        config_manager.set("ai_provider", "ollama")
     return templates.TemplateResponse(
         "config.html",
         _ctx(request, saved=True),

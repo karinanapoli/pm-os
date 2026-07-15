@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 {% block page_title %}{{ "config.title"|t }}{% endblock %}
 
+{% set custom_providers = config.custom_providers or [] %}
+
 {% block content %}
 <div class="card">
     <div class="card-header">
@@ -20,6 +22,9 @@
                     <option value="ollama" {% if config.ai_provider == 'ollama' %}selected{% endif %}>Ollama (local)</option>
                     <option value="openai" {% if config.ai_provider == 'openai' %}selected{% endif %}>OpenAI</option>
                     <option value="anthropic" {% if config.ai_provider == 'anthropic' %}selected{% endif %}>Anthropic</option>
+                    {% for cp in custom_providers %}
+                    <option value="{{ cp.name }}" {% if config.ai_provider == cp.name %}selected{% endif %}>{{ cp.name }}</option>
+                    {% endfor %}
                 </select>
                 <div class="form-hint">{{ "config.ai_provider_hint"|t }}</div>
             </div>
@@ -58,6 +63,26 @@
                 </div>
             </div>
 
+            {% for cp in custom_providers %}
+            <div id="provider-{{ cp.name }}" class="provider-fields provider-custom" style="display:none">
+                <div class="form-group">
+                    <label>{{ "config.provider_name"|t }}</label>
+                    <input type="text" value="{{ cp.name }}" disabled style="opacity:0.6">
+                </div>
+                <div class="form-group">
+                    <label>{{ "config.provider_model"|t }}</label>
+                    <input type="text" value="{{ cp.model }}" disabled style="opacity:0.6">
+                </div>
+                <div class="form-group">
+                    <label>{{ "config.provider_base_url"|t }}</label>
+                    <input type="text" value="{{ cp.base_url }}" disabled style="opacity:0.6">
+                </div>
+                <p style="color: var(--text-muted); font-size: 12px; margin-top: 8px;">
+                    {{ "config.api_key_hint"|t }}
+                </p>
+            </div>
+            {% endfor %}
+
             <div class="form-group">
                 <label for="lang">{{ "config.language"|t }}</label>
                 <select name="lang" id="lang">
@@ -93,6 +118,58 @@
 {% if saved %}
 <div class="alert alert-success" role="status" aria-live="polite">{{ "config.saved"|t }}</div>
 {% endif %}
+
+<div class="card">
+    <div class="card-header">
+        <h3>{{ "config.provider_custom"|t }}</h3>
+    </div>
+    <div class="card-body">
+        <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 20px;">
+            Adicione providers compatíveis com a API da OpenAI (ex: Groq, Together AI, Perplexity, etc.).
+        </p>
+
+        <form method="POST" action="/config/provider/add" class="form" style="margin-bottom: 22px; padding-bottom: 22px; border-bottom: 1px solid var(--border);" data-loading="saving">
+            <div class="form-group">
+                <label for="cp_name">{{ "config.provider_name"|t }}</label>
+                <input type="text" name="name" id="cp_name" placeholder="{{ 'config.provider_name_placeholder'|t }}" required>
+            </div>
+            <div class="form-group">
+                <label for="cp_model">{{ "config.provider_model"|t }}</label>
+                <input type="text" name="model" id="cp_model" placeholder="{{ 'config.provider_model_placeholder'|t }}" required>
+            </div>
+            <div class="form-group">
+                <label for="cp_api_key">{{ "config.provider_api_key"|t }}</label>
+                <input type="password" name="api_key" id="cp_api_key" placeholder="sk-...">
+                <div class="form-hint">{{ "config.api_key_hint"|t }}</div>
+            </div>
+            <div class="form-group">
+                <label for="cp_base_url">{{ "config.provider_base_url"|t }}</label>
+                <input type="url" name="base_url" id="cp_base_url" placeholder="{{ 'config.provider_base_url_placeholder'|t }}" required>
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm">{{ "config.provider_add"|t }}</button>
+        </form>
+
+        {% if custom_providers %}
+        <div>
+            {% for cp in custom_providers %}
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border);">
+                <div>
+                    <strong>{{ cp.name }}</strong>
+                    <br>
+                    <span style="color: var(--text-muted); font-size: 12px;">{{ cp.model }} · {{ cp.base_url }}</span>
+                </div>
+                <form method="POST" action="/config/provider/delete" style="margin: 0;" onsubmit="return confirm('{{ "config.provider_confirm_remove"|t }}')">
+                    <input type="hidden" name="name" value="{{ cp.name }}">
+                    <button type="submit" class="btn btn-ghost btn-sm" style="color: var(--danger);">{{ "config.provider_remove"|t }}</button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p style="color: var(--text-muted); font-size: 13px;">{{ "config.provider_empty"|t }}</p>
+        {% endif %}
+    </div>
+</div>
 
 <div class="card">
     <div class="card-header">
