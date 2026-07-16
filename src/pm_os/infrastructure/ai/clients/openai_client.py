@@ -3,6 +3,10 @@ import os
 import httpx
 
 
+class AIProviderError(RuntimeError):
+    pass
+
+
 class OpenAIClient:
     def __init__(
         self,
@@ -16,21 +20,29 @@ class OpenAIClient:
 
     def generate(self, prompt: str) -> str:
         if not self.api_key:
-            raise RuntimeError("OpenAI API key not configured. Set it in Settings or OPENAI_API_KEY env var.")
+            raise AIProviderError("OpenAI API key not configured. Set it in Settings or OPENAI_API_KEY env var.")
 
-        resp = httpx.post(
-            f"{self.base_url}/chat/completions",
-            headers={
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": self.model,
-                "messages": [{"role": "user", "content": prompt}],
-                "temperature": 0.7,
-            },
-            timeout=600,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        return data["choices"][0]["message"]["content"]
+        try:
+            resp = httpx.post(
+                f"{self.base_url}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": self.model,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": 0.7,
+                },
+                timeout=600,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            choices = data.get("choices", [])
+            if not choices:
+                return ""
+            return choices[0].get("message", {}).get("content", "")
+        except httpx.HTTPStatusError as e:
+            raise AIProviderError(f"OpenAI API error: {e.response.status_code}") from e
+        except httpx.RequestError as e:
+            raise AIProviderError(f"OpenAI request failed: {e}") from e

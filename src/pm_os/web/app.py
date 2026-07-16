@@ -1,17 +1,22 @@
 import os
-from datetime import date, timedelta
+import re
+import json
+import shutil
+import urllib.parse
+import urllib.request
+import yaml
+from datetime import date, datetime, timedelta
 from pathlib import Path
+from typing import Optional
 
-import base64
-import secrets
-
-from fastapi import FastAPI, File, Form, Request, UploadFile
+from fastapi import FastAPI, File, Form, Request, UploadFile, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
-from jinja2 import Environment, pass_context
+from starlette.responses import FileResponse
+from jinja2 import pass_context
 
 from pm_os.infrastructure.ai.clients.ollama_client import (
     OllamaClient,
@@ -21,6 +26,12 @@ from pm_os.infrastructure.ai.clients.openai_client import OpenAIClient
 from pm_os.infrastructure.ai.clients.anthropic_client import AnthropicClient
 from pm_os.infrastructure.tracking.change_tracker import ChangeTracker
 from pm_os.infrastructure.validators.prd_validator import PRDValidator
+from pm_os.contracts.workflow_contracts import AIClient
+from pm_os.domain.initiative import Initiative
+from pm_os.infrastructure.utils import (
+    read_validation_score_from_file,
+    version_file,
+)
 from pm_os.repositories.initiative_repository import InitiativeRepository
 from pm_os.workflows.workspace_scan_workflow import WorkspaceScanWorkflow
 from pm_os.context_builder import ContextBuilder
@@ -31,7 +42,12 @@ from pm_os.web.product_docs_service import ProductDocsService
 from pm_os.writers.markdown_writer import MarkdownWriter
 
 app = FastAPI(title="PM Studio")
-app.add_middleware(SessionMiddleware, secret_key=os.getenv("PM_OS_SECRET", "pm-studio-dev-secret"))
+_secret = os.getenv("PM_OS_SECRET")
+if not _secret:
+    import warnings
+    warnings.warn("PM_OS_SECRET environment variable not set. Using generated random key.")
+    _secret = os.urandom(64).hex()
+app.add_middleware(SessionMiddleware, secret_key=_secret)
 
 
 class _NoCacheMiddleware(BaseHTTPMiddleware):
@@ -41,11 +57,28 @@ class _NoCacheMiddleware(BaseHTTPMiddleware):
         if ct.startswith("text/html"):
             response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
             response.headers["Pragma"] = "no-cache"
-            response.headers["Expires"] = "0"
+            response.headers["Expires"] = "Thu, 01 Jan 1970 00:00:00 GMT"
+            response.headers["X-Content-Type-Options"] = "nosniff"
+            response.headers["X-Frame-Options"] = "DENY"
         return response
 
 
 app.add_middleware(_NoCacheMiddleware)
+
+
+_LOGIN_ATTEMPTS: dict[str, list[datetime]] = {}
+_MAX_LOGIN_ATTEMPTS = 10
+_LOGIN_WINDOW_SECONDS = 300
+
+
+def _check_login_rate_limit(ip: str) -> None:
+    now = datetime.now()
+    attempts = _LOGIN_ATTEMPTS.get(ip, [])
+    attempts = [t for t in attempts if (now - t).total_seconds() < _LOGIN_WINDOW_SECONDS]
+    if len(attempts) >= _MAX_LOGIN_ATTEMPTS:
+        raise HTTPException(status_code=429, detail="Too many login attempts. Try again later.")
+    attempts.append(now)
+    _LOGIN_ATTEMPTS[ip] = attempts
 
 HERE = Path(__file__).parent
 app.mount("/static", StaticFiles(directory=str(HERE / "static")), name="static")
@@ -54,27 +87,10 @@ templates = Jinja2Templates(directory=str(HERE / "templates"))
 config_manager = ConfigManager()
 pd_service = ProductDocsService()
 
+ALLOWED_EXTENSIONS = {".md", ".txt"}
+
 
 # ─── Auth middleware ───
-
-def _check_auth(request: Request) -> bool:
-    cfg = config_manager.get_all()
-    if not cfg.get("auth_enabled", False):
-        return True
-    user = cfg.get("auth_username", "")
-    pw = cfg.get("auth_password", "")
-    if not user or not pw:
-        return True
-    auth = request.headers.get("Authorization", "")
-    if not auth.startswith("Basic "):
-        return False
-    try:
-        decoded = base64.b64decode(auth[6:]).decode("utf-8")
-        u, p = decoded.split(":", 1)
-        return secrets.compare_digest(u, user) and secrets.compare_digest(p, pw)
-    except Exception:
-        return False
-
 
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
@@ -103,10 +119,14 @@ async def login_page(request: Request, error: str = ""):
 
 @app.post("/login")
 async def login_submit(request: Request, username: str = Form(...), password: str = Form(...)):
+    client_host = request.client.host if request.client else "unknown"
+    _check_login_rate_limit(client_host)
     cfg = config_manager.get_all()
     expected_user = cfg.get("auth_username", "")
     expected_pw = cfg.get("auth_password", "")
-    if secrets.compare_digest(username, expected_user) and secrets.compare_digest(password, expected_pw):
+    import secrets as _secrets
+    if _secrets.compare_digest(username, expected_user) and _secrets.compare_digest(password, expected_pw):
+        request.session.clear()
         request.session["authenticated"] = True
         return RedirectResponse(url="/", status_code=302)
     return await login_page(request, error="Invalid credentials.")
@@ -120,12 +140,12 @@ async def logout(request: Request):
 
 # ─── i18n helper ───
 
-def _get_lang():
+def _get_lang() -> str:
     return config_manager.get("lang", "en")
 
 
 @pass_context
-def _t_filter(ctx, key):
+def _t_filter(ctx, key: str) -> str:
     lang = ctx.get("lang", "en")
     return _t(key, lang)
 
@@ -133,7 +153,7 @@ def _t_filter(ctx, key):
 templates.env.filters["t"] = _t_filter
 
 
-def _ctx(request, **extra):
+def _ctx(request: Request, **extra) -> dict:
     """Build base context with i18n for every template."""
     cfg = config_manager.get_all()
     lang = cfg.get("lang", "en")
@@ -146,7 +166,7 @@ def _ctx(request, **extra):
     return base
 
 
-def _build_ai_client():
+def _build_ai_client() -> AIClient:
     cfg = config_manager.get_all()
     provider = cfg.get("ai_provider", "ollama")
     if provider == "openai":
@@ -159,7 +179,6 @@ def _build_ai_client():
             model=cfg.get("anthropic_model", "claude-3-haiku-20240307"),
             api_key=cfg.get("anthropic_api_key", ""),
         )
-    # Check custom providers
     for cp in cfg.get("custom_providers") or []:
         if cp.get("name") == provider:
             return OpenAIClient(
@@ -177,11 +196,25 @@ def _get_mcp_servers() -> list[dict]:
     return config_manager.get("mcp_servers") or []
 
 
-def _fetch_mcp_context() -> list[dict]:
-    """Query all enabled MCP servers and return [{name, content}]."""
-    import urllib.request
-    import json as _json
+def _validate_mcp_url(url: str) -> str:
+    """Validate and sanitize MCP server URL to prevent SSRF."""
+    url = url.strip()
+    if not url:
+        raise ValueError("URL cannot be empty")
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        raise ValueError(f"Invalid scheme: {parsed.scheme}. Only http/https allowed.")
+    host = parsed.hostname or ""
+    if host in ("localhost", "127.0.0.1", "::1", "0.0.0.0"):
+        raise ValueError("Localhost URLs are not allowed for MCP servers.")
+    if host.startswith("169.254."):
+        raise ValueError("Link-local addresses are not allowed.")
+    if host.startswith("10.") or host.startswith("172.") or host.startswith("192.168."):
+        raise ValueError("Private IP ranges are not allowed for MCP servers.")
+    return url
 
+
+def _fetch_mcp_context() -> list[dict]:
     results = []
     for server in _get_mcp_servers():
         if not server.get("enabled"):
@@ -191,19 +224,17 @@ def _fetch_mcp_context() -> list[dict]:
         if not url:
             continue
         try:
+            _validate_mcp_url(url)
             req = urllib.request.Request(url, method="GET", headers={"Accept": "text/plain,application/json"})
             with urllib.request.urlopen(req, timeout=5) as resp:
                 raw = resp.read().decode("utf-8", errors="replace")
-                # Try to parse as JSON and extract meaningful text
                 try:
-                    data = _json.loads(raw)
-                    if isinstance(data, dict):
-                        content = _json.dumps(data, indent=2, ensure_ascii=False)
-                    elif isinstance(data, list):
-                        content = _json.dumps(data, indent=2, ensure_ascii=False)
+                    data = json.loads(raw)
+                    if isinstance(data, (dict, list)):
+                        content = json.dumps(data, indent=2, ensure_ascii=False)
                     else:
                         content = str(data)
-                except (_json.JSONDecodeError, ValueError):
+                except (json.JSONDecodeError, ValueError):
                     content = raw
                 content = content[:3000]
                 if content.strip():
@@ -213,7 +244,7 @@ def _fetch_mcp_context() -> list[dict]:
     return results
 
 
-def _get_initiative_by_name(name: str):
+def _get_initiative_by_name(name: str) -> Optional[Initiative]:
     repo = InitiativeRepository()
     for i in repo.list_initiatives():
         if i.name == name:
@@ -241,11 +272,9 @@ async def show_onboarding(request: Request):
     return await _dashboard(request, force_onboarding=True)
 
 
-async def _dashboard(request, force_onboarding=False):
+async def _dashboard(request: Request, force_onboarding: bool = False) -> HTMLResponse:
     """Shared dashboard logic. force_onboarding ignores has_completed check."""
     repo = InitiativeRepository()
-    logger = _SilentLogger()
-    scan = WorkspaceScanWorkflow(initiative_repository=repo, logger=logger)
     initiatives = repo.list_initiatives()
 
     total_docs = 0
@@ -256,8 +285,14 @@ async def _dashboard(request, force_onboarding=False):
     rows = []
 
     for init in initiatives:
-        metadata = scan._load_metadata(init.path)
-        score = scan._read_validation_score(init.path)
+        meta_path = init.path / "metadata.yaml"
+        metadata = {}
+        if meta_path.exists():
+            try:
+                metadata = yaml.safe_load(meta_path.read_text(encoding="utf-8")) or {}
+            except yaml.YAMLError:
+                metadata = {}
+        score = read_validation_score_from_file(init.path / "artifacts" / "prd-validation.md")
         prd_exists = (init.path / "artifacts" / "prd.md").exists()
         if prd_exists:
             has_prd += 1
@@ -290,42 +325,46 @@ async def _dashboard(request, force_onboarding=False):
 
     avg_score = round(total_score / scored_count, 1) if scored_count > 0 else 0
 
-    # ── Compute attention items ──
     lang = config_manager.get("lang", "en")
     today = date.today()
-    threshold = timedelta(days=7)
     attention_items = []
     for init in initiatives:
-            meta = scan._load_metadata(init.path)
-            score = scan._read_validation_score(init.path)
-            prd_exists = (init.path / "artifacts" / "prd.md").exists()
-            display_name = meta.get("name", init.name) if meta else init.name
-            created_raw = (meta or {}).get("created_at", "")
-            age = 0
-            if created_raw:
-                try:
-                    if isinstance(created_raw, date):
-                        created = created_raw
-                    else:
-                        created = date.fromisoformat(created_raw)
-                    age = (today - created).days
-                except (ValueError, TypeError):
-                    pass
+        meta_path = init.path / "metadata.yaml"
+        meta = {}
+        if meta_path.exists():
+            try:
+                meta = yaml.safe_load(meta_path.read_text(encoding="utf-8")) or {}
+            except yaml.YAMLError:
+                meta = {}
+        score = read_validation_score_from_file(init.path / "artifacts" / "prd-validation.md")
+        prd_exists = (init.path / "artifacts" / "prd.md").exists()
+        display_name = meta.get("name", init.name) if meta else init.name
+        created_raw = (meta or {}).get("created_at", "")
+        age = 0
+        if created_raw:
+            try:
+                if isinstance(created_raw, date):
+                    created = created_raw
+                else:
+                    created = date.fromisoformat(created_raw)
+                age = (today - created).days
+            except (ValueError, TypeError):
+                pass
 
-            if not prd_exists and age > 7:
-                attention_items.append({
-                    "name": init.name,
-                    "display_name": display_name,
-                    "reason": _t("attention.no_prd", lang),
-                    "action": "generate",
-                })
-            elif prd_exists and score is not None and score < 7:
-                attention_items.append({
-                    "name": init.name,
-                    "display_name": display_name,
-                    "reason": _t("attention.low_score", lang),
-                    "action": "view",
-                })
+        if not prd_exists and age > 7:
+            attention_items.append({
+                "name": init.name,
+                "display_name": display_name,
+                "reason": _t("attention.no_prd", lang),
+                "action": "generate",
+            })
+        elif prd_exists and score is not None and score < 7:
+            attention_items.append({
+                "name": init.name,
+                "display_name": display_name,
+                "reason": _t("attention.low_score", lang),
+                "action": "view",
+            })
 
     archive_dir = repo.initiatives_path.parent / "archived"
     archived_count = 0
@@ -355,25 +394,19 @@ async def _dashboard(request, force_onboarding=False):
 # ─── Quickstart ───
 
 @app.post("/quickstart", response_class=HTMLResponse)
-async def quickstart(request: Request):
-    import shutil
-    from datetime import date
-
+async def quickstart(request: Request) -> HTMLResponse:
     repo = InitiativeRepository()
     init_id = "INT-QUICKSTART"
     base_path = repo.initiatives_path / init_id
 
-    # Clean up if already exists
     if base_path.exists():
-        import shutil as sh
-        sh.rmtree(base_path)
+        shutil.rmtree(base_path)
 
     base_path.mkdir(parents=True, exist_ok=True)
     (base_path / "artifacts").mkdir(exist_ok=True)
     (base_path / "context").mkdir(exist_ok=True)
     (base_path / "logs").mkdir(exist_ok=True)
 
-    import yaml
     metadata = {
         "id": init_id,
         "name": _t("quickstart.name", _get_lang()),
@@ -386,23 +419,18 @@ async def quickstart(request: Request):
         yaml.dump(metadata, default_flow_style=False, allow_unicode=True), encoding="utf-8"
     )
 
-    # Copy fake-context files
     fake_dir = Path(__file__).parent.parent.parent.parent / "fake-context"
     ctx_dir = base_path / "context"
-    copied = 0
     if fake_dir.exists():
         for f in fake_dir.iterdir():
             if f.is_file() and f.suffix in (".md", ".txt"):
                 safe = _safe_filename(f.name)
                 if safe:
                     shutil.copy2(str(f), str(ctx_dir / safe))
-                    copied += 1
 
     tracker = ChangeTracker()
     tracker.update_manifest(str(base_path))
 
-    # Attempt PRD generation
-    prd_generated = False
     try:
         ai_client = _build_ai_client()
         selected = _get_initiative_by_name(init_id)
@@ -412,20 +440,19 @@ async def quickstart(request: Request):
             if main_context.strip():
                 context_parts.append(f"--- Contexto Principal: {selected.name} ---\n\n{main_context}")
             context = "\n\n".join(context_parts) if context_parts else ""
-            prompt = PromptBuilder().build("create_prd", context)
+            prompt = PromptBuilder().build("create_prd", context, lang=_get_lang())
             prd_content = ai_client.generate(prompt)
 
             prd_path = str(selected.path / "artifacts" / "prd.md")
             (selected.path / "artifacts").mkdir(parents=True, exist_ok=True)
             MarkdownWriter().write(content=prd_content, output_path=prd_path)
 
-            validator = PRDValidator(ai_client=ai_client)
+            validator = PRDValidator(ai_client=ai_client, lang=_get_lang())
             report = validator.validate(prd_content)
             report_path = str(selected.path / "artifacts" / "prd-validation.md")
-            MarkdownWriter().write(content=report.to_markdown(), output_path=report_path)
+            MarkdownWriter().write(content=report.to_markdown(lang=_get_lang()), output_path=report_path)
 
             tracker.update_manifest(str(selected.path))
-            prd_generated = True
     except OllamaConnectionError:
         pass
 
@@ -440,11 +467,13 @@ async def initiative_detail(request: Request, initiative_name: str):
     if not selected:
         return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
 
-    metadata = {}
     meta_path = selected.path / "metadata.yaml"
+    metadata = {}
     if meta_path.exists():
-        import yaml
-        metadata = yaml.safe_load(meta_path.read_text(encoding="utf-8")) or {}
+        try:
+            metadata = yaml.safe_load(meta_path.read_text(encoding="utf-8")) or {}
+        except yaml.YAMLError:
+            metadata = {}
 
     ctx_dir = selected.path / "context"
     docs = []
@@ -459,7 +488,6 @@ async def initiative_detail(request: Request, initiative_name: str):
     prd_exists = prd_path.exists()
     prd_content = prd_path.read_text(encoding="utf-8") if prd_exists else ""
 
-    # Load PRD versions
     prd_versions = []
     artifacts_dir = selected.path / "artifacts"
     if artifacts_dir.exists():
@@ -470,10 +498,8 @@ async def initiative_detail(request: Request, initiative_name: str):
 
     validation_score = "-"
     report_path = selected.path / "artifacts" / "prd-validation.md"
-    if report_path.exists():
-        scan = WorkspaceScanWorkflow(initiative_repository=InitiativeRepository(), logger=_SilentLogger())
-        score = scan._read_validation_score(selected.path)
-        validation_score = f"{score}/10" if score is not None else "-"
+    score = read_validation_score_from_file(report_path)
+    validation_score = f"{score}/10" if score is not None else "-"
 
     return templates.TemplateResponse(
         "initiative_detail.html",
@@ -522,9 +548,14 @@ async def upload_context_doc(
     uploaded = 0
     for doc in docs:
         if doc.filename:
+            ext = Path(doc.filename).suffix.lower()
+            if ext not in ALLOWED_EXTENSIONS:
+                continue
             safe_name = _safe_filename(doc.filename)
             if safe_name:
                 content = await doc.read()
+                if len(content) > 10 * 1024 * 1024:
+                    continue
                 (ctx_dir / safe_name).write_bytes(content)
                 uploaded += 1
 
@@ -740,21 +771,8 @@ async def generate_prd(
         artifacts_dir = selected.path / "artifacts"
         artifacts_dir.mkdir(parents=True, exist_ok=True)
 
-        # Version the previous PRD before overwriting
-        from datetime import datetime as _dt
-        prd_md = artifacts_dir / "prd.md"
-        if prd_md.exists():
-            version_ts = _dt.now().strftime("%Y%m%d_%H%M%S")
-            with prd_md.open("r", encoding="utf-8") as f:
-                old_content = f.read()
-            version_path = artifacts_dir / f"prd-{version_ts}.md"
-            version_path.write_text(old_content, encoding="utf-8")
-            # Also version the previous validation report
-            old_val = artifacts_dir / "prd-validation.md"
-            if old_val.exists():
-                with old_val.open("r", encoding="utf-8") as f:
-                    old_val_content = f.read()
-                (artifacts_dir / f"prd-validation-{version_ts}.md").write_text(old_val_content, encoding="utf-8")
+        version_file(artifacts_dir / "prd.md")
+        version_file(artifacts_dir / "prd-validation.md")
 
         MarkdownWriter().write(content=prd_content, output_path=str(prd_md))
 
@@ -816,22 +834,6 @@ async def validate_page(request: Request, initiative_name: str):
     )
 
 
-def _read_validation_score_from_dir(artifacts_dir: Path):
-    """Extract overall_score from a prd-validation.md file."""
-    rp = artifacts_dir / "prd-validation.md"
-    if not rp.exists():
-        return None
-    import re
-    content = rp.read_text(encoding="utf-8")
-    m = re.search(r"\*\*Overall Score[:\*]+\s*([\d.]+)", content)
-    if m:
-        return float(m.group(1))
-    m = re.search(r"overall_score[:\s]+([\d.]+)", content, re.IGNORECASE)
-    if m:
-        return float(m.group(1))
-    return None
-
-
 @app.post("/validate/{initiative_name}", response_class=HTMLResponse)
 async def validate_prd(request: Request, initiative_name: str):
     repo = InitiativeRepository()
@@ -852,11 +854,9 @@ async def validate_prd(request: Request, initiative_name: str):
             _ctx(request, initiative=selected, report=None, error=_t("validate.no_prd", _get_lang())),
         )
 
-    previous_score = _read_validation_score_from_dir(selected.path / "artifacts")
+    previous_score = read_validation_score_from_file(selected.path / "artifacts" / "prd-validation.md")
 
     try:
-        from datetime import datetime as _dt
-
         ai_client = _build_ai_client()
         validator = PRDValidator(ai_client=ai_client, lang=_get_lang())
         prd_content = prd_path.read_text(encoding="utf-8")
@@ -865,12 +865,7 @@ async def validate_prd(request: Request, initiative_name: str):
         from pm_os.writers.markdown_writer import MarkdownWriter
 
         artifacts_dir = selected.path / "artifacts"
-        old_val = artifacts_dir / "prd-validation.md"
-        if old_val.exists():
-            version_ts = _dt.now().strftime("%Y%m%d_%H%M%S")
-            with old_val.open("r", encoding="utf-8") as f:
-                (artifacts_dir / f"prd-validation-{version_ts}.md").write_text(f.read(), encoding="utf-8")
-
+        version_file(artifacts_dir / "prd-validation.md")
         report_path = str(artifacts_dir / "prd-validation.md")
         MarkdownWriter().write(content=report.to_markdown(lang=_get_lang()), output_path=report_path)
 
@@ -951,9 +946,16 @@ async def add_mcp_server(
     name: str = Form(...),
     url: str = Form(...),
 ):
+    try:
+        validated_url = _validate_mcp_url(url)
+    except ValueError as e:
+        return templates.TemplateResponse(
+            "config.html",
+            _ctx(request, saved=False, error=str(e)),
+        )
     servers = _get_mcp_servers()
-    if not any(s["url"] == url for s in servers):
-        servers.append({"name": name.strip(), "url": url.strip(), "enabled": True})
+    if not any(s["url"] == validated_url for s in servers):
+        servers.append({"name": name.strip(), "url": validated_url, "enabled": True})
         _save_mcp_servers(servers)
     return templates.TemplateResponse(
         "config.html",
@@ -1223,9 +1225,15 @@ async def upload_product_docs(
     ctx.mkdir(parents=True, exist_ok=True)
     for doc in docs:
         if doc.filename:
+            ext = Path(doc.filename).suffix.lower()
+            if ext not in ALLOWED_EXTENSIONS:
+                continue
             safe_name = _safe_filename(doc.filename)
             if safe_name:
-                (ctx / safe_name).write_bytes(await doc.read())
+                content = await doc.read()
+                if len(content) > 10 * 1024 * 1024:
+                    continue
+                (ctx / safe_name).write_bytes(content)
     return await product_docs_page(request)
 
 

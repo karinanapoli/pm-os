@@ -43,6 +43,7 @@ def create_validate_prd_workflow() -> ValidatePRDWorkflow:
         ai_client=OllamaClient(),
         markdown_writer=MarkdownWriter(),
         logger=ConsoleLogger(),
+        prd_validator=PRDValidator(ai_client=OllamaClient()),
     )
 
 

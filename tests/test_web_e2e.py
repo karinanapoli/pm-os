@@ -395,7 +395,7 @@ class TestConfiguration:
     def test_add_mcp_server(self, client, session_base):
         resp = client.post("/config/mcp/add", data={
             "name": "Test Server",
-            "url": "http://localhost:9999/mcp",
+            "url": "http://mcp-test.example.com/mcp",
         })
         assert resp.status_code == 200
         config_file = session_base / ".pm_os" / "config.json"
@@ -406,21 +406,21 @@ class TestConfiguration:
     def test_toggle_mcp_server(self, client, session_base):
         client.post("/config/mcp/add", data={
             "name": "Toggle Me",
-            "url": "http://localhost:8888/mcp",
+            "url": "http://mcp-test.example.com/mcp",
         })
-        resp = client.post("/config/mcp/toggle", data={"url": "http://localhost:8888/mcp"})
+        resp = client.post("/config/mcp/toggle", data={"url": "http://mcp-test.example.com/mcp"})
         assert resp.status_code == 200
         config_file = session_base / ".pm_os" / "config.json"
         cfg = json.loads(config_file.read_text())
-        server = next(s for s in cfg["mcp_servers"] if s["url"] == "http://localhost:8888/mcp")
+        server = next(s for s in cfg["mcp_servers"] if s["url"] == "http://mcp-test.example.com/mcp")
         assert server["enabled"] is False
 
     def test_delete_mcp_server(self, client, session_base):
         client.post("/config/mcp/add", data={
             "name": "Delete Me",
-            "url": "http://localhost:7777/mcp",
+            "url": "http://mcp-test.example.com/mcp",
         })
-        resp = client.post("/config/mcp/delete", data={"url": "http://localhost:7777/mcp"})
+        resp = client.post("/config/mcp/delete", data={"url": "http://mcp-test.example.com/mcp"})
         assert resp.status_code == 200
         config_file = session_base / ".pm_os" / "config.json"
         cfg = json.loads(config_file.read_text())

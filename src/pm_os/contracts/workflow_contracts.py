@@ -15,7 +15,7 @@ class ContextBuilderProtocol(Protocol):
 
 
 class PromptBuilderProtocol(Protocol):
-    def build(self, workflow_name: str, context: str) -> str:
+    def build(self, workflow_name: str, context: str, question: str = "", lang: str = "en") -> str:
         ...
 
 
@@ -26,4 +26,21 @@ class AIClient(Protocol):
 
 class MarkdownWriterProtocol(Protocol):
     def write(self, content: str, output_path: str) -> Path:
+        ...
+
+
+class ScopeGuardProtocol(Protocol):
+    def analyze(self, context: str) -> list[dict]:
+        ...
+
+
+class ChangeTrackerProtocol(Protocol):
+    def detect_changes(self, initiative_path: str) -> list[dict]:
+        ...
+    def update_manifest(self, initiative_path: str) -> None:
+        ...
+
+
+class PRDValidatorProtocol(Protocol):
+    def validate(self, prd_content: str) -> "ValidationReport":
         ...

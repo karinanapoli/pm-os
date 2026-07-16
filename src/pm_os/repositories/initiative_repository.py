@@ -16,15 +16,6 @@ class InitiativeRepository:
     ):
         self.initiatives_path = Path(initiatives_path)
 
-    def _load_metadata(self, path: Path) -> dict:
-        meta_path = path / "metadata.yaml"
-        if meta_path.exists():
-            try:
-                return yaml.safe_load(meta_path.read_text(encoding="utf-8")) or {}
-            except yaml.YAMLError:
-                return {}
-        return {}
-
     def list_names(self) -> list[str]:
         """Returns initiative names without loading documents."""
         if not self.initiatives_path.exists():

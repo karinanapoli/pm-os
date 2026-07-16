@@ -3,6 +3,10 @@ import os
 import httpx
 
 
+class AIProviderError(RuntimeError):
+    pass
+
+
 class AnthropicClient:
     def __init__(
         self,
@@ -16,22 +20,30 @@ class AnthropicClient:
 
     def generate(self, prompt: str) -> str:
         if not self.api_key:
-            raise RuntimeError("Anthropic API key not configured. Set it in Settings or ANTHROPIC_API_KEY env var.")
+            raise AIProviderError("Anthropic API key not configured. Set it in Settings or ANTHROPIC_API_KEY env var.")
 
-        resp = httpx.post(
-            f"{self.base_url}/messages",
-            headers={
-                "x-api-key": self.api_key,
-                "anthropic-version": "2023-06-01",
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": self.model,
-                "max_tokens": 4096,
-                "messages": [{"role": "user", "content": prompt}],
-            },
-            timeout=600,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        return data["content"][0]["text"]
+        try:
+            resp = httpx.post(
+                f"{self.base_url}/messages",
+                headers={
+                    "x-api-key": self.api_key,
+                    "anthropic-version": "2023-06-01",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": self.model,
+                    "max_tokens": 4096,
+                    "messages": [{"role": "user", "content": prompt}],
+                },
+                timeout=600,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            content = data.get("content", [])
+            if not content:
+                return ""
+            return content[0].get("text", "")
+        except httpx.HTTPStatusError as e:
+            raise AIProviderError(f"Anthropic API error: {e.response.status_code}") from e
+        except httpx.RequestError as e:
+            raise AIProviderError(f"Anthropic request failed: {e}") from e

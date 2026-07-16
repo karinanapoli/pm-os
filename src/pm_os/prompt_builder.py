@@ -3,6 +3,8 @@ class PromptBuilder:
         if workflow_name == "create_prd":
             return self._build_create_prd_prompt(context, lang)
         if workflow_name == "consult":
+            if lang == "en":
+                return self._build_consult_prompt_en(context, question)
             return self._build_consult_prompt(context, question)
         raise ValueError(f"Unsupported workflow: {workflow_name}")
 
@@ -67,3 +69,18 @@ Se a informação não estiver nos documentos, diga que não encontrou.
 Cite a fonte (iniciativa ou documentação do produto) de onde cada informação foi extraída.
 
 Pergunta: {question}"""
+
+    def _build_consult_prompt_en(self, context: str, question: str) -> str:
+        return f"""You are a product documentation analyst.
+
+Below are documents from various sources (initiatives and/or product documentation).
+Each block is preceded by a header indicating its origin.
+
+Documents:
+{context}
+
+Based SOLELY on the documents above, answer the question below.
+If the information is not in the documents, say so.
+Cite the source (initiative or product documentation) from which each piece of information was extracted.
+
+Question: {question}"""

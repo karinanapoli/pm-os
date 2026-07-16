@@ -203,30 +203,67 @@ function updatePreview() {
     var mainOpt = mainSel.options[mainSel.selectedIndex];
     var mainDocs = mainOpt && mainOpt.dataset.docs ? parseInt(mainOpt.dataset.docs) : 0;
 
+    box.textContent = '';
+    while (box.firstChild) box.removeChild(box.firstChild);
+
     if (!mainSel.value) {
-        box.innerHTML = '<div class="preview-empty">{{ "generate.preview_empty"|t }}</div>';
+        var empty = document.createElement('div');
+        empty.className = 'preview-empty';
+        empty.textContent = '{{ "generate.preview_empty"|t }}';
+        box.appendChild(empty);
         return;
     }
 
-    var lines = [];
     var total = mainDocs;
-    lines.push('<div class="preview-line"><span class="dot"></span>' + mainDocs + ' {{ "generate.preview_from"|t }} <strong style="color:var(--text)">' + mainOpt.text + '</strong></div>');
+    var title = document.createElement('div');
+    title.className = 'preview-title';
+    title.textContent = '{{ "generate.preview_heading"|t }}';
+    box.appendChild(title);
+
+    var line1 = document.createElement('div');
+    line1.className = 'preview-line';
+    var dot1 = document.createElement('span');
+    dot1.className = 'dot';
+    line1.appendChild(dot1);
+    line1.appendChild(document.createTextNode(mainDocs + ' {{ "generate.preview_from"|t }} '));
+    var strong1 = document.createElement('strong');
+    strong1.style.color = 'var(--text)';
+    strong1.textContent = mainOpt.text;
+    line1.appendChild(strong1);
+    box.appendChild(line1);
 
     document.querySelectorAll('.gen-extra:checked').forEach(function(cb) {
         var d = parseInt(cb.dataset.docs);
         total += d;
-        lines.push('<div class="preview-line"><span class="dot"></span>' + d + ' {{ "generate.preview_from"|t }} <strong style="color:var(--text)">' + cb.dataset.name + '</strong> ({{ "generate.preview_extra"|t }})</div>');
+        var line = document.createElement('div');
+        line.className = 'preview-line';
+        var dot = document.createElement('span');
+        dot.className = 'dot';
+        line.appendChild(dot);
+        line.appendChild(document.createTextNode(d + ' {{ "generate.preview_from"|t }} '));
+        var strong = document.createElement('strong');
+        strong.style.color = 'var(--text)';
+        strong.textContent = cb.dataset.name;
+        line.appendChild(strong);
+        line.appendChild(document.createTextNode(' ({{ "generate.preview_extra"|t }})'));
+        box.appendChild(line);
     });
 
     if (document.getElementById('gen-product-docs').checked) {
         total += {{ product_docs_count }};
-        lines.push('<div class="preview-line"><span class="dot"></span>{{ "generate.preview_product_docs"|t }}</div>');
+        var pdLine = document.createElement('div');
+        pdLine.className = 'preview-line';
+        var pdDot = document.createElement('span');
+        pdDot.className = 'dot';
+        pdLine.appendChild(pdDot);
+        pdLine.appendChild(document.createTextNode('{{ "generate.preview_product_docs"|t }}'));
+        box.appendChild(pdLine);
     }
 
-    box.innerHTML =
-        '<div class="preview-title">{{ "generate.preview_heading"|t }}</div>' +
-        lines.join('') +
-        '<div class="preview-total">{{ "generate.preview_total_prefix"|t }} ' + total + ' {{ "generate.preview_total_suffix"|t }}</div>';
+    var totalLine = document.createElement('div');
+    totalLine.className = 'preview-total';
+    totalLine.textContent = '{{ "generate.preview_total_prefix"|t }} ' + total + ' {{ "generate.preview_total_suffix"|t }}';
+    box.appendChild(totalLine);
 }
 
 document.addEventListener('DOMContentLoaded', function() {

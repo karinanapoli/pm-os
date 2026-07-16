@@ -1,10 +1,15 @@
 import json
 import os
+import tempfile
 from pathlib import Path
 from typing import Any
 
-CONFIG_DIR = Path(os.getenv("PM_OS_CONFIG_DIR", str(Path.home() / ".pm_os")))
-CONFIG_FILE = CONFIG_DIR / "config.json"
+def _get_config_dir() -> Path:
+    return Path(os.getenv("PM_OS_CONFIG_DIR", str(Path.home() / ".pm_os")))
+
+
+def _get_config_file() -> Path:
+    return _get_config_dir() / "config.json"
 
 SCHEMA: dict[str, type] = {
     "model": str,
@@ -69,9 +74,10 @@ class ConfigManager:
         self._save()
 
     def _load(self) -> dict:
-        if CONFIG_FILE.exists():
+        config_file = _get_config_file()
+        if config_file.exists():
             try:
-                raw = json.loads(CONFIG_FILE.read_text(encoding="utf-8"))
+                raw = json.loads(config_file.read_text(encoding="utf-8"))
                 merged = {**DEFAULT_CONFIG, **raw}
                 return {k: v for k, v in merged.items() if k in DEFAULT_CONFIG}
             except (json.JSONDecodeError, OSError):
@@ -79,8 +85,14 @@ class ConfigManager:
         return dict(DEFAULT_CONFIG)
 
     def _save(self) -> None:
-        CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-        CONFIG_FILE.write_text(
-            json.dumps(self._config, indent=2, ensure_ascii=False),
-            encoding="utf-8",
-        )
+        config_dir = _get_config_dir()
+        config_file = _get_config_file()
+        config_dir.mkdir(parents=True, exist_ok=True)
+        tmp = tempfile.NamedTemporaryFile(mode="w", dir=str(config_dir), delete=False, suffix=".tmp", encoding="utf-8")
+        try:
+            json.dump(self._config, tmp, indent=2, ensure_ascii=False)
+            tmp.close()
+            os.replace(tmp.name, str(config_file))
+        except Exception:
+            os.unlink(tmp.name)
+            raise

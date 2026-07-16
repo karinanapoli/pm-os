@@ -45,7 +45,7 @@
                 </div>
                 <div class="form-group">
                     <label for="openai_api_key">{{ "config.openai_api_key"|t }}</label>
-                    <input type="password" name="openai_api_key" id="openai_api_key" value="{{ config.openai_api_key or '' }}" placeholder="sk-...">
+                    <input type="password" name="openai_api_key" id="openai_api_key" placeholder="sk-..." value="">
                     <div class="form-hint">{{ "config.api_key_hint"|t }}</div>
                 </div>
             </div>
@@ -58,7 +58,7 @@
                 </div>
                 <div class="form-group">
                     <label for="anthropic_api_key">{{ "config.anthropic_api_key"|t }}</label>
-                    <input type="password" name="anthropic_api_key" id="anthropic_api_key" value="{{ config.anthropic_api_key or '' }}" placeholder="sk-ant-...">
+                    <input type="password" name="anthropic_api_key" id="anthropic_api_key" placeholder="sk-ant-..." value="">
                     <div class="form-hint">{{ "config.api_key_hint"|t }}</div>
                 </div>
             </div>
@@ -106,7 +106,7 @@
                 </div>
                 <div class="form-group">
                     <label for="auth_password">{{ "config.auth_password"|t }}</label>
-                    <input type="password" name="auth_password" id="auth_password" value="{{ config.auth_password or '' }}" placeholder="••••••••">
+                    <input type="password" name="auth_password" id="auth_password" placeholder="••••••••" value="">
                 </div>
             </div>
 

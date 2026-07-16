@@ -55,4 +55,4 @@ class OllamaClient:
         except urllib.error.URLError as error:
             raise OllamaConnectionError() from error
 
-        return data["response"]
+        return data.get("response", "")
