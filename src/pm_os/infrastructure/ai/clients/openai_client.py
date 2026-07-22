@@ -2,9 +2,7 @@ import os
 
 import httpx
 
-
-class AIProviderError(RuntimeError):
-    pass
+from pm_os.contracts.workflow_contracts import AIProviderError
 
 
 class OpenAIClient:

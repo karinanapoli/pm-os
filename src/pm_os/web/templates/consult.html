@@ -51,7 +51,7 @@
 
 {% if error %}
 <div class="alert alert-error" role="alert">
-    <strong>Error:</strong> {{ error }}
+    <strong>{{ "error.generic"|t }}:</strong> {{ error }}
 </div>
 {% endif %}
 
@@ -68,7 +68,11 @@
             <ul style="margin-top: 8px; font-size: 13px;">
                 {% for ref in result.references %}
                 <li style="margin-bottom: 4px;">
+                    {% if ref.initiative in initiative_names %}
                     <a href="/initiative/{{ ref.initiative }}" style="color: var(--primary-light);">{{ ref.initiative }}</a>
+                    {% else %}
+                    <span style="color: var(--text-secondary);">{{ ref.initiative }}</span>
+                    {% endif %}
                     {% if ref.document %} — {{ ref.document }}{% endif %}
                 </li>
                 {% endfor %}

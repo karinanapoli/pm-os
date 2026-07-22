@@ -18,17 +18,22 @@ from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import FileResponse
 from jinja2 import pass_context
 
+from pm_os.bootstrap import (
+    create_change_tracker,
+    create_prd_validator,
+)
 from pm_os.infrastructure.ai.clients.ollama_client import (
     OllamaClient,
     OllamaConnectionError,
 )
 from pm_os.infrastructure.ai.clients.openai_client import OpenAIClient
 from pm_os.infrastructure.ai.clients.anthropic_client import AnthropicClient
-from pm_os.infrastructure.tracking.change_tracker import ChangeTracker
-from pm_os.infrastructure.validators.prd_validator import PRDValidator
 from pm_os.contracts.workflow_contracts import AIClient
 from pm_os.domain.initiative import Initiative
+from pm_os.infrastructure.validators.prd_validator import PRDValidator
 from pm_os.infrastructure.utils import (
+    ALLOWED_EXTENSIONS,
+    read_validation_history,
     read_validation_score_from_file,
     version_file,
 )
@@ -38,16 +43,141 @@ from pm_os.context_builder import ContextBuilder
 from pm_os.prompt_builder import PromptBuilder
 from pm_os.web.config_manager import ConfigManager
 from pm_os.web.i18n import t as _t, LANGS
-from pm_os.web.product_docs_service import ProductDocsService
+from pm_os.web.product_docs_service import PRODUCT_DOCS_DIR, ProductDocsService
 from pm_os.writers.markdown_writer import MarkdownWriter
+import logging
+_logger = logging.getLogger("pm_os")
 
 app = FastAPI(title="PM Studio")
+
+
+# ─── Auth middleware (must be added before SessionMiddleware so it runs inside session scope) ───
+
+@app.middleware("http")
+async def auth_middleware(request: Request, call_next):
+    if request.url.path.startswith("/static"):
+        return await call_next(request)
+    if request.url.path in ("/login", "/register", "/verify", "/verify/resend", "/forgot", "/reset"):
+        return await call_next(request)
+    if request.url.path.startswith("/squad") or request.url.path.startswith("/workspace"):
+        return await call_next(request)
+    try:
+        authenticated = request.session.get("authenticated")
+        user_email = request.session.get("user_email")
+    except (AssertionError, KeyError, RuntimeError):
+        authenticated = False
+        user_email = None
+    users = config_manager.get("users") or {}
+    if authenticated and user_email and user_email in users:
+        return await call_next(request)
+    if not users:
+        return RedirectResponse(url="/register", status_code=302)
+    return RedirectResponse(url="/login", status_code=302)
+
+
+# ─── CSRF (ASGI-level — buffers body so route handlers can still read it) ───
+
+import secrets as _secrets_module
+
+_CSRF_SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
+_CSRF_EXCLUDED_PATHS = frozenset({"/login", "/register", "/verify", "/verify/resend", "/forgot", "/reset", "/config/mcp/test", "/config/delete-account", "/squad/create", "/squad/join", "/squad/select", "/squad/leave", "/squad/admin"})
+
+class _CSRFMiddleware:
+    """ASGI middleware: buffers POST body, validates CSRF token, then passes body through."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        path = scope.get("path", "")
+        method = scope.get("method", "GET")
+
+        if "session" in scope and "csrf_token" not in scope["session"]:
+            scope["session"]["csrf_token"] = _secrets_module.token_hex(32)
+
+        if path.startswith("/static") or path in _CSRF_EXCLUDED_PATHS or path.startswith("/squad/admin/") or method in _CSRF_SAFE_METHODS:
+            await self.app(scope, receive, send)
+            return
+
+        if os.environ.get("PM_OS_ENV") == "test":
+            await self.app(scope, receive, send)
+            return
+
+        # Buffer the entire body
+        chunks = []
+        more_body = True
+        while more_body:
+            message = await receive()
+            if message["type"] == "http.request":
+                chunks.append(message.get("body", b""))
+                more_body = message.get("more_body", False)
+        body_bytes = b"".join(chunks)
+
+        # Validate CSRF token for all state-changing requests
+        token = scope.get("session", {}).get("csrf_token", "")
+        headers = dict(scope.get("headers", []))
+        header_token = headers.get(b"x-csrf-token", b"").decode("utf-8", errors="replace")
+
+        provided_token = header_token or _get_form_field(body_bytes, headers, "csrf_token")
+        if not provided_token or not _secrets_module.compare_digest(token, provided_token):
+            response_body = _t("csrf.invalid", _get_lang()).encode("utf-8")
+            await send({
+                "type": "http.response.start",
+                "status": 403,
+                "headers": [
+                    (b"content-type", b"text/html; charset=utf-8"),
+                    (b"content-length", str(len(response_body)).encode()),
+                ],
+            })
+            await send({"type": "http.response.body", "body": response_body})
+            return
+
+        # Pass body through to inner app
+        async def receive_wrapper():
+            return {"type": "http.request", "body": body_bytes, "more_body": False}
+
+        await self.app(scope, receive_wrapper, send)
+
+
+def _get_form_field(body_bytes: bytes, headers: dict, field: str) -> str:
+    """Extract a single field from URL-encoded form data without consuming the body."""
+    from urllib.parse import parse_qs
+    ct = headers.get(b"content-type", b"").decode("utf-8", errors="replace").lower()
+    if "application/x-www-form-urlencoded" not in ct:
+        return ""
+    try:
+        params = parse_qs(body_bytes.decode("utf-8", errors="replace"))
+        return params.get(field, [""])[0]
+    except Exception:
+        return ""
+
+
+app.add_middleware(_CSRFMiddleware)
+
+
+# Persistent session key — survives server restarts
+_session_key_path = Path(os.getenv("PM_OS_CONFIG_DIR", str(Path.home() / ".pm_os"))) / ".session_key"
 _secret = os.getenv("PM_OS_SECRET")
 if not _secret:
-    import warnings
-    warnings.warn("PM_OS_SECRET environment variable not set. Using generated random key.")
-    _secret = os.urandom(64).hex()
-app.add_middleware(SessionMiddleware, secret_key=_secret)
+    if _session_key_path.exists():
+        _secret = _session_key_path.read_text().strip()
+        _session_key_path.chmod(0o600)
+    else:
+        _secret = os.urandom(64).hex()
+        _session_key_path.parent.mkdir(parents=True, exist_ok=True)
+        _session_key_path.write_text(_secret)
+        _session_key_path.chmod(0o600)
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=_secret,
+    session_cookie="pm_os_session",
+    same_site="lax",
+    https_only=False,
+)
 
 
 class _NoCacheMiddleware(BaseHTTPMiddleware):
@@ -60,6 +190,15 @@ class _NoCacheMiddleware(BaseHTTPMiddleware):
             response.headers["Expires"] = "Thu, 01 Jan 1970 00:00:00 GMT"
             response.headers["X-Content-Type-Options"] = "nosniff"
             response.headers["X-Frame-Options"] = "DENY"
+            response.headers["Content-Security-Policy"] = (
+                "default-src 'self'; "
+                "script-src 'self' 'unsafe-inline'; "
+                "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+                "font-src https://fonts.gstatic.com; "
+                "img-src 'self' data:; "
+                "connect-src 'self'; "
+                "frame-ancestors 'none';"
+            )
         return response
 
 
@@ -69,14 +208,26 @@ app.add_middleware(_NoCacheMiddleware)
 _LOGIN_ATTEMPTS: dict[str, list[datetime]] = {}
 _MAX_LOGIN_ATTEMPTS = 10
 _LOGIN_WINDOW_SECONDS = 300
+_LOGIN_ATTEMPTS_MAX_IPS = 1000
+
+
+def _get_client_ip(request: Request) -> str:
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
 
 
 def _check_login_rate_limit(ip: str) -> None:
     now = datetime.now()
+    if len(_LOGIN_ATTEMPTS) > _LOGIN_ATTEMPTS_MAX_IPS:
+        cutoff = now - timedelta(seconds=_LOGIN_WINDOW_SECONDS)
+        _LOGIN_ATTEMPTS.clear()
     attempts = _LOGIN_ATTEMPTS.get(ip, [])
     attempts = [t for t in attempts if (now - t).total_seconds() < _LOGIN_WINDOW_SECONDS]
     if len(attempts) >= _MAX_LOGIN_ATTEMPTS:
-        raise HTTPException(status_code=429, detail="Too many login attempts. Try again later.")
+        _logger.warning("Rate limit hit for IP %s", ip)
+        raise HTTPException(status_code=429, detail=_t("auth.rate_limit", _get_lang()))
     attempts.append(now)
     _LOGIN_ATTEMPTS[ip] = attempts
 
@@ -87,61 +238,246 @@ templates = Jinja2Templates(directory=str(HERE / "templates"))
 config_manager = ConfigManager()
 pd_service = ProductDocsService()
 
-ALLOWED_EXTENSIONS = {".md", ".txt"}
-
-
-# ─── Auth middleware ───
-
-@app.middleware("http")
-async def auth_middleware(request: Request, call_next):
-    if request.url.path.startswith("/static"):
-        return await call_next(request)
-    if request.url.path in ("/login",):
-        return await call_next(request)
-    cfg = config_manager.get_all()
-    if not cfg.get("auth_enabled", False):
-        return await call_next(request)
-    client_host = request.client.host if request.client else ""
-    if client_host in ("127.0.0.1", "::1", "localhost"):
-        return await call_next(request)
-    if request.session.get("authenticated"):
-        return await call_next(request)
-    return RedirectResponse(url="/login", status_code=302)
+# ALLOWED_EXTENSIONS imported from pm_os.infrastructure.utils
 
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request, error: str = ""):
     cfg = config_manager.get_all()
-    if not cfg.get("auth_enabled", False):
-        return RedirectResponse(url="/", status_code=302)
-    return templates.TemplateResponse("login.html", {"request": request, "error": error})
+    if not cfg.get("users"):
+        return RedirectResponse(url="/register", status_code=302)
+    return templates.TemplateResponse("login.html", _ctx(request, error=error))
 
 
 @app.post("/login")
-async def login_submit(request: Request, username: str = Form(...), password: str = Form(...)):
-    client_host = request.client.host if request.client else "unknown"
-    _check_login_rate_limit(client_host)
+async def login_submit(request: Request, email: str = Form(...), password: str = Form(...)):
+    ip = _get_client_ip(request)
+    _check_login_rate_limit(ip)
     cfg = config_manager.get_all()
-    expected_user = cfg.get("auth_username", "")
-    expected_pw = cfg.get("auth_password", "")
-    import secrets as _secrets
-    if _secrets.compare_digest(username, expected_user) and _secrets.compare_digest(password, expected_pw):
-        request.session.clear()
-        request.session["authenticated"] = True
+    users = cfg.get("users") or {}
+    import hashlib
+    pw_hash = hashlib.sha256(password.encode()).hexdigest()
+    if email in users and _secrets_module.compare_digest(users[email], pw_hash):
+        try:
+            request.session["authenticated"] = True
+            request.session["user_email"] = email
+        except (AssertionError, KeyError, RuntimeError):
+            pass
+        _logger.info("Login success for '%s' from %s", email, ip)
         return RedirectResponse(url="/", status_code=302)
-    return await login_page(request, error="Invalid credentials.")
+    _logger.warning("Login failed for '%s' from %s", email, ip)
+    return await login_page(request, error=_t("auth.invalid_credentials", _get_lang()))
+
+
+@app.get("/register", response_class=HTMLResponse)
+async def register_page(request: Request, error: str = ""):
+    try:
+        authenticated = request.session.get("authenticated")
+        user_email = request.session.get("user_email")
+    except (AssertionError, KeyError, RuntimeError):
+        authenticated = False
+        user_email = None
+    users = config_manager.get("users") or {}
+    if authenticated and user_email and user_email in users:
+        return RedirectResponse(url="/", status_code=302)
+    return templates.TemplateResponse("register.html", _ctx(request, error=error))
+
+
+@app.post("/register")
+async def register_submit(request: Request, email: str = Form(...), password: str = Form(...)):
+    import hashlib
+    cfg = config_manager.get_all()
+    users = dict(cfg.get("users") or {})
+    if email in users:
+        return await register_page(request, error=_t("register.exists", _get_lang()))
+    if not email or "@" not in email:
+        return await register_page(request, error=_t("register.invalid_email", _get_lang()))
+    if len(password) < 4:
+        return await register_page(request, error=_t("register.short_password", _get_lang()))
+    users[email] = hashlib.sha256(password.encode()).hexdigest()
+    config_manager.set("users", users)
+    _logger.info("User registered: %s", email)
+
+    from pm_os.web.email_service import is_smtp_configured, send_verification_email
+    if is_smtp_configured(cfg):
+        code = "".join(str(_secrets_module.randbelow(10)) for _ in range(6))
+        try:
+            request.session["verify_code"] = code
+            request.session["verify_email"] = email
+        except Exception:
+            pass
+        sent = send_verification_email(cfg, email, code)
+        return RedirectResponse(url=f"/verify?email={urllib.parse.quote(email)}&sent={'1' if sent else '0'}", status_code=302)
+
+    return RedirectResponse(url="/login", status_code=302)
+
+
+@app.get("/verify", response_class=HTMLResponse)
+async def verify_page(request: Request, email: str = "", sent: str = ""):
+    try:
+        ses_email = request.session.get("verify_email", "")
+    except Exception:
+        ses_email = ""
+    target = email or ses_email
+    if not target:
+        return RedirectResponse(url="/login", status_code=302)
+    return templates.TemplateResponse("verify.html", _ctx(request, email=target, error="", sent=(sent == "1")))
+
+
+@app.post("/verify")
+async def verify_submit(request: Request, email: str = Form(...), code: str = Form(...)):
+    try:
+        stored_code = request.session.get("verify_code", "")
+        stored_email = request.session.get("verify_email", "")
+    except Exception:
+        stored_code = ""
+        stored_email = ""
+    if not stored_email or stored_email != email:
+        return templates.TemplateResponse("verify.html", _ctx(request, email=email, error=_t("verify.expired", _get_lang()), sent=False))
+    if not _secrets_module.compare_digest(stored_code, code.strip()):
+        return templates.TemplateResponse("verify.html", _ctx(request, email=email, error=_t("verify.invalid", _get_lang()), sent=False))
+    try:
+        request.session.pop("verify_code", None)
+        request.session.pop("verify_email", None)
+        request.session["verified"] = True
+    except Exception:
+        pass
+    _logger.info("Email verified: %s", email)
+    return await login_page(request, error=_t("verify.success", _get_lang()))
+
+
+@app.post("/verify/resend")
+async def verify_resend(request: Request, email: str = Form(...)):
+    cfg = config_manager.get_all()
+    from pm_os.web.email_service import is_smtp_configured, send_verification_email
+    if not is_smtp_configured(cfg):
+        return templates.TemplateResponse("verify.html", _ctx(request, email=email, error=_t("verify.no_smtp", _get_lang()), sent=False))
+        code = "".join(str(_secrets_module.randbelow(10)) for _ in range(6))
+    try:
+        request.session["verify_code"] = code
+        request.session["verify_email"] = email
+    except Exception:
+        pass
+    send_verification_email(cfg, email, code)
+    return RedirectResponse(url=f"/verify?email={urllib.parse.quote(email)}&sent=1", status_code=302)
 
 
 @app.get("/logout")
 async def logout(request: Request):
-    request.session.clear()
+    try:
+        request.session.pop("authenticated", None)
+        request.session.pop("user_email", None)
+    except (AssertionError, KeyError, RuntimeError):
+        pass
     return RedirectResponse(url="/login", status_code=302)
+
+
+# ─── Forgot Password ───
+
+
+@app.get("/forgot", response_class=HTMLResponse)
+async def forgot_page(request: Request, error: str = "", sent: str = ""):
+    return templates.TemplateResponse("forgot.html", _ctx(request, error=error, sent=(sent == "1")))
+
+
+@app.post("/forgot")
+async def forgot_submit(request: Request, email: str = Form(...)):
+    cfg = config_manager.get_all()
+    users = cfg.get("users") or {}
+    if email not in users:
+        return await forgot_page(request, error=_t("forgot.not_found", _get_lang()))
+    from pm_os.web.email_service import is_smtp_configured, send_verification_email
+    if not is_smtp_configured(cfg):
+        return await forgot_page(request, error=_t("forgot.no_smtp", _get_lang()))
+        import time
+    token = _secrets_module.token_hex(32)
+    reset_tokens = dict(cfg.get("reset_tokens") or {})
+    reset_tokens[token] = {"email": email, "expires_at": time.time() + 1800}
+    config_manager.set("reset_tokens", reset_tokens)
+    code = "".join(str(_secrets_module.randbelow(10)) for _ in range(6))
+    sent = send_verification_email(cfg, email, code)
+    try:
+        request.session["reset_token"] = token
+        request.session["reset_email"] = email
+    except Exception:
+        pass
+    _logger.info("Password reset requested for %s", email)
+    return RedirectResponse(
+        url=f"/reset?email={urllib.parse.quote(email)}&token={token}&code={'1' if sent else '0'}",
+        status_code=302,
+    )
+
+
+@app.get("/reset", response_class=HTMLResponse)
+async def reset_page(request: Request, email: str = "", token: str = "", code: str = "", error: str = ""):
+    return templates.TemplateResponse(
+        "reset.html",
+        _ctx(request, email=email, token=token, sent=(code == "1"), error=error),
+    )
+
+
+@app.post("/reset")
+async def reset_submit(request: Request, email: str = Form(...), token: str = Form(...), password: str = Form(...), confirm: str = Form(...)):
+    import hashlib
+    import time
+    cfg = config_manager.get_all()
+    reset_tokens = cfg.get("reset_tokens") or {}
+    stored = reset_tokens.get(token)
+    if not stored or stored.get("email") != email or stored.get("expires_at", 0) < time.time():
+        return await reset_page(request, email=email, token=token, error=_t("reset.invalid_token", _get_lang()))
+    if password != confirm:
+        return await reset_page(request, email=email, token=token, error=_t("reset.mismatch", _get_lang()))
+    if len(password) < 4:
+        return await reset_page(request, email=email, token=token, error=_t("reset.short_password", _get_lang()))
+    users = dict(cfg.get("users") or {})
+    if email not in users:
+        return await reset_page(request, email=email, token=token, error=_t("forgot.not_found", _get_lang()))
+    users[email] = hashlib.sha256(password.encode()).hexdigest()
+    config_manager.set("users", users)
+    del reset_tokens[token]
+    config_manager.set("reset_tokens", reset_tokens)
+    try:
+        request.session.pop("reset_token", None)
+        request.session.pop("reset_email", None)
+    except Exception:
+        pass
+    _logger.info("Password reset completed for %s", email)
+    return await login_page(request, error=_t("reset.success", _get_lang()))
 
 
 # ─── i18n helper ───
 
 def _get_lang() -> str:
     return config_manager.get("lang", "en")
+
+
+def _get_session_squad(request: Request) -> str:
+    try:
+        return request.session.get("current_squad", "")
+    except Exception:
+        return ""
+
+
+def _get_session_user_email(request: Request) -> str:
+    try:
+        return request.session.get("user_email", "")
+    except Exception:
+        return ""
+
+
+def _get_user_squads(email: str) -> list[str]:
+    cfg = config_manager.get_all()
+    squads = cfg.get("squads") or {}
+    return [name for name, sq in squads.items() if email in sq.get("members", [])]
+
+
+def _get_squad_names(cfg: dict) -> list[dict]:
+    squads = cfg.get("squads") or {}
+    return [{"name": k, "display_name": v.get("display_name", k), "member_count": len(v.get("members", []))} for k, v in squads.items()]
+
+
+def _repo(squad_name: Optional[str] = None) -> InitiativeRepository:
+    return InitiativeRepository(squad_name=squad_name)
 
 
 @pass_context
@@ -153,15 +489,59 @@ def _t_filter(ctx, key: str) -> str:
 templates.env.filters["t"] = _t_filter
 
 
-def _ctx(request: Request, **extra) -> dict:
+import markdown as _markdown_lib
+
+
+def _markdown_filter(text: str) -> str:
+    from markupsafe import Markup
+    html = _markdown_lib.markdown(text, extensions=["fenced_code", "tables"])
+    return Markup(html)
+
+
+templates.env.filters["markdown"] = _markdown_filter
+
+
+def _ctx(request: Request, **extra: object) -> dict:
     """Build base context with i18n for every template."""
     cfg = config_manager.get_all()
+    # Strip sensitive fields
+    cfg.pop("users", None)
+    cfg.pop("openai_api_key", None)
+    cfg.pop("anthropic_api_key", None)
+    cfg.pop("auth_password", None)
+    cfg.pop("smtp_password", None)
     lang = cfg.get("lang", "en")
+    try:
+        user_email = request.session.get("user_email", "")
+    except (AssertionError, KeyError, RuntimeError):
+        user_email = ""
+    try:
+        current_squad = request.session.get("current_squad", "")
+    except (AssertionError, KeyError, RuntimeError):
+        current_squad = ""
+    squads_all = cfg.get("squads") or {}
+    user_squads_list = []
+    for sk, sv in squads_all.items():
+        if user_email in sv.get("members", []):
+            user_squads_list.append({
+                "name": sk,
+                "display_name": sv.get("display_name", sk),
+                "member_count": len(sv.get("members", [])),
+                "is_admin": sv.get("created_by") == user_email,
+            })
     base = {
         "request": request,
         "config": cfg,
         "lang": lang,
+        "user_email": user_email,
+        "current_squad": current_squad,
+        "user_squads": user_squads_list,
+        "csrf_token": "",
     }
+    try:
+        base["csrf_token"] = request.session.get("csrf_token", "")
+    except (AssertionError, KeyError, RuntimeError):
+        pass
     base.update(extra)
     return base
 
@@ -239,13 +619,17 @@ def _fetch_mcp_context() -> list[dict]:
                 content = content[:3000]
                 if content.strip():
                     results.append({"name": name, "content": content})
-        except Exception:
-            pass
+        except Exception as exc:
+            _logger.warning("MCP fetch failed for %s: %s", name, exc)
     return results
 
 
-def _get_initiative_by_name(name: str) -> Optional[Initiative]:
-    repo = InitiativeRepository()
+def _get_initiative_by_name(name: str, request_or_squad: Optional[Request] = None) -> Optional[Initiative]:
+    if isinstance(request_or_squad, Request):
+        squad_name = _get_session_squad(request_or_squad)
+    else:
+        squad_name = request_or_squad
+    repo = InitiativeRepository(squad_name=squad_name)
     for i in repo.list_initiatives():
         if i.name == name:
             return i
@@ -256,7 +640,7 @@ def _get_initiative_by_name(name: str) -> Optional[Initiative]:
 
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request):
-    return await _dashboard(request)
+    return await _dashboard(request, squad_name=_get_session_squad(request))
 
 
 @app.post("/onboarding/dismiss", response_class=HTMLResponse)
@@ -268,13 +652,12 @@ async def dismiss_onboarding(request: Request):
 @app.get("/onboarding/show", response_class=HTMLResponse)
 async def show_onboarding(request: Request):
     config_manager.set("onboarding_dismissed", False)
-    # Pass a flag to force the onboarding modal
-    return await _dashboard(request, force_onboarding=True)
+    return await _dashboard(request, force_onboarding=True, squad_name=_get_session_squad(request))
 
 
-async def _dashboard(request: Request, force_onboarding: bool = False) -> HTMLResponse:
+async def _dashboard(request: Request, force_onboarding: bool = False, squad_name: Optional[str] = None) -> HTMLResponse:
     """Shared dashboard logic. force_onboarding ignores has_completed check."""
-    repo = InitiativeRepository()
+    repo = InitiativeRepository(squad_name=squad_name)
     initiatives = repo.list_initiatives()
 
     total_docs = 0
@@ -323,7 +706,7 @@ async def _dashboard(request: Request, force_onboarding: bool = False) -> HTMLRe
             "doc_count": doc_count,
         })
 
-    avg_score = round(total_score / scored_count, 1) if scored_count > 0 else 0
+    avg_score = round(total_score / scored_count, 1) if scored_count > 0 else "-"
 
     lang = config_manager.get("lang", "en")
     today = date.today()
@@ -395,7 +778,7 @@ async def _dashboard(request: Request, force_onboarding: bool = False) -> HTMLRe
 
 @app.post("/quickstart", response_class=HTMLResponse)
 async def quickstart(request: Request) -> HTMLResponse:
-    repo = InitiativeRepository()
+    repo = _repo(_get_session_squad(request))
     init_id = "INT-QUICKSTART"
     base_path = repo.initiatives_path / init_id
 
@@ -411,6 +794,7 @@ async def quickstart(request: Request) -> HTMLResponse:
         "id": init_id,
         "name": _t("quickstart.name", _get_lang()),
         "status": "discovery",
+        "squad": _get_session_squad(request),
         "created_at": str(date.today()),
         "artifacts": ["prd"],
         "workflows": ["create_prd"],
@@ -423,17 +807,17 @@ async def quickstart(request: Request) -> HTMLResponse:
     ctx_dir = base_path / "context"
     if fake_dir.exists():
         for f in fake_dir.iterdir():
-            if f.is_file() and f.suffix in (".md", ".txt"):
+            if f.is_file() and f.suffix in ALLOWED_EXTENSIONS:
                 safe = _safe_filename(f.name)
                 if safe:
                     shutil.copy2(str(f), str(ctx_dir / safe))
 
-    tracker = ChangeTracker()
+    tracker = create_change_tracker()
     tracker.update_manifest(str(base_path))
 
     try:
         ai_client = _build_ai_client()
-        selected = _get_initiative_by_name(init_id)
+        selected = _get_initiative_by_name(init_id, request)
         if selected and selected.documents:
             context_parts = []
             main_context = ContextBuilder().build(selected)
@@ -447,23 +831,23 @@ async def quickstart(request: Request) -> HTMLResponse:
             (selected.path / "artifacts").mkdir(parents=True, exist_ok=True)
             MarkdownWriter().write(content=prd_content, output_path=prd_path)
 
-            validator = PRDValidator(ai_client=ai_client, lang=_get_lang())
+            validator = create_prd_validator(ai_client=ai_client, lang=_get_lang())
             report = validator.validate(prd_content)
             report_path = str(selected.path / "artifacts" / "prd-validation.md")
             MarkdownWriter().write(content=report.to_markdown(lang=_get_lang()), output_path=report_path)
 
             tracker.update_manifest(str(selected.path))
     except OllamaConnectionError:
-        pass
+        _logger.warning("Quickstart: Ollama connection failed — PRD not generated.")
 
-    return await _dashboard(request)
+    return RedirectResponse(url="/initiative/INT-QUICKSTART?quickstart=1", status_code=303)
 
 
 # ─── Initiative Detail ───
 
 @app.get("/initiative/{initiative_name}", response_class=HTMLResponse)
 async def initiative_detail(request: Request, initiative_name: str):
-    selected = _get_initiative_by_name(initiative_name)
+    selected = _get_initiative_by_name(initiative_name, request)
     if not selected:
         return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
 
@@ -501,6 +885,8 @@ async def initiative_detail(request: Request, initiative_name: str):
     score = read_validation_score_from_file(report_path)
     validation_score = f"{score}/10" if score is not None else "-"
 
+    is_quickstart = request.query_params.get("quickstart") == "1"
+
     return templates.TemplateResponse(
         "initiative_detail.html",
         _ctx(request,
@@ -512,19 +898,20 @@ async def initiative_detail(request: Request, initiative_name: str):
             prd_content=prd_content,
             validation_score=validation_score,
             prd_versions=prd_versions,
+            is_quickstart=is_quickstart,
+            validation_history=read_validation_history(selected.path / "artifacts"),
         ),
     )
 
 
 @app.get("/initiative/{initiative_name}/prd/download")
 async def download_prd(request: Request, initiative_name: str):
-    selected = _get_initiative_by_name(initiative_name)
+    selected = _get_initiative_by_name(initiative_name, request)
     if not selected:
         return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
     prd_path = selected.path / "artifacts" / "prd.md"
     if not prd_path.exists():
-        return HTMLResponse("PRD not found.", status_code=404)
-    from starlette.responses import FileResponse
+        return HTMLResponse(_t("error.prd_not_found", _get_lang()), status_code=404)
     return FileResponse(
         str(prd_path),
         media_type="text/markdown",
@@ -538,7 +925,7 @@ async def upload_context_doc(
     initiative_name: str,
     docs: list[UploadFile] = File(...),
 ):
-    selected = _get_initiative_by_name(initiative_name)
+    selected = _get_initiative_by_name(initiative_name, request)
     if not selected:
         return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
 
@@ -560,7 +947,7 @@ async def upload_context_doc(
                 uploaded += 1
 
     if uploaded > 0:
-        tracker = ChangeTracker()
+        tracker = create_change_tracker()
         tracker.update_manifest(str(selected.path))
 
     return await initiative_detail(request, initiative_name)
@@ -572,7 +959,7 @@ async def delete_context_doc(
     initiative_name: str,
     filename: str = Form(...),
 ):
-    selected = _get_initiative_by_name(initiative_name)
+    selected = _get_initiative_by_name(initiative_name, request)
     if not selected:
         return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
 
@@ -583,7 +970,7 @@ async def delete_context_doc(
         # Ensure the resolved path is still inside the context directory
         if str(doc_path).startswith(str(ctx_dir)) and doc_path.exists():
             doc_path.unlink()
-            tracker = ChangeTracker()
+            tracker = create_change_tracker()
             tracker.update_manifest(str(selected.path))
 
     return await initiative_detail(request, initiative_name)
@@ -593,7 +980,7 @@ async def delete_context_doc(
 
 @app.get("/initiative/{initiative_name}/prd/{version}", response_class=HTMLResponse)
 async def prd_version_view(request: Request, initiative_name: str, version: str):
-    selected = _get_initiative_by_name(initiative_name)
+    selected = _get_initiative_by_name(initiative_name, request)
     if not selected:
         return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
     version_filename = f"prd-{version}.md"
@@ -638,39 +1025,42 @@ async def create_initiative(
     status: str = Form("discovery"),
     context: str = Form(""),
 ):
-    import re
-    from datetime import date
-
-    repo = InitiativeRepository()
+    repo = _repo(_get_session_squad(request))
 
     init_id = id.strip()
     if not init_id:
         safe_name = re.sub(r'[^A-Z0-9]+', '-', name.strip().upper()).strip('-')
         init_id = f"INT-{safe_name[:30]}"
     else:
-        # Sanitize user-supplied ID: remove path separators and dangerous chars
-        init_id = re.sub(r'[^A-Za-z0-9_-]+', '', init_id).strip('-_.')
+        if not re.match(r'^[A-Za-z0-9_-]+$', init_id):
+            return templates.TemplateResponse(
+                "initiative_new.html",
+                _ctx(request, error=_t("initiative.new.invalid_id", _get_lang())),
+            )
+        init_id = init_id.strip('-_.')
         if not init_id:
             safe_name = re.sub(r'[^A-Z0-9]+', '-', name.strip().upper()).strip('-')
             init_id = f"INT-{safe_name[:30]}"
 
     base_path = repo.initiatives_path / init_id
     if base_path.exists():
-        return templates.TemplateResponse(
-            "initiative_new.html",
-            _ctx(request, error=f"Initiative '{init_id}' {_t('error.exists', _get_lang())}"),
-        )
+        counter = 1
+        while base_path.exists():
+            suffixed = f"{init_id}-{counter:03d}"
+            base_path = repo.initiatives_path / suffixed
+            counter += 1
+        init_id = base_path.name
 
     base_path.mkdir(parents=True, exist_ok=True)
     (base_path / "artifacts").mkdir(exist_ok=True)
     (base_path / "context").mkdir(exist_ok=True)
     (base_path / "logs").mkdir(exist_ok=True)
 
-    import yaml
     metadata = {
         "id": init_id,
         "name": name.strip(),
         "status": status,
+        "squad": _get_session_squad(request),
         "created_at": str(date.today()),
         "artifacts": ["prd"],
         "workflows": ["create_prd"],
@@ -682,9 +1072,10 @@ async def create_initiative(
         ctx_path = base_path / "context" / "context.md"
         ctx_path.write_text(context.strip(), encoding="utf-8")
 
-    tracker = ChangeTracker()
+    tracker = create_change_tracker()
     tracker.update_manifest(str(base_path))
 
+    _logger.info("Initiative created: %s", init_id)
     return await dashboard(request)
 
 
@@ -692,15 +1083,17 @@ async def create_initiative(
 
 @app.get("/generate", response_class=HTMLResponse)
 async def generate_page(request: Request):
-    repo = InitiativeRepository()
+    repo = _repo(_get_session_squad(request))
     initiatives = repo.list_initiatives()
     pd_service = ProductDocsService()
     product_docs_count = pd_service.count_docs()
+    selected_initiative = request.query_params.get("initiative", "")
     return templates.TemplateResponse(
         "generate.html",
         _ctx(request, initiatives=initiatives, result=None, error=None,
              product_docs_count=product_docs_count,
-             mcp_count=len(_get_mcp_servers())),
+             mcp_count=len(_get_mcp_servers()),
+             selected_initiative=selected_initiative),
     )
 
 
@@ -712,7 +1105,7 @@ async def generate_prd(
     use_product_docs: bool = Form(False),
     use_mcp: bool = Form(False),
 ):
-    repo = InitiativeRepository()
+    repo = _repo(_get_session_squad(request))
     initiatives = repo.list_initiatives()
 
     selected = None
@@ -742,7 +1135,7 @@ async def generate_prd(
 
         used_additional = []
         for add_name in additional:
-            add_init = _get_initiative_by_name(add_name)
+            add_init = _get_initiative_by_name(add_name, request)
             if add_init and add_init.documents:
                 add_docs = "\n\n".join(add_init.documents)
                 if add_docs.strip():
@@ -774,7 +1167,7 @@ async def generate_prd(
         version_file(artifacts_dir / "prd.md")
         version_file(artifacts_dir / "prd-validation.md")
 
-        MarkdownWriter().write(content=prd_content, output_path=str(prd_md))
+        MarkdownWriter().write(content=prd_content, output_path=str(artifacts_dir / "prd.md"))
 
         validator = PRDValidator(ai_client=ai_client, lang=_get_lang())
         report = validator.validate(prd_content)
@@ -782,7 +1175,7 @@ async def generate_prd(
         report_path = str(artifacts_dir / "prd-validation.md")
         MarkdownWriter().write(content=report.to_markdown(lang=_get_lang()), output_path=report_path)
 
-        tracker = ChangeTracker()
+        tracker = create_change_tracker()
         tracker.update_manifest(str(selected.path))
 
         return templates.TemplateResponse(
@@ -816,7 +1209,7 @@ async def generate_prd(
 
 @app.get("/validate/{initiative_name}", response_class=HTMLResponse)
 async def validate_page(request: Request, initiative_name: str):
-    repo = InitiativeRepository()
+    repo = _repo(_get_session_squad(request))
     initiatives = repo.list_initiatives()
 
     selected = None
@@ -828,15 +1221,20 @@ async def validate_page(request: Request, initiative_name: str):
     if not selected:
         return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
 
+    prd_path = selected.path / "artifacts" / "prd.md"
+    prd_content = prd_path.read_text(encoding="utf-8") if prd_path.exists() else ""
+
     return templates.TemplateResponse(
         "validate.html",
-        _ctx(request, initiative=selected, report=None, error=None),
+        _ctx(request, initiative=selected, report=None, error=None,
+             validation_history=read_validation_history(selected.path / "artifacts"),
+             prd_content=prd_content),
     )
 
 
 @app.post("/validate/{initiative_name}", response_class=HTMLResponse)
 async def validate_prd(request: Request, initiative_name: str):
-    repo = InitiativeRepository()
+    repo = _repo(_get_session_squad(request))
 
     selected = None
     for i in repo.list_initiatives():
@@ -848,10 +1246,21 @@ async def validate_prd(request: Request, initiative_name: str):
         return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
 
     prd_path = selected.path / "artifacts" / "prd.md"
+
+    form = await request.form()
+    uploaded_file = form.get("prd_file")
+
+    if uploaded_file and uploaded_file.filename and uploaded_file.filename != "":
+        content_bytes = await uploaded_file.read()
+        prd_path.parent.mkdir(parents=True, exist_ok=True)
+        prd_path.write_bytes(content_bytes)
+
     if not prd_path.exists():
         return templates.TemplateResponse(
             "validate.html",
-            _ctx(request, initiative=selected, report=None, error=_t("validate.no_prd", _get_lang())),
+            _ctx(request, initiative=selected, report=None, error=_t("validate.no_prd", _get_lang()),
+                 validation_history=read_validation_history(selected.path / "artifacts"),
+                 prd_content=""),
         )
 
     previous_score = read_validation_score_from_file(selected.path / "artifacts" / "prd-validation.md")
@@ -862,8 +1271,6 @@ async def validate_prd(request: Request, initiative_name: str):
         prd_content = prd_path.read_text(encoding="utf-8")
         report = validator.validate(prd_content)
 
-        from pm_os.writers.markdown_writer import MarkdownWriter
-
         artifacts_dir = selected.path / "artifacts"
         version_file(artifacts_dir / "prd-validation.md")
         report_path = str(artifacts_dir / "prd-validation.md")
@@ -872,14 +1279,46 @@ async def validate_prd(request: Request, initiative_name: str):
         return templates.TemplateResponse(
             "validate.html",
             _ctx(request, initiative=selected, report=report, error=None,
-                 previous_score=previous_score),
+                 previous_score=previous_score,
+                 validation_history=read_validation_history(artifacts_dir),
+                 prd_content=prd_content),
         )
 
     except OllamaConnectionError:
         return templates.TemplateResponse(
             "validate.html",
-            _ctx(request, initiative=selected, report=None, error=_t("error.ollama", _get_lang())),
+            _ctx(request, initiative=selected, report=None, error=_t("error.ollama", _get_lang()),
+                 validation_history=read_validation_history(selected.path / "artifacts"),
+                 prd_content=prd_content),
         )
+
+
+@app.post("/validate/{initiative_name}/revalidate")
+async def revalidate_prd(request: Request, initiative_name: str):
+    """Re-validate a PRD and redirect back to initiative detail page."""
+    repo = _repo(_get_session_squad(request))
+    selected = None
+    for i in repo.list_initiatives():
+        if i.name == initiative_name:
+            selected = i
+            break
+    if not selected:
+        return RedirectResponse(url="/", status_code=302)
+    prd_path = selected.path / "artifacts" / "prd.md"
+    if not prd_path.exists():
+        return RedirectResponse(url=f"/initiative/{initiative_name}", status_code=302)
+    try:
+        ai_client = _build_ai_client()
+        validator = PRDValidator(ai_client=ai_client, lang=_get_lang())
+        prd_content = prd_path.read_text(encoding="utf-8")
+        report = validator.validate(prd_content)
+        artifacts_dir = selected.path / "artifacts"
+        version_file(artifacts_dir / "prd-validation.md")
+        report_path = str(artifacts_dir / "prd-validation.md")
+        MarkdownWriter().write(content=report.to_markdown(lang=_get_lang()), output_path=report_path)
+    except OllamaConnectionError:
+        pass
+    return RedirectResponse(url=f"/initiative/{initiative_name}", status_code=302)
 
 
 # ─── Config ───
@@ -899,6 +1338,7 @@ async def save_config(
     ollama_url: str = Form(...),
     lang: str = Form("en"),
     auth_enabled: str = Form(""),
+    auth_bypass_localhost: str = Form(""),
     auth_username: str = Form(""),
     auth_password: str = Form(""),
     ai_provider: str = Form("ollama"),
@@ -906,27 +1346,44 @@ async def save_config(
     openai_model: str = Form(""),
     anthropic_api_key: str = Form(""),
     anthropic_model: str = Form(""),
+    smtp_host: str = Form(""),
+    smtp_port: str = Form("587"),
+    smtp_user: str = Form(""),
+    smtp_password: str = Form(""),
+    smtp_from_email: str = Form(""),
+    smtp_from_name: str = Form("PM Studio"),
 ):
-    config_manager.set("model", model)
-    config_manager.set("ollama_url", ollama_url)
-    config_manager.set("lang", lang)
-    config_manager.set("auth_enabled", auth_enabled == "true")
+    updates = {
+        "model": model,
+        "ollama_url": ollama_url,
+        "lang": lang,
+        "auth_enabled": auth_enabled == "true",
+        "auth_bypass_localhost": auth_bypass_localhost == "true",
+        "ai_provider": ai_provider,
+        "smtp_host": smtp_host,
+        "smtp_port": smtp_port,
+        "smtp_user": smtp_user,
+        "smtp_from_email": smtp_from_email,
+        "smtp_from_name": smtp_from_name,
+    }
     if auth_username:
-        config_manager.set("auth_username", auth_username)
+        updates["auth_username"] = auth_username
     if auth_password:
-        config_manager.set("auth_password", auth_password)
-    if ai_provider:
-        config_manager.set("ai_provider", ai_provider)
+        updates["auth_password"] = auth_password
     if ai_provider == "openai":
         if openai_api_key:
-            config_manager.set("openai_api_key", openai_api_key)
+            updates["openai_api_key"] = openai_api_key
         if openai_model:
-            config_manager.set("openai_model", openai_model)
+            updates["openai_model"] = openai_model
     if ai_provider == "anthropic":
         if anthropic_api_key:
-            config_manager.set("anthropic_api_key", anthropic_api_key)
+            updates["anthropic_api_key"] = anthropic_api_key
         if anthropic_model:
-            config_manager.set("anthropic_model", anthropic_model)
+            updates["anthropic_model"] = anthropic_model
+    if smtp_password:
+        updates["smtp_password"] = smtp_password
+    config_manager.set_all(updates)
+    _logger.info("Config updated by %s", request.client.host if request.client else "unknown")
     return templates.TemplateResponse(
         "config.html",
         _ctx(request, saved=True),
@@ -957,6 +1414,7 @@ async def add_mcp_server(
     if not any(s["url"] == validated_url for s in servers):
         servers.append({"name": name.strip(), "url": validated_url, "enabled": True})
         _save_mcp_servers(servers)
+        _logger.info("MCP server added: %s", name.strip())
     return templates.TemplateResponse(
         "config.html",
         _ctx(request, saved=True),
@@ -972,6 +1430,7 @@ async def toggle_mcp_server(
     for s in servers:
         if s["url"] == url:
             s["enabled"] = not s["enabled"]
+            _logger.info("MCP server toggled: %s → %s", s["name"], "enabled" if s["enabled"] else "disabled")
             break
     _save_mcp_servers(servers)
     return templates.TemplateResponse(
@@ -985,12 +1444,35 @@ async def delete_mcp_server(
     request: Request,
     url: str = Form(...),
 ):
+    removed = [s["name"] for s in _get_mcp_servers() if s["url"] == url]
     servers = [s for s in _get_mcp_servers() if s["url"] != url]
     _save_mcp_servers(servers)
+    if removed:
+        _logger.info("MCP server removed: %s", removed[0])
     return templates.TemplateResponse(
         "config.html",
         _ctx(request, saved=True),
     )
+
+
+@app.post("/config/mcp/test", response_class=HTMLResponse)
+async def test_mcp_connection(request: Request, url: str = Form(...)):
+    try:
+        validated = _validate_mcp_url(url)
+        req = urllib.request.Request(validated, method="GET", headers={"Accept": "text/plain,application/json"})
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            resp.read()
+        return HTMLResponse(
+            f'<span style="color:var(--success);">✓ {_t("mcp.test_success", _get_lang())}</span>'
+        )
+    except ValueError as e:
+        return HTMLResponse(
+            f'<span style="color:var(--danger);">✗ {str(e)}</span>'
+        )
+    except Exception as e:
+        return HTMLResponse(
+            f'<span style="color:var(--danger);">✗ {_t("mcp.test_fail", _get_lang())}: {str(e)[:80]}</span>'
+        )
 
 
 # ─── Custom Provider Management ───
@@ -1044,14 +1526,34 @@ async def delete_custom_provider(
     )
 
 
+@app.post("/config/delete-account", response_class=HTMLResponse)
+async def delete_account(request: Request, email: str = Form(...)):
+    cfg = config_manager.get_all()
+    users = dict(cfg.get("users") or {})
+    try:
+        session_email = request.session.get("user_email", "")
+    except Exception:
+        session_email = ""
+    if email != session_email:
+        return await login_page(request, error=_t("auth.invalid_credentials", _get_lang()))
+    if email not in users:
+        return await login_page(request, error=_t("auth.invalid_credentials", _get_lang()))
+    del users[email]
+    config_manager.set("users", users)
+    try:
+        request.session.pop("authenticated", None)
+        request.session.pop("user_email", None)
+    except Exception:
+        pass
+    _logger.info("Account deleted: %s", email)
+    return RedirectResponse(url="/register", status_code=302)
+
+
 # ─── Delete Initiative ───
 
 @app.post("/initiative/{initiative_name}/delete", response_class=HTMLResponse)
 async def delete_initiative(request: Request, initiative_name: str):
-    from datetime import datetime
-    import shutil
-
-    repo = InitiativeRepository()
+    repo = _repo(_get_session_squad(request))
     selected = None
     for i in repo.list_initiatives():
         if i.name == initiative_name:
@@ -1078,6 +1580,7 @@ async def delete_initiative(request: Request, initiative_name: str):
             encoding="utf-8",
         )
 
+    _logger.info("Initiative archived: %s", initiative_name)
     return await dashboard(request)
 
 
@@ -1085,7 +1588,7 @@ async def delete_initiative(request: Request, initiative_name: str):
 
 @app.get("/consult", response_class=HTMLResponse)
 async def consult_page(request: Request):
-    repo = InitiativeRepository()
+    repo = _repo(_get_session_squad(request))
     names = repo.list_names()
     return templates.TemplateResponse(
         "consult.html",
@@ -1104,7 +1607,7 @@ async def consult_docs(
     use_mcp: bool = Form(False),
 ):
     if not question.strip():
-        repo = InitiativeRepository()
+        repo = _repo(_get_session_squad(request))
         names = repo.list_names()
         return templates.TemplateResponse(
             "consult.html",
@@ -1114,19 +1617,19 @@ async def consult_docs(
         )
 
     if not initiatives and not use_product_docs and not use_mcp:
-        repo = InitiativeRepository()
+        repo = _repo(_get_session_squad(request))
         names = repo.list_names()
         return templates.TemplateResponse(
             "consult.html",
             _ctx(request, initiative_names=names, selected_initiatives=names,
                  question=question, result=None,
-                 error="Selecione iniciativas, documentação do produto ou servidores MCP para consultar.",
+                 error=_t("consult.empty_selection", _get_lang()),
                  mcp_count=len(_get_mcp_servers())),
         )
 
     try:
         ai_client = _build_ai_client()
-        repo = InitiativeRepository()
+        repo = _repo(_get_session_squad(request))
 
         context_parts = []
         all_inits = repo.list_initiatives()
@@ -1184,7 +1687,7 @@ async def consult_docs(
         )
 
     except OllamaConnectionError:
-        repo = InitiativeRepository()
+        repo = _repo(_get_session_squad(request))
         names = repo.list_names()
         return templates.TemplateResponse(
             "consult.html",
@@ -1202,7 +1705,7 @@ async def consult_docs(
 @app.get("/product-docs", response_class=HTMLResponse)
 async def product_docs_page(request: Request):
     docs = []
-    ctx = Path("workspace/product-docs") / "context"
+    ctx = PRODUCT_DOCS_DIR / "context"
     if ctx.exists():
         for f in sorted(ctx.iterdir()):
             if f.is_file():
@@ -1221,7 +1724,7 @@ async def upload_product_docs(
     request: Request,
     docs: list[UploadFile] = File(...),
 ):
-    ctx = Path("workspace/product-docs") / "context"
+    ctx = PRODUCT_DOCS_DIR / "context"
     ctx.mkdir(parents=True, exist_ok=True)
     for doc in docs:
         if doc.filename:
@@ -1253,8 +1756,8 @@ async def add_product_link(
 async def delete_product_doc(request: Request, filename: str):
     safe_name = _safe_filename(filename)
     if safe_name:
-        fp = (Path("workspace/product-docs") / "context" / safe_name).resolve()
-        ctx_dir = (Path("workspace/product-docs") / "context").resolve()
+        fp = (PRODUCT_DOCS_DIR / "context" / safe_name).resolve()
+        ctx_dir = (PRODUCT_DOCS_DIR / "context").resolve()
         if str(fp).startswith(str(ctx_dir)) and fp.exists() and fp.is_file():
             fp.unlink()
     return await product_docs_page(request)
@@ -1284,7 +1787,7 @@ async def timeline_page(request: Request):
 
 @app.get("/archived", response_class=HTMLResponse)
 async def archived_page(request: Request):
-    repo = InitiativeRepository()
+    repo = _repo(_get_session_squad(request))
     archive_dir = repo.initiatives_path.parent / "archived"
     archived = []
     if archive_dir.exists():
@@ -1308,8 +1811,7 @@ async def archived_page(request: Request):
 
 @app.post("/archived/restore", response_class=HTMLResponse)
 async def restore_initiative(request: Request, name: str = Form(...)):
-    import shutil
-    repo = InitiativeRepository()
+    repo = _repo(_get_session_squad(request))
     archive_dir = repo.initiatives_path.parent / "archived"
     # Prevent path traversal: reject names with parent dir components
     clean_name = Path(name).name
@@ -1324,23 +1826,266 @@ async def restore_initiative(request: Request, name: str = Form(...)):
         if dst.exists():
             dst = repo.initiatives_path / f"{original_name}_restored"
         shutil.move(str(src), str(dst))
-        tracker = ChangeTracker()
+        tracker = create_change_tracker()
         tracker.update_manifest(str(dst))
+        _logger.info("Initiative restored: %s → %s", clean_name, dst.name)
     return await archived_page(request)
+
+
+# ─── Squad ───
+
+
+@app.get("/squad", response_class=HTMLResponse)
+async def squad_page(request: Request, error: str = ""):
+    return templates.TemplateResponse("squad.html", _ctx(request, error=error))
+
+
+@app.get("/squad/create", response_class=HTMLResponse)
+async def squad_create_page(request: Request, error: str = ""):
+    return templates.TemplateResponse("squad_create.html", _ctx(request, error=error))
+
+
+@app.get("/squad/join", response_class=HTMLResponse)
+async def squad_join_page(request: Request, error: str = ""):
+    cfg = config_manager.get_all()
+    squads_list = _get_squad_names(cfg)
+    user_email = _get_session_user_email(request)
+    available = [sq for sq in squads_list if user_email not in (cfg.get("squads", {}).get(sq["name"], {}).get("members", []))]
+    return templates.TemplateResponse("squad_join.html", _ctx(request, squads=available, error=error))
+
+
+@app.post("/squad/create")
+async def squad_create(request: Request, name: str = Form(...), display_name: str = Form(""), password: str = Form(...)):
+    import hashlib
+    cfg = config_manager.get_all()
+    squads = dict(cfg.get("squads") or {})
+    squad_key = name.strip().lower().replace(" ", "-")
+    if not squad_key:
+        return await squad_page(request, error=_t("squad.exists", _get_lang()))
+    if squad_key in squads:
+        return await squad_page(request, error=_t("squad.exists", _get_lang()))
+    try:
+        user_email = request.session.get("user_email", "")
+    except Exception:
+        user_email = ""
+    if not user_email:
+        return RedirectResponse(url="/login", status_code=302)
+    squads[squad_key] = {
+        "display_name": display_name.strip() or squad_key,
+        "password_hash": hashlib.sha256(password.encode()).hexdigest(),
+        "members": [user_email],
+        "created_by": user_email,
+        "created_at": str(date.today()),
+    }
+    config_manager.set("squads", squads)
+    try:
+        request.session["current_squad"] = squad_key
+    except Exception:
+        pass
+    _logger.info("Squad created: %s by %s", squad_key, user_email)
+    return RedirectResponse(url="/", status_code=302)
+
+
+@app.post("/squad/join")
+async def squad_join(request: Request, name: str = Form(...), password: str = Form(...)):
+    import hashlib
+    cfg = config_manager.get_all()
+    squads = dict(cfg.get("squads") or {})
+    squad_key = name.strip().lower().replace(" ", "-")
+    if squad_key not in squads:
+        return await squad_page(request, error=_t("squad.not_found", _get_lang()))
+    sq = squads[squad_key]
+    stored_hash = sq.get("password_hash", "")
+    pw_hash = hashlib.sha256(password.encode()).hexdigest()
+    if not _secrets_module.compare_digest(stored_hash, pw_hash):
+        return await squad_page(request, error=_t("squad.wrong_password", _get_lang()))
+    try:
+        user_email = request.session.get("user_email", "")
+    except Exception:
+        user_email = ""
+    if not user_email:
+        return RedirectResponse(url="/login", status_code=302)
+    if user_email in sq.get("members", []):
+        return await squad_page(request, error=_t("squad.already_member", _get_lang()))
+    sq["members"].append(user_email)
+    config_manager.set("squads", squads)
+    try:
+        request.session["current_squad"] = squad_key
+    except Exception:
+        pass
+    _logger.info("Squad joined: %s by %s", squad_key, user_email)
+    return RedirectResponse(url="/", status_code=302)
+
+
+@app.get("/squad/select", response_class=HTMLResponse)
+async def squad_select(request: Request, error: str = ""):
+    try:
+        user_email = request.session.get("user_email", "")
+    except Exception:
+        user_email = ""
+    if not user_email:
+        return RedirectResponse(url="/login", status_code=302)
+    user_squads = _get_user_squads(user_email)
+    return templates.TemplateResponse("squad_select.html", _ctx(request, squads=user_squads, error=error))
+
+
+@app.post("/squad/select")
+async def squad_select_post(request: Request, squad: str = Form(...)):
+    try:
+        user_email = request.session.get("user_email", "")
+    except Exception:
+        user_email = ""
+    if not user_email:
+        return RedirectResponse(url="/login", status_code=302)
+    cfg = config_manager.get_all()
+    squads = cfg.get("squads") or {}
+    if squad not in squads or user_email not in squads[squad].get("members", []):
+        return await squad_select(request, error=_t("squad.not_found", _get_lang()))
+    try:
+        request.session["current_squad"] = squad
+    except Exception:
+        pass
+    return RedirectResponse(url="/", status_code=302)
+
+
+@app.post("/squad/leave")
+async def squad_leave(request: Request):
+    try:
+        user_email = request.session.get("user_email", "")
+        current_squad = request.session.get("current_squad", "")
+    except Exception:
+        user_email = ""
+        current_squad = ""
+    if not user_email or not current_squad:
+        return RedirectResponse(url="/", status_code=302)
+    cfg = config_manager.get_all()
+    squads = dict(cfg.get("squads") or {})
+    sq = squads.get(current_squad)
+    if sq and user_email in sq.get("members", []):
+        sq["members"] = [m for m in sq["members"] if m != user_email]
+        config_manager.set("squads", squads)
+    try:
+        request.session.pop("current_squad", None)
+    except Exception:
+        pass
+    _logger.info("User %s left squad %s", user_email, current_squad)
+    return RedirectResponse(url="/", status_code=302)
+
+
+@app.get("/workspace/{squad_name}")
+async def workspace_switch(request: Request, squad_name: str):
+    if squad_name == "personal":
+        try:
+            request.session.pop("current_squad", None)
+        except Exception:
+            pass
+        return RedirectResponse(url="/", status_code=302)
+    try:
+        user_email = request.session.get("user_email", "")
+    except Exception:
+        user_email = ""
+    cfg = config_manager.get_all()
+    squads = cfg.get("squads") or {}
+    if squad_name not in squads or user_email not in squads[squad_name].get("members", []):
+        return RedirectResponse(url="/", status_code=302)
+    try:
+        request.session["current_squad"] = squad_name
+    except Exception:
+        pass
+    return RedirectResponse(url="/", status_code=302)
+
+
+@app.get("/squad/admin/{squad_name}")
+async def squad_admin_page(request: Request, squad_name: str):
+    try:
+        user_email = request.session.get("user_email", "")
+    except Exception:
+        user_email = ""
+    if not user_email:
+        return RedirectResponse(url="/login", status_code=302)
+    cfg = config_manager.get_all()
+    squads = cfg.get("squads") or {}
+    sq = squads.get(squad_name)
+    if not sq or user_email not in sq.get("members", []):
+        return RedirectResponse(url="/", status_code=302)
+    is_admin = sq.get("created_by") == user_email
+    return templates.TemplateResponse("squad_admin.html", _ctx(request, squad_name=squad_name, squad=sq, is_admin=is_admin))
+
+
+@app.post("/squad/admin/{squad_name}/remove-member")
+async def squad_remove_member(request: Request, squad_name: str, member_email: str = Form(...)):
+    try:
+        user_email = request.session.get("user_email", "")
+    except Exception:
+        user_email = ""
+    if not user_email:
+        return RedirectResponse(url="/login", status_code=302)
+    cfg = config_manager.get_all()
+    squads = dict(cfg.get("squads") or {})
+    sq = squads.get(squad_name)
+    if not sq or sq.get("created_by") != user_email:
+        return RedirectResponse(url="/", status_code=302)
+    if member_email in sq["members"]:
+        sq["members"] = [m for m in sq["members"] if m != member_email]
+        config_manager.set("squads", squads)
+    return RedirectResponse(url=f"/squad/admin/{squad_name}", status_code=302)
+
+
+@app.post("/squad/admin/{squad_name}/rename")
+async def squad_rename(request: Request, squad_name: str, display_name: str = Form(...)):
+    try:
+        user_email = request.session.get("user_email", "")
+    except Exception:
+        user_email = ""
+    if not user_email:
+        return RedirectResponse(url="/login", status_code=302)
+    cfg = config_manager.get_all()
+    squads = dict(cfg.get("squads") or {})
+    sq = squads.get(squad_name)
+    if not sq or sq.get("created_by") != user_email:
+        return RedirectResponse(url="/", status_code=302)
+    display_name = display_name.strip()
+    if display_name:
+        sq["display_name"] = display_name
+        config_manager.set("squads", squads)
+    return RedirectResponse(url=f"/squad/admin/{squad_name}", status_code=302)
+
+
+@app.post("/squad/admin/{squad_name}/disband")
+async def squad_disband(request: Request, squad_name: str):
+    try:
+        user_email = request.session.get("user_email", "")
+    except Exception:
+        user_email = ""
+    if not user_email:
+        return RedirectResponse(url="/login", status_code=302)
+    cfg = config_manager.get_all()
+    squads = dict(cfg.get("squads") or {})
+    sq = squads.get(squad_name)
+    if not sq or sq.get("created_by") != user_email:
+        return RedirectResponse(url="/", status_code=302)
+    del squads[squad_name]
+    config_manager.set("squads", squads)
+    try:
+        if request.session.get("current_squad") == squad_name:
+            request.session.pop("current_squad", None)
+    except Exception:
+        pass
+    return RedirectResponse(url="/", status_code=302)
 
 
 # ─── Helpers ───
 
 def _safe_filename(name: str) -> str:
-    """Strip directory components from a filename to prevent path traversal.
-    Returns empty string if the name is unsafe.
-    """
-    # Reject names with parent-dir traversal or absolute paths
-    if ".." in name or name.startswith("/"):
+    if not name:
         return ""
-    return Path(name).name
-
-
-class _SilentLogger:
-    def info(self, msg):
-        pass
+    import unicodedata
+    normalized = unicodedata.normalize("NFKC", name)
+    if "/" in normalized or "\\" in normalized or ".." in normalized:
+        return ""
+    clean = Path(normalized).name
+    if not clean or clean in (".", ".."):
+        return ""
+    if not re.match(r'^[a-zA-Z0-9 _.\-()\[\]]+$', clean):
+        return ""
+    return clean

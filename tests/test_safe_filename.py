@@ -6,14 +6,16 @@ def test_normal_filename():
     assert _safe_filename("document.txt") == "document.txt"
 
 
-def test_strips_directory():
-    assert _safe_filename("path/to/file.md") == "file.md"
+def test_rejects_directory():
+    assert _safe_filename("path/to/file.md") == ""
+    assert _safe_filename("subdir/file.txt") == ""
 
 
 def test_rejects_traversal():
     assert _safe_filename("..") == ""
     assert _safe_filename("../..") == ""
     assert _safe_filename("../../etc/passwd") == ""
+    assert _safe_filename("../context/secret.md") == ""
 
 
 def test_rejects_absolute_path():

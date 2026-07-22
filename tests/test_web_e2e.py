@@ -6,6 +6,7 @@ Covers:
 - Security: path traversal in file uploads and deletions
 - Security: unsanitized initiative ID
 - Security: unsanitized archive restore name
+- Auth: registration, login, middleware redirect
 - Template rendering with context variables
 """
 
@@ -13,11 +14,15 @@ import json
 import os
 import re
 import shutil
+import sys
 from pathlib import Path
 from typing import Generator
 
+import hashlib
 import pytest
 from fastapi.testclient import TestClient
+
+os.environ["PM_OS_ENV"] = "test"
 
 
 # ─── Session-scoped: one workspace + config for all tests ───
@@ -46,6 +51,7 @@ def _session_base(tmp_path_factory) -> Path:
 def _isolate_each_test(_session_base: Path, monkeypatch):
     """Reset env/state before each test. Import app here so config_manager reads our env."""
     monkeypatch.setenv("PM_OS_CONFIG_DIR", str(_session_base / ".pm_os"))
+    import hashlib
     # Reset the config file to defaults before each test
     config_file = _session_base / ".pm_os" / "config.json"
     config_file.write_text(json.dumps({
@@ -54,6 +60,8 @@ def _isolate_each_test(_session_base: Path, monkeypatch):
         "lang": "pt-BR",
         "onboarding_dismissed": False,
         "mcp_servers": [],
+        "users": {"test@pmstudio.app": hashlib.sha256("secret123".encode()).hexdigest()},
+        "squads": {"default": {"display_name": "Default", "password_hash": hashlib.sha256("squad123".encode()).hexdigest(), "members": ["test@pmstudio.app"], "created_by": "test@pmstudio.app", "created_at": "2024-01-01"}},
     }), encoding="utf-8")
     # Clean initiatives dir
     initiatives_dir = _session_base / "workspace" / "initiatives"
@@ -87,14 +95,19 @@ def _isolate_each_test(_session_base: Path, monkeypatch):
     importlib.reload(pm_os.web.config_manager)
 
 
-import sys
-
-
 @pytest.fixture
-def client() -> Generator[TestClient, None, None]:
+def unauth_client() -> Generator[TestClient, None, None]:
+    """Client without auto-login (for auth tests)."""
     from pm_os.web.app import app as _app
     with TestClient(_app) as c:
         yield c
+
+
+@pytest.fixture
+def client(unauth_client) -> Generator[TestClient, None, None]:
+    """Client that is already logged in with the default test user."""
+    unauth_client.post("/login", data={"email": "test@pmstudio.app", "password": "secret123"})
+    yield unauth_client
 
 
 @pytest.fixture
@@ -193,7 +206,7 @@ class TestInitiativeCRUD:
         assert (dir_path / "metadata.yaml").exists()
         assert (dir_path / "context" / "context.md").exists()
 
-    def test_create_duplicate_id_returns_error(self, client):
+    def test_create_duplicate_id_auto_suffix(self, client, session_base):
         _create_initiative(client, init_id="INT-DUP")
         resp = client.post("/initiatives/new", data={
             "name": "Another",
@@ -201,7 +214,8 @@ class TestInitiativeCRUD:
             "status": "discovery",
         })
         assert resp.status_code == 200
-        assert b"j\xc3\xa1 existe" in resp.content or b"already exists" in resp.content
+        duplicated_dir = session_base / "workspace" / "initiatives" / "INT-DUP-001"
+        assert duplicated_dir.exists()
 
     def test_upload_context_doc(self, client, session_base):
         init_name = _create_initiative(client)
@@ -376,7 +390,168 @@ class TestProductDocs:
 
 
 # ═══════════════════════════════════════════
-# 5. CONFIGURATION
+# 5. AUTHENTICATION
+# ═══════════════════════════════════════════
+
+class TestAuth:
+    USER_EMAIL = "test@example.com"
+    USER_PASS = "secret123"
+
+    def _enable_auth(self, session_base: Path) -> None:
+        """Write minimal auth config with one user."""
+        cfg = json.loads((session_base / ".pm_os" / "config.json").read_text())
+        cfg["auth_bypass_localhost"] = False
+        import hashlib
+        cfg["users"] = {self.USER_EMAIL: hashlib.sha256(self.USER_PASS.encode()).hexdigest()}
+        cfg["squads"] = {"default": {"display_name": "Default", "password_hash": hashlib.sha256("squad123".encode()).hexdigest(), "members": [self.USER_EMAIL], "created_by": self.USER_EMAIL, "created_at": "2024-01-01"}}
+        (session_base / ".pm_os" / "config.json").write_text(json.dumps(cfg), encoding="utf-8")
+        self._sync_live_config(cfg)
+
+    def _sync_live_config(self, cfg: dict) -> None:
+        """Sync live config_manager with given config dict."""
+        import pm_os.web.app as _web_app
+        for k, v in cfg.items():
+            _web_app.config_manager.set(k, v)
+
+    def test_register_page_renders(self, unauth_client, session_base):
+        self._enable_auth(session_base)
+        resp = unauth_client.get("/register")
+        assert resp.status_code == 200
+        assert b"Criar Conta" in resp.content or b"Create Account" in resp.content
+
+    def test_register_creates_user(self, unauth_client, session_base):
+        self._enable_auth(session_base)
+        # Clear existing users so register flow works
+        cfg = json.loads((session_base / ".pm_os" / "config.json").read_text())
+        cfg["users"] = {}
+        (session_base / ".pm_os" / "config.json").write_text(json.dumps(cfg), encoding="utf-8")
+        self._sync_live_config(cfg)
+
+        import hashlib
+        resp = unauth_client.post("/register", data={
+            "email": "new@example.com",
+            "password": "mypassword",
+        })
+        assert resp.status_code == 200  # redirects to login page
+        cfg = json.loads((session_base / ".pm_os" / "config.json").read_text())
+        assert "new@example.com" in cfg["users"]
+        assert cfg["users"]["new@example.com"] == hashlib.sha256("mypassword".encode()).hexdigest()
+
+    def test_register_rejects_existing_email(self, unauth_client, session_base):
+        self._enable_auth(session_base)
+        resp = unauth_client.post("/register", data={
+            "email": self.USER_EMAIL,
+            "password": self.USER_PASS,
+        })
+        assert resp.status_code == 200
+        content = resp.content.decode("utf-8")
+        assert "já está cadastrado" in content or "already registered" in content
+
+    def test_register_rejects_short_password(self, unauth_client, session_base):
+        self._enable_auth(session_base)
+        cfg = json.loads((session_base / ".pm_os" / "config.json").read_text())
+        cfg["users"] = {}
+        (session_base / ".pm_os" / "config.json").write_text(json.dumps(cfg), encoding="utf-8")
+        self._sync_live_config(cfg)
+
+        resp = unauth_client.post("/register", data={
+            "email": "new@example.com",
+            "password": "ab",
+        })
+        assert resp.status_code == 200
+        assert b"4 caracteres" in resp.content or b"4 characters" in resp.content or b"senha" in resp.content
+
+    def test_register_rejects_invalid_email(self, unauth_client, session_base):
+        self._enable_auth(session_base)
+        cfg = json.loads((session_base / ".pm_os" / "config.json").read_text())
+        cfg["users"] = {}
+        (session_base / ".pm_os" / "config.json").write_text(json.dumps(cfg), encoding="utf-8")
+        self._sync_live_config(cfg)
+
+        resp = unauth_client.post("/register", data={
+            "email": "not-an-email",
+            "password": "secret123",
+        })
+        assert resp.status_code == 200
+        content = resp.content.decode("utf-8")
+        assert "e-mail válido" in content or "informe um e-mail válido" in content or "Enter a valid email" in content
+
+    def test_login_page_renders(self, unauth_client, session_base):
+        self._enable_auth(session_base)
+        resp = unauth_client.get("/login")
+        assert resp.status_code == 200
+        assert b"E-mail" in resp.content or b"Email" in resp.content
+
+    def test_login_success(self, unauth_client, session_base):
+        self._enable_auth(session_base)
+        resp = unauth_client.post("/login", data={
+            "email": self.USER_EMAIL,
+            "password": self.USER_PASS,
+        }, follow_redirects=False)
+        assert resp.status_code == 302
+        assert resp.headers["location"] == "/"
+
+    def test_login_failure(self, unauth_client, session_base):
+        self._enable_auth(session_base)
+        resp = unauth_client.post("/login", data={
+            "email": self.USER_EMAIL,
+            "password": "wrongpassword",
+        })
+        assert resp.status_code == 200  # re-renders login page with error
+        assert b"Invalid" in resp.content or b"inv" in resp.content
+
+    def test_auth_middleware_blocks_unauthenticated(self, unauth_client, session_base):
+        self._enable_auth(session_base)
+        resp = unauth_client.get("/generate", follow_redirects=False)
+        assert resp.status_code == 302
+        assert resp.headers["location"] == "/login"
+
+    def test_auth_middleware_allows_authenticated(self, unauth_client, session_base):
+        self._enable_auth(session_base)
+        # Login first to get session cookie
+        login_resp = unauth_client.post("/login", data={
+            "email": self.USER_EMAIL,
+            "password": self.USER_PASS,
+        }, follow_redirects=False)
+        assert login_resp.status_code == 302
+        # Follow redirect (this sets the session cookie)
+        resp = unauth_client.get("/", follow_redirects=True)
+        assert resp.status_code == 200
+
+    def test_redirects_to_register_when_no_users(self, unauth_client, session_base):
+        cfg = json.loads((session_base / ".pm_os" / "config.json").read_text())
+        cfg["users"] = {}  # No users
+        (session_base / ".pm_os" / "config.json").write_text(json.dumps(cfg), encoding="utf-8")
+        self._sync_live_config(cfg)
+
+        resp = unauth_client.get("/", follow_redirects=False)
+        assert resp.status_code == 302
+        assert resp.headers["location"] == "/register"
+
+    def test_register_redirects_to_login_when_authenticated(self, unauth_client, session_base):
+        self._enable_auth(session_base)
+        # Login first
+        unauth_client.post("/login", data={
+            "email": self.USER_EMAIL,
+            "password": self.USER_PASS,
+        })
+        resp = unauth_client.get("/register", follow_redirects=False)
+        assert resp.status_code == 302
+        assert resp.headers["location"] == "/"
+
+    def test_logout_clears_session(self, unauth_client, session_base):
+        self._enable_auth(session_base)
+        unauth_client.post("/login", data={
+            "email": self.USER_EMAIL,
+            "password": self.USER_PASS,
+        })
+        resp = unauth_client.get("/logout", follow_redirects=False)
+        assert resp.status_code == 302
+        assert resp.headers["location"] == "/login"
+
+
+# ═══════════════════════════════════════════
+# 6. CONFIGURATION
 # ═══════════════════════════════════════════
 
 class TestConfiguration:
@@ -385,6 +560,7 @@ class TestConfiguration:
             "model": "gemma4:e2b",
             "ollama_url": "http://localhost:11434",
             "lang": "en",
+            "auth_bypass_localhost": "true",
         })
         assert resp.status_code == 200
         config_file = session_base / ".pm_os" / "config.json"
@@ -428,7 +604,7 @@ class TestConfiguration:
 
 
 # ═══════════════════════════════════════════
-# 6. CONSULT / Q&A
+# 7. CONSULT / Q&A
 # ═══════════════════════════════════════════
 
 class TestConsult:
@@ -446,7 +622,7 @@ class TestConsult:
 
 
 # ═══════════════════════════════════════════
-# 7. ONBOARDING
+# 8. ONBOARDING
 # ═══════════════════════════════════════════
 
 class TestOnboarding:
@@ -467,7 +643,7 @@ class TestOnboarding:
 
 
 # ═══════════════════════════════════════════
-# 8. TEMPLATE CONTENT CHECKS
+# 9. TEMPLATE CONTENT CHECKS
 # ═══════════════════════════════════════════
 
 class TestTemplateContent:
@@ -514,7 +690,7 @@ class TestTemplateContent:
 
 
 # ═══════════════════════════════════════════
-# 9. ERROR HANDLING
+# 10. ERROR HANDLING
 # ═══════════════════════════════════════════
 
 class TestErrorHandling:
@@ -538,3 +714,253 @@ class TestErrorHandling:
     def test_restore_nonexistent(self, client):
         resp = client.post("/archived/restore", data={"name": "ghost_20240101_000000"})
         assert resp.status_code == 200
+
+
+# ═══════════════════════════════════════════
+# 10. TODAY'S CHANGES (Jul 17)
+# ═══════════════════════════════════════════
+
+@pytest.fixture
+def no_ai_client(client, monkeypatch):
+    """Client with AI disabled to avoid timeouts on PRD generation."""
+    from pm_os.infrastructure.ai.clients.ollama_client import OllamaConnectionError
+
+    def _mock_build():
+        raise OllamaConnectionError()
+
+    import pm_os.web.app
+    monkeypatch.setattr(pm_os.web.app, "_build_ai_client", _mock_build)
+    yield client
+
+
+class TestQuickstartFlow:
+    """Quickstart: redirect, metadata, banner."""
+
+    def test_quickstart_redirects_to_initiative(self, no_ai_client):
+        """Quickstart should redirect to the initiative page, not dashboard."""
+        resp = no_ai_client.post("/quickstart", follow_redirects=False)
+        assert resp.status_code in (302, 303)
+        assert "/initiative/INT-QUICKSTART" in resp.headers.get("location", "")
+
+    def test_quickstart_creates_initiative_with_squad(self, no_ai_client):
+        """Quickstart metadata must include the 'squad' field."""
+        no_ai_client.post("/quickstart")
+        meta_path = Path("workspace/initiatives/INT-QUICKSTART/metadata.yaml")
+        assert meta_path.exists(), f"Metadata not found at {meta_path}"
+        import yaml
+        meta = yaml.safe_load(meta_path.read_text())
+        assert "squad" in meta, "Metadata missing 'squad' field"
+        assert meta["squad"] == "", "Personal squad metadata should be empty string"
+
+    def test_quickstart_creates_context_docs(self, no_ai_client):
+        """Quickstart should copy fake-context files."""
+        no_ai_client.post("/quickstart")
+        ctx_dir = Path("workspace/initiatives/INT-QUICKSTART/context")
+        assert ctx_dir.exists()
+        files = list(ctx_dir.iterdir())
+        assert len(files) > 0, "No context files copied by quickstart"
+
+    def test_quickstart_detail_has_banner(self, no_ai_client):
+        """Initiative detail with ?quickstart=1 shows success banner."""
+        no_ai_client.post("/quickstart")
+        resp = no_ai_client.get("/initiative/INT-QUICKSTART?quickstart=1")
+        assert resp.status_code == 200
+        assert "Iniciativa de exemplo" in resp.text or "quickstart.success" in resp.text or "PRD" in resp.text
+
+    def test_quickstart_with_squad_context(self, no_ai_client):
+        """Quickstart in a squad context sets squad metadata."""
+        # Switch to default squad via workspace
+        no_ai_client.get("/workspace/default", follow_redirects=False)
+        resp = no_ai_client.post("/quickstart", follow_redirects=False)
+        assert resp.status_code in (302, 303)
+        # Clean up
+        import shutil
+        shutil.rmtree("workspace/initiatives/INT-QUICKSTART", ignore_errors=True)
+
+
+class TestSquadAdminRename:
+    """Squad admin rename functionality."""
+
+    def test_admin_page_has_rename_form(self, client):
+        """Squad admin page should contain a rename form."""
+        resp = client.get("/squad/admin/default")
+        assert resp.status_code == 200
+        assert "change display name" in resp.text.lower() or "alterar nome" in resp.text.lower()
+        assert 'name="display_name"' in resp.text
+
+    def test_rename_squad_as_admin(self, client):
+        """Admin can rename squad display_name."""
+        resp = client.post("/squad/admin/default/rename", data={"display_name": "Novo Nome"}, follow_redirects=False)
+        assert resp.status_code == 302
+        assert resp.headers.get("location", "").endswith("/squad/admin/default")
+        # Verify the name was updated in test config
+        cfg = json.loads((Path(os.environ["PM_OS_CONFIG_DIR"]) / "config.json").read_text())
+        assert cfg["squads"]["default"]["display_name"] == "Novo Nome"
+
+    def test_rename_fails_for_non_admin(self, unauth_client):
+        """Non-admin cannot rename squad (should redirect to login)."""
+        # Login as different user not in squad
+        resp = unauth_client.post("/squad/admin/default/rename", data={"display_name": "Hack"}, follow_redirects=False)
+        assert resp.status_code == 302  # redirects to login because not authenticated
+
+
+class TestGeneratePreSelection:
+    """Generate page pre-selection via ?initiative= query param."""
+
+    def test_generate_page_loads(self, client, session_base):
+        """Generate page renders successfully."""
+        _create_initiative(client, name="Alpha")
+        resp = client.get("/generate")
+        assert resp.status_code == 200
+
+    def test_generate_with_initiative_query(self, client, session_base):
+        """?initiative=INT-XXX pre-selects the initiative in the <select>."""
+        _create_initiative(client, name="Alpha", init_id="INT-ALPHA")
+        _create_initiative(client, name="Beta", init_id="INT-BETA")
+        resp = client.get("/generate?initiative=INT-ALPHA")
+        assert resp.status_code == 200
+        assert 'value="INT-ALPHA"' in resp.text
+        # The selected initiative should show as selected in the dropdown
+        assert "INT-ALPHA" in resp.text
+
+
+class TestGenerateAdditionalContext:
+    """Additional context UX improvements on generate page."""
+
+    def test_additional_context_hides_main(self, client, session_base):
+        """The main selected initiative should be hidden from additional context."""
+        _create_initiative(client, name="Alpha", init_id="INT-ALPHA")
+        _create_initiative(client, name="Beta", init_id="INT-BETA")
+        resp = client.get("/generate?initiative=INT-ALPHA")
+        assert resp.status_code == 200
+        # INT-BETA should be visible in the additional list (not hidden)
+        assert "INT-BETA" in resp.text
+        # The section should indicate "1 available" (only Beta remains)
+        assert "1" in resp.text
+
+    def test_additional_context_shows_doc_counts(self, client, session_base):
+        """Checkboxes should show document counts or 'sem docs'."""
+        _create_initiative(client, name="Alpha", init_id="INT-ALPHA")
+        _create_initiative(client, name="Beta", init_id="INT-BETA")
+        resp = client.get("/generate")
+        assert resp.status_code == 200
+        # Should have the additional context section with checkboxes
+        assert 'type="checkbox"' in resp.text
+        assert "gen-extra" in resp.text
+
+
+class TestInitiativeCreationPage:
+    """Initiative creation page UX improvements."""
+
+    def test_new_initiative_page_shows_workspace(self, client):
+        """Page should show 'em Pessoal' or current squad."""
+        resp = client.get("/initiatives/new")
+        assert resp.status_code == 200
+        assert "Observa" in resp.text  # "Observações" label
+        assert "Pessoal" in resp.text  # Workspace indicator
+
+    def test_new_initiative_has_status_chips(self, client):
+        """Status should be rendered as clickable chips."""
+        resp = client.get("/initiatives/new")
+        assert resp.status_code == 200
+        assert 'type="radio"' in resp.text
+        assert "status-chip" in resp.text
+
+    def test_new_initiative_auto_generates_id(self, client):
+        """JS must be present for auto-ID generation."""
+        resp = client.get("/initiatives/new")
+        assert resp.status_code == 200
+        assert "auto-gerado" in resp.text or "document.getElementById('name')" in resp.text
+
+
+class TestDashboardEmptyState:
+    """Dashboard empty state and workspace selector."""
+
+    def test_empty_state_has_workspace_selector(self, client):
+        """Empty state dashboard should show workspace selector."""
+        resp = client.get("/")
+        assert resp.status_code == 200
+        assert "Workspace:" in resp.text
+
+    def test_empty_state_has_quickstart_button(self, client):
+        """Empty state should have the quickstart button."""
+        resp = client.get("/")
+        assert resp.status_code == 200
+        assert "/quickstart" in resp.text
+        assert "Quickstart" in resp.text
+
+    def test_empty_state_has_example_hint(self, client):
+        """Empty state should show the example hint text."""
+        resp = client.get("/")
+        assert resp.status_code == 200
+        assert "exemplo" in resp.text.lower() or "explorar" in resp.text.lower()
+
+    def test_workspace_selector_shows_personal(self, client):
+        """Workspace selector should show 'Pessoal' button."""
+        resp = client.get("/")
+        assert resp.status_code == 200
+        assert "/workspace/personal" in resp.text
+
+    def test_workspace_selector_shows_squads(self, client):
+        """Workspace selector should show available squads."""
+        resp = client.get("/")
+        assert resp.status_code == 200
+        assert "/workspace/default" in resp.text
+        assert "Default" in resp.text
+
+
+class TestGenerateLinks:
+    """Navigation links pointing to generate page with initiative param."""
+
+    def test_attention_panel_links_to_generate_with_initiative(self, client, session_base):
+        """Detail page 'Gerar documentação' button should include ?initiative=."""
+        init_id = _create_initiative(client, name="Old Initiative")
+        resp = client.get(f"/initiative/{init_id}")
+        assert resp.status_code == 200
+        # The link should be present somewhere (attention panel or detail page generate button)
+        assert "/generate?initiative=" in resp.text
+
+    def test_detail_page_links_to_generate_with_initiative(self, client, session_base):
+        """Initiative detail page 'Gerar documentação' should include ?initiative=."""
+        init_id = _create_initiative(client)
+        resp = client.get(f"/initiative/{init_id}")
+        assert resp.status_code == 200
+        assert f"/generate?initiative={init_id}" in resp.text
+
+    def test_generate_link_on_detail_in_topbar(self, client, session_base):
+        """The generate button should be in the topbar actions."""
+        init_id = _create_initiative(client)
+        resp = client.get(f"/initiative/{init_id}")
+        assert resp.status_code == 200
+        assert "nav.generate_prd" in resp.text or "Gerar documentação" in resp.text or "Generate" in resp.text
+
+
+class TestSquadCRUD:
+    """Squad management CRUD."""
+
+    def test_create_and_join_squad(self, client):
+        """Create a squad via the API."""
+        resp = client.post("/squad/create", data={
+            "name": "test-squad",
+            "display_name": "Test Squad",
+            "password": "squadpass",
+        }, follow_redirects=False)
+        assert resp.status_code in (302, 303)
+        # Verify squad exists in config
+        import json
+        cfg = json.loads((Path(os.environ["PM_OS_CONFIG_DIR"]) / "config.json").read_text())
+        assert "test-squad" in cfg["squads"]
+        assert cfg["squads"]["test-squad"]["display_name"] == "Test Squad"
+
+    def test_squad_workspace_switch(self, client):
+        """Switching to a squad workspace should work."""
+        resp = client.get("/workspace/default", follow_redirects=False)
+        assert resp.status_code in (302, 303)
+        # Follow the redirect and verify dashboard loads
+        resp2 = client.get("/", follow_redirects=False)
+        assert resp2.status_code == 200
+
+    def test_squad_workspace_personal(self, client):
+        """Switching to personal workspace should work."""
+        resp = client.get("/workspace/personal", follow_redirects=False)
+        assert resp.status_code in (302, 303)

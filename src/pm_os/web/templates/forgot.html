@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block page_title %}{{ "forgot.title"|t }}{% endblock %}
+
+{% block content %}
+<div style="min-height: 60vh; display: flex; align-items: center; justify-content: center;">
+    <div class="login-card" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 40px; width: 100%; max-width: 420px; text-align: center;">
+        <div class="login-logo" style="font-size: 26px; font-weight: 800; background: linear-gradient(135deg, var(--primary-light), var(--accent-light)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 4px;">PM Studio</div>
+        <div class="login-sub" style="font-size: 13px; color: var(--text-muted); margin-bottom: 24px;">{{ "forgot.subtitle"|t }}</div>
+
+        {% if error %}
+        <div class="login-error" style="background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); border-radius: var(--radius-sm); padding: 10px 14px; font-size: 13px; color: var(--danger); margin-bottom: 18px; text-align: center;">{{ error }}</div>
+        {% endif %}
+
+        {% if sent %}
+        <div style="background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.2); border-radius: var(--radius-sm); padding: 10px 14px; font-size: 13px; color: var(--success); margin-bottom: 18px; text-align: center;">{{ "forgot.sent"|t }}</div>
+        {% endif %}
+
+        <div style="font-size: 14px; color: var(--text-secondary); margin-bottom: 24px; line-height: 1.6;">{{ "forgot.desc"|t }}</div>
+
+        {% if not sent %}
+        <form method="POST" action="/forgot" class="login-form" style="text-align: left;">
+            <div class="form-group" style="margin-bottom: 18px;">
+                <label for="email" style="display: block; font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px;">{{ "forgot.email"|t }}</label>
+                <input type="email" name="email" id="email" placeholder="email@exemplo.com" autofocus required style="width: 100%; padding: 10px 14px; background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 14px; outline: none; box-sizing: border-box; transition: border-color 0.2s ease;">
+            </div>
+            <button type="submit" class="btn btn-ai" style="width: 100%;">{{ "forgot.cta"|t }}</button>
+        </form>
+        {% endif %}
+
+        <div style="text-align: center; font-size: 12px; color: var(--text-muted); margin-top: 20px;">
+            <a href="/login" style="color: var(--primary-light);">{{ "forgot.back_to_login"|t }}</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

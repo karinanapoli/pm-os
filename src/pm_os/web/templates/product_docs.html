@@ -14,7 +14,7 @@
         <h4 style="margin-bottom: 12px;">{{ "product_docs.upload"|t }}</h4>
         <form method="POST" action="/product-docs/upload" enctype="multipart/form-data" class="form" style="margin-bottom: 32px;" data-loading="saving">
             <div class="form-group">
-                <input type="file" name="docs" multiple accept=".md,.txt">
+                <input type="file" name="docs" multiple accept=".md,.txt,.pdf">
                 <div class="form-hint">{{ "product_docs.upload_hint"|t }}</div>
             </div>
             <button type="submit" class="btn btn-primary btn-sm">{{ "product_docs.upload_cta"|t }}</button>

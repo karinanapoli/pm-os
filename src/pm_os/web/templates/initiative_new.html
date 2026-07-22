@@ -2,59 +2,128 @@
 {% block page_title %}{{ "initiative.new.title"|t }}{% endblock %}
 
 {% block content %}
-<div class="card">
-    <div class="card-header">
-        <h3>{{ "initiative.new.title"|t }}</h3>
+<div style="max-width: 680px; margin: 0 auto;">
+    <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 24px;">
+        <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(124,92,231,0.12); display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0;">+</div>
+        <div>
+            <h2 style="font-size: 20px; font-weight: 800; color: var(--text); margin: 0;">{{ "initiative.new.title"|t }}</h2>
+            <p style="font-size: 13px; color: var(--text-muted); margin: 2px 0 0;">
+                em
+                <strong style="color: var(--text);">{{ current_squad if current_squad else "Pessoal" }}</strong>
+            </p>
+        </div>
     </div>
-    <div class="card-body">
-        {% if error %}
-        <div class="alert alert-error">{{ error }}</div>
-        {% endif %}
 
-        <form method="POST" action="/initiatives/new" class="form" data-loading="saving">
-            <div class="form-group">
-                <label for="name">{{ "initiative.new.name"|t }}</label>
-                <input type="text" name="name" id="name" placeholder="{{ 'initiative.new.name_placeholder'|t }}" required>
-                <div class="form-hint">{{ "initiative.new.name_hint"|t }}</div>
-            </div>
+    <div class="card">
+        <div class="card-body" style="padding: 24px;">
+            {% if error %}
+            <div style="background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); border-radius: var(--radius-sm); padding: 12px 16px; font-size: 13px; color: var(--danger); margin-bottom: 20px;">{{ error }}</div>
+            {% endif %}
 
-            <div class="form-group">
-                <label for="id">{{ "initiative.new.id"|t }}</label>
-                <input type="text" name="id" id="id" placeholder="{{ 'initiative.new.id_placeholder'|t }}">
-                <div class="form-hint">{{ "initiative.new.id_hint"|t }}</div>
-            </div>
+            <form method="POST" action="/initiatives/new" class="form" data-loading="saving">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 18px;">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="name" style="display: block; font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 5px;">{{ "initiative.new.name"|t }} <span style="color: var(--danger);">*</span></label>
+                        <input type="text" name="name" id="name" placeholder='{{ "initiative.new.name_placeholder"|t }}' required style="width: 100%; padding: 9px 12px; background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 14px; outline: none; box-sizing: border-box;">
+                        <div class="form-hint" style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">{{ "initiative.new.name_hint"|t }}</div>
+                    </div>
 
-            <div class="form-group">
-                <label for="status">{{ "initiative.new.status"|t }}</label>
-                <select name="status" id="status">
-                    <option value="discovery">{{ "initiative.new.status_discovery"|t }}</option>
-                    <option value="planning">{{ "initiative.new.status_planning"|t }}</option>
-                    <option value="development">{{ "initiative.new.status_development"|t }}</option>
-                    <option value="completed">{{ "initiative.new.status_completed"|t }}</option>
-                </select>
-            </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="id" style="display: block; font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 5px;">{{ "initiative.new.id"|t }}</label>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <input type="text" name="id" id="id" placeholder='{{ "initiative.new.id_placeholder"|t }}' style="flex: 1; padding: 9px 12px; background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 14px; outline: none; box-sizing: border-box; font-family: 'JetBrains Mono', monospace; letter-spacing: 0.5px;">
+                            <span id="idStatus" style="font-size: 10px; color: var(--text-muted); white-space: nowrap;">auto</span>
+                        </div>
+                        <div class="form-hint" style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">{{ "initiative.new.id_hint"|t }}</div>
+                    </div>
+                </div>
 
-            <div class="form-group">
-                <label for="context">{{ "initiative.new.context"|t }}</label>
-                <textarea name="context" id="context" placeholder="{{ 'initiative.new.context_placeholder'|t }}" rows="8"></textarea>
-                <div class="form-hint">{{ "initiative.new.context_hint"|t }}</div>
-            </div>
+                <div style="margin-bottom: 18px;">
+                    <label style="display: block; font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 6px;">{{ "initiative.new.status"|t }}</label>
+                    <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                        {% for val, label in [("discovery", "initiative.new.status_discovery"), ("planning", "initiative.new.status_planning"), ("development", "initiative.new.status_development"), ("completed", "initiative.new.status_completed")] %}
+                        <label class="status-chip" style="display: flex; align-items: center; gap: 5px; padding: 7px 13px; border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; font-size: 12.5px; color: var(--text-secondary); background: rgba(255,255,255,0.02);">
+                            <input type="radio" name="status" value="{{ val }}" {% if val == 'discovery' %}checked{% endif %} style="accent-color: var(--primary); margin: 0;">
+                            <span>{{ label|t }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
 
-            <button type="submit" class="btn btn-primary">{{ "initiative.new.cta"|t }}</button>
-        </form>
+                <div style="margin-bottom: 20px;">
+                    <label for="context" style="display: block; font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 5px;">Observações</label>
+                    <textarea name="context" id="context" placeholder='Ex: Queremos reduzir o churn em 20% nos próximos 3 meses...' rows="8" style="width: 100%; padding: 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 14px; outline: none; box-sizing: border-box; resize: vertical; line-height: 1.6;"></textarea>
+                    <div class="form-hint" style="font-size: 11px; color: var(--text-muted); margin-top: 5px;">Contexto inicial da iniciativa — use Markdown para formatar.</div>
+                </div>
+
+                <div style="display: flex; gap: 12px; align-items: center; padding-top: 20px; border-top: 1px solid var(--border);">
+                    <button type="submit" class="btn btn-primary" style="padding: 10px 28px; font-size: 14px;">{{ "initiative.new.cta"|t }}</button>
+                    <a href="/" style="font-size: 13px; color: var(--text-muted); text-decoration: none;">Cancelar</a>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 
 <script>
-    document.getElementById('name').addEventListener('input', function() {
-        var idField = document.getElementById('id');
-        if (!idField.dataset.userEdited) {
+    // Hover effect via CSS
+    var style = document.createElement('style');
+    style.textContent = '.status-chip:hover { border-color: var(--text-muted) !important; }';
+    document.head.appendChild(style);
+
+    var nameInput = document.getElementById('name');
+    var idInput = document.getElementById('id');
+    var idStatus = document.getElementById('idStatus');
+
+    nameInput.addEventListener('input', function() {
+        if (!idInput.dataset.userEdited) {
             var name = this.value.trim().toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-|-$/g, '');
-            if (name) idField.value = 'INT-' + name.substring(0, 30);
+            if (name) {
+                idInput.value = 'INT-' + name.substring(0, 30);
+                idStatus.textContent = 'auto-gerado';
+                idStatus.style.color = 'var(--success)';
+            } else {
+                idInput.value = '';
+                idStatus.textContent = 'auto';
+                idStatus.style.color = 'var(--text-muted)';
+            }
         }
     });
-    document.getElementById('id').addEventListener('input', function() {
-        this.dataset.userEdited = this.value.length > 0 ? 'true' : '';
+
+    idInput.addEventListener('focus', function() {
+        if (!this.dataset.userEdited) {
+            this.dataset.userEdited = 'true';
+            idStatus.textContent = 'manual';
+            idStatus.style.color = 'var(--primary-light)';
+        }
     });
+
+    idInput.addEventListener('input', function() {
+        this.dataset.userEdited = this.value.length > 0 ? 'true' : '';
+        if (this.value.length > 0) {
+            idStatus.textContent = 'manual';
+            idStatus.style.color = 'var(--primary-light)';
+        } else {
+            idStatus.textContent = 'auto';
+            idStatus.style.color = 'var(--text-muted)';
+        }
+    });
+
+    // Status chip styling on select
+    document.querySelectorAll('.status-chip input[type="radio"]').forEach(function(radio) {
+        radio.addEventListener('change', function() {
+            document.querySelectorAll('.status-chip').forEach(function(chip) {
+                chip.style.borderColor = 'var(--border)';
+                chip.style.background = 'rgba(255,255,255,0.02)';
+            });
+            if (this.checked) {
+                this.closest('.status-chip').style.borderColor = 'var(--primary-light)';
+                this.closest('.status-chip').style.background = 'rgba(124,92,231,0.08)';
+            }
+        });
+    });
+    // Highlight default
+    document.querySelector('.status-chip input[type="radio"]:checked').closest('.status-chip').style.borderColor = 'var(--primary-light)';
+    document.querySelector('.status-chip input[type="radio"]:checked').closest('.status-chip').style.background = 'rgba(124,92,231,0.08)';
 </script>
 {% endblock %}

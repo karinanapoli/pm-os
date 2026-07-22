@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from pm_os.infrastructure.utils import ALLOWED_EXTENSIONS, extract_pdf_text
+
 PRODUCT_DOCS_DIR = Path("workspace/product-docs")
 
 
@@ -7,7 +9,7 @@ class ProductDocsService:
     def count_docs(self) -> int:
         ctx = PRODUCT_DOCS_DIR / "context"
         if ctx.exists():
-            return sum(1 for f in ctx.iterdir() if f.is_file() and f.suffix in (".md", ".txt"))
+            return sum(1 for f in ctx.iterdir() if f.is_file() and f.suffix in ALLOWED_EXTENSIONS)
         return 0
 
     def load_docs(self) -> list[dict]:
@@ -15,8 +17,12 @@ class ProductDocsService:
         docs = []
         if ctx.exists():
             for f in sorted(ctx.iterdir()):
-                if f.is_file() and f.suffix in (".md", ".txt"):
-                    docs.append({"name": f.name, "content": f.read_text(encoding="utf-8")})
+                if f.is_file() and f.suffix in ALLOWED_EXTENSIONS:
+                    if f.suffix == ".pdf":
+                        content = extract_pdf_text(f)
+                    else:
+                        content = f.read_text(encoding="utf-8")
+                    docs.append({"name": f.name, "content": content})
         return docs
 
     def load_links(self) -> list[dict]:

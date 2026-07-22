@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block page_title %}{{ "squad.admin_title"|t }}{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 600px;">
+    <div class="card-header">
+        <h3>{{ squad.display_name or squad_name }}</h3>
+        <a href="/" style="font-size: 12px; color: var(--text-muted); text-decoration: none;">← Voltar</a>
+    </div>
+    <div class="card-body">
+        <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 20px; font-family: monospace;">{{ squad_name }}</div>
+
+        {% if is_admin %}
+        <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 16px; margin-bottom: 24px;">
+            <h4 style="font-size: 13px; font-weight: 600; margin: 0 0 10px;">{{ "squad.admin_rename"|t }}</h4>
+            <form method="POST" action="/squad/admin/{{ squad_name }}/rename" style="display: flex; gap: 8px;">
+                <input type="text" name="display_name" value="{{ squad.display_name }}" placeholder='{{ "squad.admin_rename_placeholder"|t }}' required style="flex: 1; padding: 8px 12px; background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 13px; outline: none;">
+                <button type="submit" style="padding: 8px 16px; background: var(--primary); color: #fff; border: none; border-radius: var(--radius-sm); font-size: 13px; cursor: pointer; white-space: nowrap;">{{ "squad.admin_rename_cta"|t }}</button>
+            </form>
+        </div>
+        {% endif %}
+
+        <h4 style="font-size: 14px; margin: 0 0 12px;">{{ "squad.admin_members"|t }} ({{ squad.members|length }})</h4>
+
+        {% if squad.members %}
+        <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 24px;">
+            {% for member in squad.members %}
+            <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 14px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 13px; color: var(--text);">{{ member }}</span>
+                    {% if squad.created_by == member %}
+                    <span style="font-size: 10px; background: rgba(124,92,231,0.15); color: var(--primary-light); padding: 2px 8px; border-radius: 8px;">admin</span>
+                    {% endif %}
+                </div>
+                {% if is_admin and member != squad.created_by %}
+                <form method="POST" action="/squad/admin/{{ squad_name }}/remove-member" onsubmit="return confirm('Remover {{ member }}?')">
+                    <input type="hidden" name="member_email" value="{{ member }}">
+                    <button type="submit" style="background: none; border: none; color: var(--danger); font-size: 11px; cursor: pointer; padding: 4px 8px; border-radius: 4px;" onmouseover="this.style.background='rgba(239,68,68,0.1)';" onmouseout="this.style.background='none';">{{ "squad.admin_remove"|t }}</button>
+                </form>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 24px;">{{ "squad.admin_no_members"|t }}</p>
+        {% endif %}
+
+        {% if is_admin %}
+        <div style="border-top: 1px solid var(--border); padding-top: 20px;">
+            <form method="POST" action="/squad/admin/{{ squad_name }}/disband" onsubmit="return confirm('{{ "squad.admin_disband_confirm"|t }}')">
+                <button type="submit" class="btn" style="background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3);">{{ "squad.admin_disband"|t }}</button>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

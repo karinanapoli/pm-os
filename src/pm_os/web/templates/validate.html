@@ -6,27 +6,78 @@
 {% endblock %}
 
 {% block content %}
+{# ── PRD Upload ── #}
 <div class="card">
     <div class="card-body">
         <p style="margin-bottom: 16px; color: var(--text-secondary); font-size: 14px;">
             {{ "validate.desc"|t }} <strong>{{ initiative.name }}</strong>,
             {{ "validate.checking"|t }}
         </p>
-        <form method="POST" action="/validate/{{ initiative.name }}" class="form" data-loading="processing">
+        <form method="POST" action="/validate/{{ initiative.name }}" enctype="multipart/form-data" class="form" data-loading="processing">
+            <div class="form-group" style="margin-bottom: 12px;">
+                <label for="prd_file">📄 {{ "validate.upload_prd"|t }}</label>
+                <input type="file" name="prd_file" id="prd_file" accept=".md" style="padding: 8px;">
+                <div class="form-hint">{{ "validate.upload_hint"|t }}</div>
+            </div>
             <button type="submit" class="btn btn-ai">{{ "validate.cta"|t }}</button>
         </form>
     </div>
 </div>
 
 {% if error %}
-<div class="alert alert-error" role="alert">
-    <strong>Error:</strong> {{ error }}
+<div class="alert alert-error" role="alert" style="margin-top: 16px;">
+    <strong>{{ "error.generic"|t }}:</strong> {{ error }}
+</div>
+{% endif %}
+
+{# ── Current PRD ── #}
+{% if prd_content %}
+<div class="card" style="margin-top: 16px;">
+    <div class="card-header">
+        <h3>📄 PRD {{ "initiative.detail.current"|t }}</h3>
+        <div style="display: flex; gap: 8px;">
+            <a href="/generate?initiative={{ initiative.name }}" class="btn btn-ghost btn-sm">{{ "initiative.detail.regenerate"|t }}</a>
+        </div>
+    </div>
+    <div class="card-body">
+        <details class="prd-preview">
+            <summary>{{ "initiative.detail.view_prd"|t }}</summary>
+            <div class="prd-content markdown-body" style="max-height: 400px; overflow-y: auto;">{{ prd_content|markdown }}</div>
+        </details>
+    </div>
+</div>
+{% endif %}
+
+{# ── Validation history ── #}
+{% if validation_history %}
+<div class="card" style="margin-top: 16px;">
+    <div class="card-header">
+        <h3>{{ "validate.history"|t }}</h3>
+    </div>
+    <div class="card-body">
+        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+            {% for entry in validation_history %}
+            <div style="display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.03); border-radius: var(--radius); padding: 8px 14px;">
+                <span class="score score-{{ 'high' if entry.score >= 7 else 'mid' if entry.score >= 5 else 'low' }}" style="font-size: 14px;">
+                    {{ "%.1f"|format(entry.score) }}/10
+                </span>
+                <span style="font-size: 12px; color: var(--text-muted);">
+                    {% if entry.label == "latest" %}
+                        {{ "prd_versions.current"|t }}
+                    {% else %}
+                        {{ entry.label }}
+                    {% endif %}
+                </span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
 </div>
 {% endif %}
 
 {% if report %}
 {% set diff = report.overall_score - previous_score if previous_score is not none else none %}
-<div class="card" aria-live="polite">
+<div class="card" style="margin-top: 16px;" aria-live="polite">
     <div class="card-header">
         <h3>{{ "validate.report"|t }}</h3>
         <div style="display: flex; align-items: center; gap: 8px;">
@@ -125,8 +176,14 @@
             {% endfor %}
         </div>
 
-        <div style="display: flex; gap: 8px;">
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px;">
             <a href="/initiative/{{ initiative.name }}" class="btn btn-secondary btn-sm">{{ "initiative.detail.back"|t }}</a>
+            <a href="/initiative/{{ initiative.name }}" class="btn btn-ghost btn-sm">{{ "validate.view_prd"|t }}</a>
+            <a href="/generate?initiative={{ initiative.name }}" class="btn btn-ai btn-sm">{{ "validate.regenerate"|t }}</a>
+            <form method="POST" action="/validate/{{ initiative.name }}" enctype="multipart/form-data" style="display:inline;" data-loading="processing">
+                <input type="file" name="prd_file" accept=".md" style="display:none;" id="revalidate-prd-file" onchange="this.form.requestSubmit()">
+                <button type="button" class="btn btn-primary btn-sm" onclick="document.getElementById('revalidate-prd-file').click();">{{ "validate.revalidate"|t }}</button>
+            </form>
         </div>
     </div>
 </div>

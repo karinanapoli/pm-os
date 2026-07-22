@@ -127,6 +127,20 @@ All templates use `|t` filter for i18n:
 - Content can be toggled as context in PRD generation (checkbox on `/generate`)
 - Content can be toggled as context in Q&A consultation (checkbox on `/consult`)
 
+### User Accounts & Authentication
+- Email-based registration (`/register`) with password hashing (SHA-256)
+- Email-based login (`/login`) with session persistence
+- No users → redirect to `/register` automatically
+- Existing user → `/login` with "Criar conta" link
+- Session key persisted to `~/.pm_os/.session_key` (survives server restarts)
+- `users` dict stored in config, sensitive fields stripped from template context
+- `auth_bypass_localhost` toggle in Settings
+
+### PRD Re-validation
+- Auto-validates on first `/generate` POST
+- Manual "Revalidar" button on initiative detail page calls `POST /validate/{name}/revalidate`
+- Redirects back to detail page with updated score
+
 ## UX Fixes (11 findings resolved)
 
 | # | Priority | Issue | Fix |
@@ -175,7 +189,7 @@ All templates use `|t` filter for i18n:
 - `scripts/run_web.py` — Entry point (uvicorn with reload)
 
 ## Tests
-- 25 unit tests pass
+- 116 tests pass (103 original + 13 auth)
 - Run: `.venv/bin/python -m pytest tests/ -v`
 
 ## Running

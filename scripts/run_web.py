@@ -18,5 +18,11 @@ if SRC_DIR not in sys.path:
 import uvicorn
 
 if __name__ == "__main__":
-    print("🚀 PM Studio — http://localhost:8000")
-    uvicorn.run("pm_os.web.app:app", host="0.0.0.0", port=8000, reload=True)
+    host = os.getenv("PM_OS_HOST", "127.0.0.1")
+    port = int(os.getenv("PM_OS_PORT", "8000"))
+    url = f"http://{host}:{port}"
+    if host == "0.0.0.0":
+        url = f"http://localhost:{port}"
+    print(f"🚀 PM Studio — {url}")
+    reload_flag = os.getenv("PM_OS_RELOAD", "1") == "1"
+    uvicorn.run("pm_os.web.app:app", host=host, port=port, reload=reload_flag)

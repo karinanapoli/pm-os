@@ -34,7 +34,6 @@ def test_all_keys_in_both_langs():
     from pm_os.web.i18n import TRANSLATIONS
     pt_keys = set(TRANSLATIONS.get("pt-BR", {}).keys())
     en_keys = set(TRANSLATIONS.get("en", {}).keys())
-    # Allow the known duplicate nav.timeline only
-    expected_diff = {"nav.timeline"}
+    expected_diff = set()
     diff = pt_keys.symmetric_difference(en_keys) - expected_diff
     assert diff == set(), f"Missing keys in one language: {diff}"

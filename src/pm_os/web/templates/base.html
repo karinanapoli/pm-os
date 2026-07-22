@@ -18,20 +18,12 @@
                 <span class="logo-sub">{{ "app.subtitle"|t }}</span>
             </div>
 
-            <div class="sidebar-section">{{ "nav.overview"|t }}</div>
+            <div class="sidebar-section">{{ "nav.workspace"|t }}</div>
             <nav class="sidebar-nav">
                 <a href="/" class="nav-item {% if request.url.path == '/' %}active{% endif %}">
                     <span class="nav-icon">◈</span>
                     <span>{{ "nav.dashboard"|t }}</span>
                 </a>
-                <a href="/timeline" class="nav-item {% if request.url.path == '/timeline' %}active{% endif %}">
-                    <span class="nav-icon">⊡</span>
-                    <span>{{ "nav.timeline"|t }}</span>
-                </a>
-            </nav>
-
-            <div class="sidebar-section">{{ "nav.create"|t }}</div>
-            <nav class="sidebar-nav">
                 <a href="/initiatives/new" class="nav-item {% if request.url.path == '/initiatives/new' %}active{% endif %}">
                     <span class="nav-icon">+</span>
                     <span>{{ "nav.new_initiative"|t }}</span>
@@ -39,14 +31,6 @@
                 <a href="/generate" class="nav-item {% if request.url.path == '/generate' %}active{% endif %}">
                     <span class="nav-icon">◇</span>
                     <span>{{ "nav.generate_prd"|t }}</span>
-                </a>
-            </nav>
-
-            <div class="sidebar-section">{{ "nav.workspace"|t }}</div>
-            <nav class="sidebar-nav">
-                <a href="/product-docs" class="nav-item {% if request.url.path == '/product-docs' %}active{% endif %}">
-                    <span class="nav-icon">📄</span>
-                    <span>{{ "product_docs.title"|t }}</span>
                 </a>
                 <a href="/consult" class="nav-item {% if request.url.path == '/consult' %}active{% endif %}">
                     <span class="nav-icon">◆</span>
@@ -58,8 +42,40 @@
                 </a>
             </nav>
 
+            {% if user_squads %}
+            <div class="sidebar-section">{{ "nav.squads"|t }}</div>
+            <nav class="sidebar-nav">
+                <a href="/workspace/personal" class="nav-item {% if not current_squad %}active{% endif %}" style="{% if not current_squad %}color: var(--primary-light); font-weight: 600;{% endif %}">
+                    <span class="nav-icon">👤</span>
+                    <span>{{ "nav.personal"|t }}</span>
+                    {% if not current_squad %}<span style="margin-left: auto; font-size: 9px; background: var(--primary); color: #fff; padding: 1px 6px; border-radius: 8px;">ativo</span>{% endif %}
+                </a>
+                {% for sq in user_squads %}
+                <div style="display: flex; align-items: center; {% if current_squad == sq.name %}color: var(--primary-light); font-weight: 600;{% endif %}">
+                    <a href="/workspace/{{ sq.name }}" class="nav-item {% if current_squad == sq.name %}active{% endif %}" style="flex: 1; {% if current_squad == sq.name %}color: var(--primary-light); font-weight: 600;{% endif %}">
+                        <span class="nav-icon">▸</span>
+                        <span>{{ sq.display_name }}</span>
+                        <span style="margin-left: auto; font-size: 10px; color: var(--text-muted);">{{ sq.member_count }}</span>
+                        {% if current_squad == sq.name %}<span style="margin-left: 4px; font-size: 9px; background: var(--primary); color: #fff; padding: 1px 6px; border-radius: 8px;">ativo</span>{% endif %}
+                    </a>
+                    {% if sq.is_admin %}
+                    <a href="/squad/admin/{{ sq.name }}" style="font-size: 11px; color: var(--text-muted); text-decoration: none; padding: 4px 6px;" title="{{ 'squad.admin'|t }}">⚙</a>
+                    {% endif %}
+                </div>
+                {% endfor %}
+                <a href="/squad" class="nav-item" style="font-size: 12px; color: var(--text-muted);">
+                    <span class="nav-icon">+</span>
+                    <span>{{ "nav.create_or_enter"|t }}</span>
+                </a>
+            </nav>
+            {% endif %}
+
             <div class="sidebar-section">{{ "nav.system"|t }}</div>
             <nav class="sidebar-nav">
+                <a href="/product-docs" class="nav-item {% if request.url.path == '/product-docs' %}active{% endif %}">
+                    <span class="nav-icon">📄</span>
+                    <span>{{ "product_docs.title"|t }}</span>
+                </a>
                 <a href="/config" class="nav-item {% if request.url.path == '/config' %}active{% endif %}">
                     <span class="nav-icon">✦</span>
                     <span>{{ "nav.settings"|t }}</span>
@@ -67,28 +83,36 @@
             </nav>
 
             <div class="sidebar-footer">
-                <div style="display: flex; align-items: center; justify-content: space-between;">
-                    <span class="model-badge">
-                        <span class="model-dot"></span>
-                        {% set ai_provider = config.ai_provider or 'ollama' %}
-                        {% if ai_provider == 'openai' %}
-                            OpenAI · {{ config.openai_model or 'gpt-4o-mini' }}
-                        {% elif ai_provider == 'anthropic' %}
-                            Anthropic · {{ config.anthropic_model or 'claude-3-haiku' }}
-                        {% else %}
-                            {% set ns = namespace(custom_found=false) %}
-                            {% for p in (config.custom_providers or []) %}
-                                {% if p.name == ai_provider %}
-                                    {{ p.name }} · {{ p.model }}
-                                    {% set ns.custom_found = true %}
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                    {% if user_email %}
+                    <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: var(--text-muted); padding: 0 4px;">
+                        <span>{{ user_email }}</span>
+                        <a href="/logout" style="font-size: 11px; color: var(--text-muted); text-decoration: none; padding: 2px 8px; border-radius: 4px; transition: all 0.2s ease;" onmouseover="this.style.background='rgba(239,68,68,0.15)'; this.style.color='#ef4444';" onmouseout="this.style.background='transparent'; this.style.color='var(--text-muted)';">{{ "login.logout"|t }}</a>
+                    </div>
+                    {% endif %}
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <span class="model-badge">
+                            <span class="model-dot"></span>
+                            {% set ai_provider = config.ai_provider or 'ollama' %}
+                            {% if ai_provider == 'openai' %}
+                                OpenAI · {{ config.openai_model or 'gpt-4o-mini' }}
+                            {% elif ai_provider == 'anthropic' %}
+                                Anthropic · {{ config.anthropic_model or 'claude-3-haiku' }}
+                            {% else %}
+                                {% set ns = namespace(custom_found=false) %}
+                                {% for p in (config.custom_providers or []) %}
+                                    {% if p.name == ai_provider %}
+                                        {{ p.name }} · {{ p.model }}
+                                        {% set ns.custom_found = true %}
+                                    {% endif %}
+                                {% endfor %}
+                                {% if not ns.custom_found %}
+                                    Ollama · {{ config.model }}
                                 {% endif %}
-                            {% endfor %}
-                            {% if not ns.custom_found %}
-                                Ollama · {{ config.model }}
                             {% endif %}
-                        {% endif %}
-                    </span>
-                    <a href="/onboarding/show" title="Tour" style="width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.04); color: var(--text-muted); text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.2s ease;" onmouseover="this.style.background='rgba(124,92,231,0.2)'; this.style.color='var(--primary-light)';" onmouseout="this.style.background='rgba(255,255,255,0.04)'; this.style.color='var(--text-muted)';">?</a>
+                        </span>
+                        <a href="/onboarding/show" title="Tour" style="width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.04); color: var(--text-muted); text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.2s ease;" onmouseover="this.style.background='rgba(124,92,231,0.2)'; this.style.color='var(--primary-light)';" onmouseout="this.style.background='rgba(255,255,255,0.04)'; this.style.color='var(--text-muted)';">?</a>
+                    </div>
                 </div>
             </div>
         </aside>
@@ -165,6 +189,37 @@
                     if (e.target === modal) modal.classList.remove('active');
                 });
             });
+
+            // CSRF token injection for all forms
+            var csrfToken = '{{ csrf_token }}';
+            document.querySelectorAll('form').forEach(function(form) {
+                // Add hidden input for server-side validation
+                var input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'csrf_token';
+                input.value = csrfToken;
+                form.appendChild(input);
+                // Intercept submit to add X-CSRF-Token header
+                form.addEventListener('submit', function(e) {
+                    // For fetch/XHR forms, the header approach works.
+                    // For standard form submission, the hidden input is used.
+                    // We check if this is intercepted by any fetch handler.
+                    var originalAction = form.getAttribute('action') || '';
+                    if (originalAction.startsWith('/config/mcp/test')) return;
+                });
+            });
+            // Global fetch interceptor for CSRF header
+            var origFetch = window.fetch;
+            if (origFetch) {
+                window.fetch = function(url, opts) {
+                    opts = opts || {};
+                    opts.headers = opts.headers || {};
+                    if (csrfToken && opts.method && opts.method.toUpperCase() !== 'GET') {
+                        opts.headers['X-CSRF-Token'] = csrfToken;
+                    }
+                    return origFetch.call(window, url, opts);
+                };
+            }
 
             // Loading overlay on form submit
             document.querySelectorAll('form').forEach(function(form) {

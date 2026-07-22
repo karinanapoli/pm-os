@@ -13,28 +13,40 @@
                 <select name="initiative_name" id="initiative_name" required onchange="updatePreview()">
                     <option value="">{{ "generate.initiative_select"|t }}</option>
                     {% for init in initiatives %}
-                    <option value="{{ init.name }}" data-docs="{{ init.doc_count }}">{{ init.name }}</option>
+                    <option value="{{ init.name }}" data-docs="{{ init.documents|length }}" {% if init.name == selected_initiative %}selected{% endif %}>{{ init.name }}</option>
                     {% endfor %}
                 </select>
                 <div class="form-hint">{{ "generate.initiative_hint"|t }}</div>
             </div>
+
+            {% set has_extra = initiatives|selectattr("name", "ne", selected_initiative)|list %}
+            {% if has_extra %}
             <div class="form-group">
                 <label>{{ "generate.additional_context"|t }}</label>
                 <div class="check-all-bar">
-                    <span class="hint" id="additionalCount">{{ initiatives|length }} {{ "generate.available"|t }}</span>
+                    <span class="hint" id="additionalCount">
+                        {% if selected_initiative %}{{ initiatives|length - 1 }}{% else %}{{ initiatives|length }}{% endif %}
+                        {{ "generate.available"|t }}
+                    </span>
                     <button type="button" onclick="toggleAllAdditional(true)">{{ "generate.select_all"|t }}</button>
                 </div>
                 <div class="checkbox-group" id="additional_initiatives">
                     {% for init in initiatives %}
-                    <label class="checkbox-row">
-                        <input type="checkbox" name="additional_initiatives" value="{{ init.name }}" class="gen-extra" data-name="{{ init.name }}" data-docs="{{ init.doc_count }}" onchange="updatePreview()">
-                        <span>{{ init.name }}</span>
-                        <span class="doc-size" style="margin-left:auto">{{ init.doc_count }} {{ "dashboard.docs"|t }}</span>
+                    <label class="checkbox-row" data-init-name="{{ init.name }}" {% if init.name == selected_initiative %}style="display:none"{% endif %}>
+                        <input type="checkbox" name="additional_initiatives" value="{{ init.name }}" class="gen-extra" data-name="{{ init.name }}" data-docs="{{ init.documents|length }}" onchange="updatePreview()">
+                        <span style="font-weight: 500;">{{ init.name }}</span>
+                        {% if init.documents|length > 0 %}
+                        <span class="doc-size" style="margin-left:auto; background: rgba(124,92,231,0.1); color: var(--primary-light); padding: 1px 8px; border-radius: 8px; font-size: 11px;">{{ init.documents|length }} {{ "dashboard.docs"|t }}</span>
+                        {% else %}
+                        <span class="doc-size" style="margin-left:auto; font-size: 11px; color: var(--text-muted); opacity: 0.5;">sem docs</span>
+                        {% endif %}
                     </label>
                     {% endfor %}
                 </div>
                 <div class="form-hint">{{ "generate.additional_hint"|t }}</div>
             </div>
+            {% endif %}
+
             <div class="form-group">
                 <label class="checkbox-label">
                     <input type="checkbox" name="use_product_docs" value="true" id="gen-product-docs" onchange="updatePreview()">
@@ -62,7 +74,26 @@
 
             <div class="form-group">
                 <label>{{ "generate.model"|t }}</label>
-                <p class="form-hint" style="margin-top: 0;">{{ config.model }} · <a href="/config" style="color: var(--primary-light);">{{ "generate.change"|t }}</a></p>
+                <p class="form-hint" style="margin-top: 0;">
+                    {% set ai_provider = config.ai_provider or 'ollama' %}
+                    {% if ai_provider == 'openai' %}
+                        OpenAI · {{ config.openai_model or 'gpt-4o-mini' }}
+                    {% elif ai_provider == 'anthropic' %}
+                        Anthropic · {{ config.anthropic_model or 'claude-3-haiku' }}
+                    {% else %}
+                        {% set ns = namespace(custom_found=false) %}
+                        {% for p in (config.custom_providers or []) %}
+                            {% if p.name == ai_provider %}
+                                {{ p.name }} · {{ p.model }}
+                                {% set ns.custom_found = true %}
+                            {% endif %}
+                        {% endfor %}
+                        {% if not ns.custom_found %}
+                            Ollama · {{ config.model }}
+                        {% endif %}
+                    {% endif %}
+                    · <a href="/config" style="color: var(--primary-light);">{{ "generate.change"|t }}</a>
+                </p>
             </div>
             <button type="submit" class="btn btn-ai" id="genCta">{{ "generate.cta"|t }}</button>
         </form>
@@ -118,7 +149,7 @@
 
         <details class="prd-preview">
             <summary>{{ "generate.view_prd"|t }}</summary>
-            <pre class="prd-content">{{ result.prd }}</pre>
+            <div class="prd-content markdown-body">{{ result.prd|markdown }}</div>
         </details>
 
         {# ── Validation report inline ── #}
@@ -269,6 +300,7 @@ function updatePreview() {
 document.addEventListener('DOMContentLoaded', function() {
     var mainSelect = document.getElementById('initiative_name');
     var checkboxGroup = document.getElementById('additional_initiatives');
+    if (!checkboxGroup) return;
     var allLabels = Array.from(checkboxGroup.querySelectorAll('.checkbox-row')).map(function(lbl) {
         var cb = lbl.querySelector('input[type=checkbox]');
         return {label: lbl, cb: cb, value: cb.value, span: lbl.querySelector('span')};

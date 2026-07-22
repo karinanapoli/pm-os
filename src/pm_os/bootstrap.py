@@ -1,3 +1,6 @@
+from typing import Optional
+
+from pm_os.contracts.workflow_contracts import AIClient
 from pm_os.infrastructure.ai.clients.ollama_client import OllamaClient
 from pm_os.infrastructure.logging.console_logger import ConsoleLogger
 from pm_os.infrastructure.guards.scope_guard import ScopeGuard
@@ -12,14 +15,11 @@ from pm_os.workflows.workspace_scan_workflow import WorkspaceScanWorkflow
 from pm_os.writers.markdown_writer import MarkdownWriter
 
 
-def create_prd_workflow() -> CreatePRDWorkflow:
-    """
-    Creates and wires all dependencies for the create_prd workflow.
-    Includes Change Tracker, Scope Guard, and PRD Validator.
-    """
-
-    ai_client = OllamaClient()
-
+def create_prd_workflow(
+    ai_client: Optional[AIClient] = None,
+    lang: str = "en",
+) -> CreatePRDWorkflow:
+    ai_client = ai_client or OllamaClient()
     return CreatePRDWorkflow(
         initiative_repository=InitiativeRepository(),
         context_builder=ContextBuilder(),
@@ -29,38 +29,38 @@ def create_prd_workflow() -> CreatePRDWorkflow:
         logger=ConsoleLogger(),
         change_tracker=ChangeTracker(),
         scope_guard=ScopeGuard(ai_client=ai_client),
-        prd_validator=PRDValidator(ai_client=ai_client, lang="en"),
+        prd_validator=PRDValidator(ai_client=ai_client, lang=lang),
     )
 
 
-def create_validate_prd_workflow() -> ValidatePRDWorkflow:
-    """
-    Creates and wires all dependencies for the validate_prd workflow.
-    """
-
+def create_validate_prd_workflow(
+    ai_client: Optional[AIClient] = None,
+    lang: str = "en",
+) -> ValidatePRDWorkflow:
+    ai_client = ai_client or OllamaClient()
     return ValidatePRDWorkflow(
         initiative_repository=InitiativeRepository(),
-        ai_client=OllamaClient(),
+        ai_client=ai_client,
         markdown_writer=MarkdownWriter(),
         logger=ConsoleLogger(),
-        prd_validator=PRDValidator(ai_client=OllamaClient()),
+        prd_validator=PRDValidator(ai_client=ai_client, lang=lang),
     )
 
 
 def create_workspace_scan_workflow() -> WorkspaceScanWorkflow:
-    """
-    Creates and wires all dependencies for the workspace scan workflow.
-    """
-
     return WorkspaceScanWorkflow(
         initiative_repository=InitiativeRepository(),
         logger=ConsoleLogger(),
     )
 
 
-def create_scope_guard_instance() -> ScopeGuard:
-    """
-    Creates a standalone ScopeGuard instance for CLI use.
-    """
+def create_scope_guard_instance(ai_client: Optional[AIClient] = None) -> ScopeGuard:
+    return ScopeGuard(ai_client=ai_client or OllamaClient())
 
-    return ScopeGuard(ai_client=OllamaClient())
+
+def create_change_tracker() -> ChangeTracker:
+    return ChangeTracker()
+
+
+def create_prd_validator(ai_client: Optional[AIClient] = None, lang: str = "en") -> PRDValidator:
+    return PRDValidator(ai_client=ai_client or OllamaClient(), lang=lang)

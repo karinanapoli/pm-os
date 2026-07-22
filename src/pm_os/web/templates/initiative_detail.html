@@ -3,7 +3,7 @@
 
 {% block topbar_actions %}
 <div style="display: flex; gap: 8px;">
-    <a href="/generate" class="btn btn-ai btn-sm">◇ {{ "nav.generate_prd"|t }}</a>
+    <a href="/generate?initiative={{ initiative.name }}" class="btn btn-ai btn-sm">◇ {{ "nav.generate_prd"|t }}</a>
     {% if prd_exists %}
     <a href="/validate/{{ initiative.name }}" class="btn btn-secondary btn-sm">✓ {{ "validate.title"|t }}</a>
     {% endif %}
@@ -12,6 +12,18 @@
 {% endblock %}
 
 {% block content %}
+{% if is_quickstart %}
+<div style="background: linear-gradient(135deg, rgba(124,92,231,0.12), rgba(0,204,255,0.08)); border: 1px solid rgba(124,92,231,0.25); border-radius: var(--radius-lg); padding: 20px 24px; margin-bottom: 20px; display: flex; align-items: flex-start; gap: 14px;">
+    <div style="font-size: 22px; line-height: 1;">🚀</div>
+    <div>
+        <div style="font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 4px;">{{ "quickstart.success"|t }}</div>
+        <div style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">
+            {{ "quickstart.prd_ok"|t if prd_exists else "quickstart.prd_fail"|t }}
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <div class="stats-row">
     <div class="stat-card">
         <div class="stat-label">{{ "initiative.detail.status"|t }}</div>
@@ -70,7 +82,7 @@
             <form method="POST" action="/initiative/{{ initiative.name }}/upload" enctype="multipart/form-data">
                 <div class="form-group">
                     <label for="doc">{{ "initiative.detail.upload"|t }}</label>
-                    <input type="file" name="docs" id="doc" accept=".md,.txt" multiple required style="padding: 8px;">
+                    <input type="file" name="docs" id="doc" accept=".md,.txt,.pdf" multiple required style="padding: 8px;">
                     <div class="form-hint">{{ "initiative.detail.upload_hint"|t }}</div>
                 </div>
                 <button type="submit" class="btn btn-secondary btn-sm">{{ "initiative.detail.upload_cta"|t }}</button>
@@ -96,7 +108,7 @@
     <div class="card-body">
         <details class="prd-preview" {% if version_label %}open{% endif %}>
             <summary>{{ "initiative.detail.view_prd"|t }}</summary>
-            <pre class="prd-content">{{ prd_content }}</pre>
+            <div class="prd-content markdown-body">{{ prd_content|markdown }}</div>
         </details>
         <div style="margin-top: 12px;">
             <a href="/initiative/{{ initiative.name }}/prd/download" class="btn btn-ghost btn-sm">⬇ {{ "generate.download_prd"|t }}</a>
@@ -110,12 +122,45 @@
 <div class="card">
     <div class="card-header">
         <h3>{{ "validate.report"|t }}</h3>
-        <a href="/validate/{{ initiative.name }}" class="btn btn-secondary btn-sm">{{ "initiative.detail.view_full_report"|t }}</a>
+        <div style="display: flex; gap: 8px;">
+            <a href="/validate/{{ initiative.name }}" class="btn btn-secondary btn-sm">{{ "initiative.detail.view_full_report"|t }}</a>
+            <form method="POST" action="/validate/{{ initiative.name }}/revalidate" style="display:inline;" data-loading="processing">
+                <button type="submit" class="btn btn-ghost btn-sm">{{ "initiative.detail.revalidate"|t }}</button>
+            </form>
+        </div>
     </div>
     <div class="card-body">
         <p style="color: var(--text-secondary); font-size: 14px;">
             {{ "dashboard.stats.score"|t }}: <strong>{{ validation_score }}</strong>
         </p>
+    </div>
+</div>
+{% endif %}
+
+{# ── Validation History ── #}
+{% if prd_exists and validation_history and validation_history|length > 0 %}
+<div class="card">
+    <div class="card-header">
+        <h3>{{ "validate.history"|t }}</h3>
+        <span style="font-size: 13px; color: var(--text-muted);">{{ validation_history|length }} {{ "initiative.detail.validations"|t }}</span>
+    </div>
+    <div class="card-body">
+        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+            {% for entry in validation_history %}
+            <div style="display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.03); border-radius: var(--radius); padding: 8px 14px;">
+                <span class="score score-{{ 'high' if entry.score >= 7 else 'mid' if entry.score >= 5 else 'low' }}" style="font-size: 14px;">
+                    {{ "%.1f"|format(entry.score) }}/10
+                </span>
+                <span style="font-size: 12px; color: var(--text-muted);">
+                    {% if entry.label == "latest" %}
+                        {{ "prd_versions.current"|t }}
+                    {% else %}
+                        {{ entry.label }}
+                    {% endif %}
+                </span>
+            </div>
+            {% endfor %}
+        </div>
     </div>
 </div>
 {% endif %}

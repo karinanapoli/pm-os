@@ -16,6 +16,26 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 {% endif %}
 
+{# ── Workspace Selector ── #}
+<div class="card" style="margin-bottom: 16px;">
+    <div class="card-body" style="padding: 12px 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+        <span style="font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.3px;">Workspace:</span>
+
+        <a href="/workspace/personal" class="btn btn-sm {% if not current_squad %}btn-ai{% else %}btn-secondary{% endif %}">👤 {{ "squad.personal"|t }}</a>
+
+        {% for sq in user_squads %}
+        <div style="display: flex; align-items: center; gap: 0;">
+            <a href="/workspace/{{ sq.name }}" class="btn btn-sm {% if current_squad == sq.name %}btn-ai{% else %}btn-secondary{% endif %}" style="border-radius: 6px 0 0 6px;">▸ {{ sq.display_name }} <span style="font-size: 10px; opacity: 0.6; margin-left: 4px;">{{ sq.member_count }}</span></a>
+            {% if sq.is_admin %}
+            <a href="/squad/admin/{{ sq.name }}" class="btn btn-sm btn-secondary" style="border-left: 1px solid var(--border); border-radius: 0 6px 6px 0; padding: 6px 8px; font-size: 12px; line-height: 1;" title="{{ 'squad.admin'|t }}">⚙</a>
+            {% endif %}
+        </div>
+        {% endfor %}
+
+        <a href="/squad" class="btn btn-sm btn-secondary">+ {{ "squad.create"|t }} / {{ "squad.join"|t }}</a>
+    </div>
+</div>
+
 {% if initiatives %}
 
 {# ── Stats Row ── #}
@@ -60,7 +80,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <span class="attn-reason">{{ item.reason }}</span>
             </div>
             {% if item.action == 'generate' %}
-            <a href="/generate" class="btn btn-ai btn-sm">{{ "dashboard.attention.cta_generate"|t }}</a>
+            <a href="/generate?initiative={{ item.name }}" class="btn btn-ai btn-sm">{{ "dashboard.attention.cta_generate"|t }}</a>
             {% else %}
             <a href="/initiative/{{ item.name }}" class="btn btn-secondary btn-sm">{{ "dashboard.attention.cta_view"|t }}</a>
             {% endif %}
@@ -98,39 +118,22 @@ document.addEventListener('DOMContentLoaded', function() {
 {% else %}
 
 {# ── Empty State (no initiatives) ── #}
-<div class="card" style="margin-top:6vh">
-    <div class="card-body">
-        <div class="empty-state" style="max-width:480px;padding:44px 24px 36px">
-            <div class="empty-icon">◇</div>
-            <div class="empty-title" style="font-size:19px">{{ "dashboard.empty.title"|t }}</div>
-            <div class="empty-desc" style="max-width:400px;margin-left:auto;margin-right:auto">{{ "dashboard.empty.desc_full"|t }}</div>
+<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 64px 24px; text-align: center;">
+    <div style="width: 64px; height: 64px; border-radius: 16px; background: linear-gradient(135deg, var(--primary-glow), var(--ai-glow)); display: flex; align-items: center; justify-content: center; font-size: 28px; margin-bottom: 20px; opacity: 0.6;">◇</div>
+    <h2 style="font-size: 18px; font-weight: 700; color: var(--text-secondary); margin: 0 0 6px;">{{ "dashboard.empty.title"|t }}</h2>
+    <p style="font-size: 14px; color: var(--text-muted); max-width: 420px; line-height: 1.6; margin: 0 0 32px;">{{ "dashboard.empty.desc_full"|t }}</p>
 
-            <div class="onboard-steps">
-                <div class="onboard-step">
-                    <span class="onboard-num">1</span>
-                    <div><strong>{{ "dashboard.empty.step1_title"|t }}</strong><span>{{ "dashboard.empty.step1_desc"|t }}</span></div>
-                </div>
-                <div class="onboard-arrow">→</div>
-                <div class="onboard-step">
-                    <span class="onboard-num ai">2</span>
-                    <div><strong>{{ "dashboard.empty.step2_title"|t }}</strong><span>{{ "dashboard.empty.step2_desc"|t }}</span></div>
-                </div>
-                <div class="onboard-arrow">→</div>
-                <div class="onboard-step">
-                    <span class="onboard-num">3</span>
-                    <div><strong>{{ "dashboard.empty.step3_title"|t }}</strong><span>{{ "dashboard.empty.step3_desc"|t }}</span></div>
-                </div>
-            </div>
-
-            <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:4px">
-                <form method="POST" action="/quickstart" data-loading="processing" style="display:inline">
-                    <button type="submit" class="btn btn-ai">{{ "quickstart.cta"|t }}</button>
-                </form>
-                <a href="/initiatives/new" class="btn btn-primary">{{ "dashboard.empty.cta"|t }}</a>
-            </div>
-            <a href="/onboarding/show" class="btn btn-ghost btn-sm" style="display:block;margin:12px auto 0">{{ "dashboard.empty.tour_cta"|t }}</a>
-        </div>
+    <div style="display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;">
+        <form method="POST" action="/quickstart" data-loading="processing" style="display:inline">
+            <button type="submit" class="btn btn-ai" style="padding: 10px 24px;">🚀 {{ "quickstart.cta"|t }}</button>
+        </form>
+        <a href="/initiatives/new" class="btn btn-primary" style="padding: 10px 24px;">+ {{ "dashboard.empty.cta"|t }}</a>
     </div>
+    <div style="font-size: 12px; color: var(--text-muted); margin-top: 20px; max-width: 400px; line-height: 1.5;">
+        💡 {{ "quickstart.example_hint"|t }}
+    </div>
+
+    <a href="/onboarding/show" class="btn btn-ghost btn-sm" style="margin-top: 16px;">🎯 {{ "dashboard.empty.tour_cta"|t }}</a>
 </div>
 {% endif %}
 

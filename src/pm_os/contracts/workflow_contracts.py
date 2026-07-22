@@ -4,6 +4,10 @@ from typing import Protocol
 from pm_os.domain.initiative import Initiative
 
 
+class AIProviderError(RuntimeError):
+    pass
+
+
 class InitiativeRepositoryProtocol(Protocol):
     def list_initiatives(self) -> list[Initiative]:
         ...

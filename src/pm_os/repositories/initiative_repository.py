@@ -1,8 +1,10 @@
 from pathlib import Path
+from typing import Optional
 
 import yaml
 
 from pm_os.domain.initiative import Initiative
+from pm_os.infrastructure.utils import ALLOWED_EXTENSIONS, extract_pdf_text
 
 
 class InitiativeRepository:
@@ -13,17 +15,22 @@ class InitiativeRepository:
     def __init__(
         self,
         initiatives_path: str = "workspace/initiatives",
+        squad_name: Optional[str] = None,
     ):
         self.initiatives_path = Path(initiatives_path)
+        self.squad_name = squad_name
 
     def list_names(self) -> list[str]:
         """Returns initiative names without loading documents."""
         if not self.initiatives_path.exists():
             return []
-        return sorted(
+        all_dirs = sorted(
             p.name for p in self.initiatives_path.iterdir()
             if p.is_dir()
         )
+        if self.squad_name is None:
+            return all_dirs
+        return [name for name in all_dirs if self._get_squad(name) == self.squad_name]
 
     def list_initiatives(self) -> list[Initiative]:
         """
@@ -38,6 +45,15 @@ class InitiativeRepository:
         for initiative_path in self.initiatives_path.iterdir():
             if not initiative_path.is_dir():
                 continue
+            init_squad = self._get_squad(initiative_path.name)
+            if self.squad_name is None:
+                pass  # no filter
+            elif self.squad_name == "":
+                if init_squad:
+                    continue  # personal mode: skip squads
+            else:
+                if init_squad != self.squad_name:
+                    continue
 
             context_path = initiative_path / "context"
 
@@ -45,8 +61,11 @@ class InitiativeRepository:
 
             if context_path.exists():
                 for document_path in context_path.iterdir():
-                    if document_path.is_file() and document_path.suffix in (".md", ".txt"):
-                        documents.append(document_path.read_text(encoding="utf-8"))
+                    if document_path.is_file() and document_path.suffix in ALLOWED_EXTENSIONS:
+                        if document_path.suffix == ".pdf":
+                            documents.append(extract_pdf_text(document_path))
+                        else:
+                            documents.append(document_path.read_text(encoding="utf-8"))
 
             initiatives.append(
                 Initiative(
@@ -57,3 +76,14 @@ class InitiativeRepository:
             )
 
         return initiatives
+
+    def _get_squad(self, name: str) -> str:
+        path = self.initiatives_path / name / "metadata.yaml"
+        if not path.exists():
+            return ""
+        try:
+            with open(path, encoding="utf-8") as f:
+                meta = yaml.safe_load(f)
+            return meta.get("squad", "") if meta else ""
+        except Exception:
+            return ""
