@@ -111,9 +111,12 @@
     <div class="card-header">
         <h3>{{ "generate.result_for"|t }} {{ result.initiative }}</h3>
         {% if result.score is defined %}
-        <span class="score score-{{ 'high' if result.score >= 7 else 'mid' if result.score >= 5 else 'low' }}">
-            {{ "%.1f"|format(result.score|float) }}/10
-        </span>
+        <div style="display:flex;align-items:center;gap:12px;">
+            <span class="score score-{{ 'high' if result.score >= 7 else 'mid' if result.score >= 5 else 'low' }}" style="font-size:20px;padding:6px 16px;">
+                {{ "%.1f"|format(result.score|float) }}/10
+            </span>
+            <span style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.3px;font-weight:600;">{{ "validate.score_label"|t }}</span>
+        </div>
         {% endif %}
     </div>
     <div class="card-body">

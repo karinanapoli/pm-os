@@ -2,39 +2,54 @@
 {% block page_title %}{{ "archive.title"|t }}{% endblock %}
 
 {% block content %}
-<div class="card">
-    <div class="card-header">
-        <h3>{{ "archive.title"|t }}</h3>
-        <span style="font-size:12.5px;color:var(--text-muted)">{{ "archive.subtitle"|t }}</span>
-    </div>
-    <div class="card-body">
-        {% if archived %}
-        <div>
-            {% for item in archived %}
-            <div class="archived-row">
-                <div>
-                    <div class="archived-name">{{ item.name }}</div>
-                    <div class="archived-date">{{ "archive.archived_at"|t }}: {{ item.archived_at }}</div>
-                </div>
-                <div style="display: flex; gap: 8px;">
-                    <form method="POST" action="/archived/restore" style="margin: 0;" data-loading="restoring">
-                        <input type="hidden" name="name" value="{{ item.name }}">
-                        <button type="submit" class="btn btn-secondary btn-sm">↺ {{ "archive.restore"|t }}</button>
-                    </form>
-                    <button type="button" class="btn btn-ghost btn-sm" style="color: var(--coral);" data-target="permArchiveTarget" data-open="perm-archive" data-value="{{ item.name }}">{{ "archive.button"|t }}</button>
-                </div>
-            </div>
-            {% endfor %}
+<div class="archived-hero">
+    <div class="archived-hero-icon">📦</div>
+    <div class="archived-hero-title">{{ "archive.title"|t }}</div>
+    <div class="archived-hero-desc">{{ "archive.subtitle"|t }}</div>
+    {% if archived %}
+    <div class="archived-stats">
+        <div class="archived-stat">
+            <span class="archived-stat-value">{{ archived|length }}</span>
+            <span class="archived-stat-label">{{ "dashboard.stats.archived"|t }}</span>
         </div>
-        {% else %}
+    </div>
+    {% endif %}
+</div>
+
+{% if archived %}
+<div class="archived-grid">
+    {% for item in archived %}
+    <div class="archived-card">
+        <div class="archived-card-left">
+            <div class="archived-card-icon">📦</div>
+            <div class="archived-card-info">
+                <div class="archived-card-name">{{ item.name }}</div>
+                {% if item.archived_at %}
+                <div class="archived-card-date">{{ "archive.archived_at"|t }} {{ item.archived_at }}</div>
+                {% endif %}
+            </div>
+        </div>
+        <div class="archived-card-actions">
+            <form method="POST" action="/archived/restore" style="margin: 0;" data-loading="restoring">
+                <input type="hidden" name="name" value="{{ item.name }}">
+                <button type="submit" class="btn btn-secondary btn-sm">↺ {{ "archive.restore"|t }}</button>
+            </form>
+            <button type="button" class="btn btn-ghost btn-sm" style="color: var(--coral);" data-target="permArchiveTarget" data-open="perm-archive" data-value="{{ item.name }}">{{ "archive.button"|t }}</button>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body">
         <div class="empty-state">
             <div class="empty-icon">🗄</div>
             <div class="empty-title">{{ "archive.empty_title"|t }}</div>
             <div class="empty-desc">{{ "archive.empty_desc"|t }}</div>
         </div>
-        {% endif %}
     </div>
 </div>
+{% endif %}
 
 <div class="modal-overlay" id="modal-perm-archive">
     <div class="modal modal-sm">

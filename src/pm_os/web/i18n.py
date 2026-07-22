@@ -418,6 +418,11 @@ TRANSLATIONS = {
         "archive.warning_seal": "⚠ Remove da lista de arquivadas",
         "archive.confirm_mcp": "Tem certeza que deseja remover este servidor MCP?",
 
+        # Validate
+        "validate.score_label": "Score do PRD",
+        "validate.not_yet_title": "PRD ainda não validado",
+        "validate.not_yet_desc": "Clique em \"Revalidar\" para analisar a qualidade do PRD com IA.",
+
         # Consult (Q&A)
         "consult.title": "Consultar Documentação",
         "consult.card_title": "Faça uma pergunta sobre a documentação",
@@ -926,6 +931,11 @@ TRANSLATIONS = {
         "archive.warning_desc": "This initiative will be removed. You can add it again later, but PRD and documents will need to be reloaded.",
         "archive.warning_seal": "⚠ Removes from archived list",
         "archive.confirm_mcp": "Are you sure you want to remove this MCP server?",
+
+        # Validate
+        "validate.score_label": "PRD Score",
+        "validate.not_yet_title": "PRD not yet validated",
+        "validate.not_yet_desc": "Click \"Revalidate\" to analyze the PRD quality with AI.",
 
         # Consult (Q&A)
         "consult.title": "Consult Documentation",

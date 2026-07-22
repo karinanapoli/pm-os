@@ -72,6 +72,10 @@
 
             <div class="sidebar-section">{{ "nav.system"|t }}</div>
             <nav class="sidebar-nav">
+                <a href="/timeline" class="nav-item {% if request.url.path == '/timeline' %}active{% endif %}">
+                    <span class="nav-icon">◈</span>
+                    <span>{{ "nav.timeline"|t }}</span>
+                </a>
                 <a href="/product-docs" class="nav-item {% if request.url.path == '/product-docs' %}active{% endif %}">
                     <span class="nav-icon">📄</span>
                     <span>{{ "product_docs.title"|t }}</span>

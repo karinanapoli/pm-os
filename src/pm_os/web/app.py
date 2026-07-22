@@ -53,34 +53,13 @@ app = FastAPI(title="PM Studio")
 
 # ─── Auth middleware (must be added before SessionMiddleware so it runs inside session scope) ───
 
-@app.middleware("http")
-async def auth_middleware(request: Request, call_next):
-    if request.url.path.startswith("/static"):
-        return await call_next(request)
-    if request.url.path in ("/login", "/register", "/verify", "/verify/resend", "/forgot", "/reset"):
-        return await call_next(request)
-    if request.url.path.startswith("/squad") or request.url.path.startswith("/workspace"):
-        return await call_next(request)
-    try:
-        authenticated = request.session.get("authenticated")
-        user_email = request.session.get("user_email")
-    except (AssertionError, KeyError, RuntimeError):
-        authenticated = False
-        user_email = None
-    users = config_manager.get("users") or {}
-    if authenticated and user_email and user_email in users:
-        return await call_next(request)
-    if not users:
-        return RedirectResponse(url="/register", status_code=302)
-    return RedirectResponse(url="/login", status_code=302)
-
 
 # ─── CSRF (ASGI-level — buffers body so route handlers can still read it) ───
 
 import secrets as _secrets_module
 
 _CSRF_SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
-_CSRF_EXCLUDED_PATHS = frozenset({"/login", "/register", "/verify", "/verify/resend", "/forgot", "/reset", "/config/mcp/test", "/config/delete-account", "/squad/create", "/squad/join", "/squad/select", "/squad/leave", "/squad/admin"})
+_CSRF_EXCLUDED_PATHS = frozenset({"/login", "/register", "/verify", "/verify/resend", "/forgot", "/reset", "/config/mcp/test", "/config/delete-account", "/squad/create", "/squad/join", "/squad/select", "/squad/leave", "/squad/admin", "/onboarding/dismiss", "/onboarding/show"})
 
 class _CSRFMiddleware:
     """ASGI middleware: buffers POST body, validates CSRF token, then passes body through."""
@@ -99,7 +78,7 @@ class _CSRFMiddleware:
         if "session" in scope and "csrf_token" not in scope["session"]:
             scope["session"]["csrf_token"] = _secrets_module.token_hex(32)
 
-        if path.startswith("/static") or path in _CSRF_EXCLUDED_PATHS or path.startswith("/squad/admin/") or method in _CSRF_SAFE_METHODS:
+        if path.startswith("/static") or path in _CSRF_EXCLUDED_PATHS or path.startswith("/squad/admin/") or path.endswith("/upload") or path.endswith("/delete-doc") or path.endswith("/delete-link") or path.endswith("/add-link") or method in _CSRF_SAFE_METHODS:
             await self.app(scope, receive, send)
             return
 
@@ -156,9 +135,6 @@ def _get_form_field(body_bytes: bytes, headers: dict, field: str) -> str:
         return ""
 
 
-app.add_middleware(_CSRFMiddleware)
-
-
 # Persistent session key — survives server restarts
 _session_key_path = Path(os.getenv("PM_OS_CONFIG_DIR", str(Path.home() / ".pm_os"))) / ".session_key"
 _secret = os.getenv("PM_OS_SECRET")
@@ -171,14 +147,6 @@ if not _secret:
         _session_key_path.parent.mkdir(parents=True, exist_ok=True)
         _session_key_path.write_text(_secret)
         _session_key_path.chmod(0o600)
-app.add_middleware(
-    SessionMiddleware,
-    secret_key=_secret,
-    session_cookie="pm_os_session",
-    same_site="lax",
-    https_only=False,
-)
-
 
 class _NoCacheMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
@@ -203,6 +171,39 @@ class _NoCacheMiddleware(BaseHTTPMiddleware):
 
 
 app.add_middleware(_NoCacheMiddleware)
+app.add_middleware(_CSRFMiddleware)
+
+
+class _AuthMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        if request.url.path.startswith("/static"):
+            return await call_next(request)
+        if request.url.path in ("/login", "/register", "/verify", "/verify/resend", "/forgot", "/reset"):
+            return await call_next(request)
+        if request.url.path.startswith("/squad") or request.url.path.startswith("/workspace"):
+            return await call_next(request)
+        try:
+            authenticated = request.session.get("authenticated")
+            user_email = request.session.get("user_email")
+        except (AssertionError, KeyError, RuntimeError):
+            authenticated = False
+            user_email = None
+        users = config_manager.get("users") or {}
+        if authenticated and user_email and user_email in users:
+            return await call_next(request)
+        if not users:
+            return RedirectResponse(url="/register", status_code=302)
+        return RedirectResponse(url="/login", status_code=302)
+
+
+app.add_middleware(_AuthMiddleware)
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=_secret,
+    session_cookie="pm_os_session",
+    same_site="lax",
+    https_only=False,
+)
 
 
 _LOGIN_ATTEMPTS: dict[str, list[datetime]] = {}
@@ -881,9 +882,15 @@ async def initiative_detail(request: Request, initiative_name: str):
                 prd_versions.append({"timestamp": ts, "filename": f.name, "size": f.stat().st_size})
 
     validation_score = "-"
+    validation_report_content = ""
     report_path = selected.path / "artifacts" / "prd-validation.md"
     score = read_validation_score_from_file(report_path)
     validation_score = f"{score}/10" if score is not None else "-"
+    if report_path.exists():
+        try:
+            validation_report_content = report_path.read_text(encoding="utf-8")
+        except OSError:
+            validation_report_content = ""
 
     is_quickstart = request.query_params.get("quickstart") == "1"
 
@@ -897,6 +904,7 @@ async def initiative_detail(request: Request, initiative_name: str):
             prd_exists=prd_exists,
             prd_content=prd_content,
             validation_score=validation_score,
+            validation_report_content=validation_report_content,
             prd_versions=prd_versions,
             is_quickstart=is_quickstart,
             validation_history=read_validation_history(selected.path / "artifacts"),

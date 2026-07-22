@@ -97,17 +97,17 @@ Conteúdo do PRD:
 
     def _parse_response(self, response: str) -> ValidationReport:
         json_match = re.search(r"```json\s*\n?(.*?)\n?```", response, re.DOTALL)
-        if not json_match:
+        if json_match:
+            raw = json_match.group(1)
+        else:
             json_match = re.search(r"\{.*\}", response, re.DOTALL)
-
-        if not json_match:
-            return ValidationReport(
-                overall_score=0.0,
-                summary="Could not parse validation response.",
-                sections=[],
-            )
-
-        raw = json_match.group(1) if "```" in response else json_match.group(0)
+            if not json_match:
+                return ValidationReport(
+                    overall_score=0.0,
+                    summary="Could not parse validation response.",
+                    sections=[],
+                )
+            raw = json_match.group(0)
 
         try:
             data = json.loads(raw.strip())

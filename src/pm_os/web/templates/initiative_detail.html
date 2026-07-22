@@ -118,21 +118,35 @@
 {% endif %}
 
 {# ── Validation ── #}
-{% if prd_exists and validation_score != '-' %}
+{% if prd_exists %}
 <div class="card">
     <div class="card-header">
         <h3>{{ "validate.report"|t }}</h3>
         <div style="display: flex; gap: 8px;">
+            {% if validation_score != '-' %}
             <a href="/validate/{{ initiative.name }}" class="btn btn-secondary btn-sm">{{ "initiative.detail.view_full_report"|t }}</a>
+            {% endif %}
             <form method="POST" action="/validate/{{ initiative.name }}/revalidate" style="display:inline;" data-loading="processing">
                 <button type="submit" class="btn btn-ghost btn-sm">{{ "initiative.detail.revalidate"|t }}</button>
             </form>
         </div>
     </div>
     <div class="card-body">
+        {% if validation_report_content %}
+        <div class="prd-content markdown-body" style="max-height: 500px; overflow-y: auto;">{{ validation_report_content|markdown }}</div>
+        {% elif validation_score != '-' %}
         <p style="color: var(--text-secondary); font-size: 14px;">
             {{ "dashboard.stats.score"|t }}: <strong>{{ validation_score }}</strong>
         </p>
+        {% else %}
+        <div style="display:flex;align-items:center;gap:12px;padding:8px 0;">
+            <span style="font-size:24px;">⚡</span>
+            <div>
+                <div style="font-weight:600;font-size:14px;color:var(--text);">{{ "validate.not_yet_title"|t }}</div>
+                <div style="font-size:13px;color:var(--text-muted);margin-top:2px;">{{ "validate.not_yet_desc"|t }}</div>
+            </div>
+        </div>
+        {% endif %}
     </div>
 </div>
 {% endif %}
