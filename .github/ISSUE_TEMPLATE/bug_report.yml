@@ -1,0 +1,23 @@
+name: Relatar um problema
+description: Conte o que aconteceu e ajude a tornar o PM Studio mais confiável.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: O que aconteceu?
+      description: Não inclua chaves, documentos internos ou dados pessoais.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Como reproduzir?
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Ambiente
+      description: Sistema operacional, versão do Python e provedor de IA.

@@ -427,15 +427,15 @@ class TestAuth:
         (session_base / ".pm_os" / "config.json").write_text(json.dumps(cfg), encoding="utf-8")
         self._sync_live_config(cfg)
 
-        import hashlib
         resp = unauth_client.post("/register", data={
             "email": "new@example.com",
-            "password": "mypassword",
+            "password": "mypassword1",
         })
         assert resp.status_code == 200  # redirects to login page
         cfg = json.loads((session_base / ".pm_os" / "config.json").read_text())
         assert "new@example.com" in cfg["users"]
-        assert cfg["users"]["new@example.com"] == hashlib.sha256("mypassword".encode()).hexdigest()
+        from pm_os.infrastructure.security import verify_password
+        assert verify_password(cfg["users"]["new@example.com"], "mypassword1")[0]
 
     def test_register_rejects_existing_email(self, unauth_client, session_base):
         self._enable_auth(session_base)
@@ -459,7 +459,7 @@ class TestAuth:
             "password": "ab",
         })
         assert resp.status_code == 200
-        assert b"4 caracteres" in resp.content or b"4 characters" in resp.content or b"senha" in resp.content
+        assert b"10 caracteres" in resp.content or b"10 characters" in resp.content
 
     def test_register_rejects_invalid_email(self, unauth_client, session_base):
         self._enable_auth(session_base)
@@ -499,6 +499,69 @@ class TestAuth:
         })
         assert resp.status_code == 200  # re-renders login page with error
         assert b"Invalid" in resp.content or b"inv" in resp.content
+
+    def test_password_reset_sends_expiring_link_and_updates_password(
+        self, unauth_client, session_base, monkeypatch
+    ):
+        self._enable_auth(session_base)
+        captured = {}
+        from pm_os.web import email_service
+
+        monkeypatch.setattr(email_service, "is_smtp_configured", lambda cfg: True)
+        monkeypatch.setattr(
+            email_service,
+            "send_password_reset_email",
+            lambda cfg, email, url: captured.update(email=email, url=url) or True,
+        )
+
+        resp = unauth_client.post(
+            "/forgot",
+            data={"email": self.USER_EMAIL},
+            follow_redirects=False,
+        )
+        assert resp.status_code == 302
+        assert captured["email"] == self.USER_EMAIL
+        assert "/reset?" in captured["url"]
+
+        from urllib.parse import parse_qs, urlparse
+        params = parse_qs(urlparse(captured["url"]).query)
+        token = params["token"][0]
+        resp = unauth_client.post(
+            "/reset",
+            data={
+                "email": self.USER_EMAIL,
+                "token": token,
+                "password": "newpassword1",
+                "confirm": "newpassword1",
+            },
+        )
+        assert resp.status_code == 200
+        cfg = json.loads((session_base / ".pm_os" / "config.json").read_text())
+        from pm_os.infrastructure.security import verify_password
+        assert verify_password(cfg["users"][self.USER_EMAIL], "newpassword1")[0]
+        assert token not in cfg["reset_tokens"]
+
+    def test_verify_resend_generates_a_new_code(
+        self, unauth_client, session_base, monkeypatch
+    ):
+        self._enable_auth(session_base)
+        sent = {}
+        from pm_os.web import email_service
+
+        monkeypatch.setattr(email_service, "is_smtp_configured", lambda cfg: True)
+        monkeypatch.setattr(
+            email_service,
+            "send_verification_email",
+            lambda cfg, email, code: sent.update(email=email, code=code) or True,
+        )
+        resp = unauth_client.post(
+            "/verify/resend",
+            data={"email": self.USER_EMAIL},
+            follow_redirects=False,
+        )
+        assert resp.status_code == 302
+        assert sent["email"] == self.USER_EMAIL
+        assert len(sent["code"]) == 6
 
     def test_auth_middleware_blocks_unauthenticated(self, unauth_client, session_base):
         self._enable_auth(session_base)

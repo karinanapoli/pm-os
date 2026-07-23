@@ -6,6 +6,6 @@ def test_ai_client_generates_fake_prd():
 
     result = client.generate("Test prompt")
 
-    assert "# Product Requirement Document" in result
-    assert "Fake AI Client" in result
+    assert "# PRD demonstrativo" in result
+    assert "Nenhum conteúdo foi enviado" in result
     assert "Test prompt" not in result

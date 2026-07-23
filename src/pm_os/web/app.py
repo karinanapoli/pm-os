@@ -5,6 +5,7 @@ import shutil
 import uuid
 import urllib.parse
 import urllib.request
+import time
 import yaml
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -30,6 +31,8 @@ from pm_os.infrastructure.ai.clients.ollama_client import (
 )
 from pm_os.infrastructure.ai.clients.openai_client import OpenAIClient
 from pm_os.infrastructure.ai.clients.anthropic_client import AnthropicClient
+from pm_os.infrastructure.ai.clients.fake_ai_client import FakeAIClient
+from pm_os.infrastructure.security import hash_password, password_is_strong, verify_password
 from pm_os.contracts.workflow_contracts import AIClient
 from pm_os.domain.initiative import Initiative
 from pm_os.infrastructure.validators.prd_validator import PRDValidator
@@ -65,7 +68,7 @@ app = FastAPI(title="PM Studio")
 import secrets as _secrets_module
 
 _CSRF_SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
-_CSRF_EXCLUDED_PATHS = frozenset({"/login", "/register", "/verify", "/verify/resend", "/forgot", "/reset", "/config/mcp/test", "/config/delete-account", "/squad/create", "/squad/join", "/squad/select", "/squad/leave", "/squad/admin", "/onboarding/dismiss", "/onboarding/show"})
+_CSRF_EXCLUDED_PATHS = frozenset()
 
 class _CSRFMiddleware:
     """ASGI middleware: buffers POST body, validates CSRF token, then passes body through."""
@@ -84,7 +87,7 @@ class _CSRFMiddleware:
         if "session" in scope and "csrf_token" not in scope["session"]:
             scope["session"]["csrf_token"] = _secrets_module.token_hex(32)
 
-        if path.startswith("/static") or path in _CSRF_EXCLUDED_PATHS or path.startswith("/squad/admin/") or path.endswith("/upload") or path.endswith("/delete-doc") or path.endswith("/delete-link") or path.endswith("/add-link") or method in _CSRF_SAFE_METHODS:
+        if path.startswith("/static") or path in _CSRF_EXCLUDED_PATHS or method in _CSRF_SAFE_METHODS:
             await self.app(scope, receive, send)
             return
 
@@ -131,12 +134,23 @@ class _CSRFMiddleware:
 def _get_form_field(body_bytes: bytes, headers: dict, field: str) -> str:
     """Extract a single field from URL-encoded form data without consuming the body."""
     from urllib.parse import parse_qs
-    ct = headers.get(b"content-type", b"").decode("utf-8", errors="replace").lower()
-    if "application/x-www-form-urlencoded" not in ct:
-        return ""
+    ct = headers.get(b"content-type", b"").decode("utf-8", errors="replace")
+    ct_lower = ct.lower()
     try:
-        params = parse_qs(body_bytes.decode("utf-8", errors="replace"))
-        return params.get(field, [""])[0]
+        if "application/x-www-form-urlencoded" in ct_lower:
+            params = parse_qs(body_bytes.decode("utf-8", errors="replace"))
+            return params.get(field, [""])[0]
+        if "multipart/form-data" in ct_lower:
+            boundary_match = re.search(r'boundary="?([^";]+)', ct, re.IGNORECASE)
+            if not boundary_match:
+                return ""
+            boundary = boundary_match.group(1).encode()
+            marker = b'name="' + field.encode() + b'"'
+            for part in body_bytes.split(b"--" + boundary):
+                if marker in part:
+                    _, _, value = part.partition(b"\r\n\r\n")
+                    return value.rsplit(b"\r\n", 1)[0].decode("utf-8", errors="replace")
+        return ""
     except Exception:
         return ""
 
@@ -147,12 +161,18 @@ _secret = os.getenv("PM_OS_SECRET")
 if not _secret:
     if _session_key_path.exists():
         _secret = _session_key_path.read_text().strip()
-        _session_key_path.chmod(0o600)
+        try:
+            _session_key_path.chmod(0o600)
+        except OSError:
+            _logger.warning("Could not enforce permissions on the session key file.")
     else:
         _secret = os.urandom(64).hex()
         _session_key_path.parent.mkdir(parents=True, exist_ok=True)
         _session_key_path.write_text(_secret)
-        _session_key_path.chmod(0o600)
+        try:
+            _session_key_path.chmod(0o600)
+        except OSError:
+            _logger.warning("Could not enforce permissions on the session key file.")
 
 class _NoCacheMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
@@ -185,8 +205,6 @@ class _AuthMiddleware(BaseHTTPMiddleware):
         if request.url.path.startswith("/static"):
             return await call_next(request)
         if request.url.path in ("/login", "/register", "/verify", "/verify/resend", "/forgot", "/reset"):
-            return await call_next(request)
-        if request.url.path.startswith("/squad") or request.url.path.startswith("/workspace"):
             return await call_next(request)
         if config_manager.get("auth_bypass_localhost", False):
             host = request.client.host if request.client else ""
@@ -222,7 +240,7 @@ app.add_middleware(
     secret_key=_secret,
     session_cookie="pm_os_session",
     same_site="lax",
-    https_only=False,
+    https_only=os.getenv("PM_OS_ENV") == "production",
 )
 
 
@@ -276,9 +294,11 @@ async def login_submit(request: Request, email: str = Form(...), password: str =
     _check_login_rate_limit(ip)
     cfg = config_manager.get_all()
     users = cfg.get("users") or {}
-    import hashlib
-    pw_hash = hashlib.sha256(password.encode()).hexdigest()
-    if email in users and _secrets_module.compare_digest(users[email], pw_hash):
+    valid, needs_rehash = verify_password(users.get(email, ""), password)
+    if valid:
+        if needs_rehash:
+            users[email] = hash_password(password)
+            config_manager.set("users", users)
         try:
             request.session["authenticated"] = True
             request.session["user_email"] = email
@@ -306,16 +326,15 @@ async def register_page(request: Request, error: str = ""):
 
 @app.post("/register")
 async def register_submit(request: Request, email: str = Form(...), password: str = Form(...)):
-    import hashlib
     cfg = config_manager.get_all()
     users = dict(cfg.get("users") or {})
     if email in users:
         return await register_page(request, error=_t("register.exists", _get_lang()))
     if not email or "@" not in email:
         return await register_page(request, error=_t("register.invalid_email", _get_lang()))
-    if len(password) < 4:
+    if not password_is_strong(password):
         return await register_page(request, error=_t("register.short_password", _get_lang()))
-    users[email] = hashlib.sha256(password.encode()).hexdigest()
+    users[email] = hash_password(password)
     config_manager.set("users", users)
     config_manager.set("onboarding_dismissed", False)
     _logger.info("User registered: %s", email)
@@ -326,6 +345,7 @@ async def register_submit(request: Request, email: str = Form(...), password: st
         try:
             request.session["verify_code"] = code
             request.session["verify_email"] = email
+            request.session["verify_expires_at"] = time.time() + 600
         except Exception:
             pass
         sent = send_verification_email(cfg, email, code)
@@ -351,16 +371,18 @@ async def verify_submit(request: Request, email: str = Form(...), code: str = Fo
     try:
         stored_code = request.session.get("verify_code", "")
         stored_email = request.session.get("verify_email", "")
+        expires_at = request.session.get("verify_expires_at", 0)
     except Exception:
         stored_code = ""
         stored_email = ""
-    if not stored_email or stored_email != email:
+    if not stored_email or stored_email != email or expires_at < time.time():
         return templates.TemplateResponse("verify.html", _ctx(request, email=email, error=_t("verify.expired", _get_lang()), sent=False))
     if not _secrets_module.compare_digest(stored_code, code.strip()):
         return templates.TemplateResponse("verify.html", _ctx(request, email=email, error=_t("verify.invalid", _get_lang()), sent=False))
     try:
         request.session.pop("verify_code", None)
         request.session.pop("verify_email", None)
+        request.session.pop("verify_expires_at", None)
         request.session["verified"] = True
     except Exception:
         pass
@@ -374,10 +396,11 @@ async def verify_resend(request: Request, email: str = Form(...)):
     from pm_os.web.email_service import is_smtp_configured, send_verification_email
     if not is_smtp_configured(cfg):
         return templates.TemplateResponse("verify.html", _ctx(request, email=email, error=_t("verify.no_smtp", _get_lang()), sent=False))
-        code = "".join(str(_secrets_module.randbelow(10)) for _ in range(6))
+    code = "".join(str(_secrets_module.randbelow(10)) for _ in range(6))
     try:
         request.session["verify_code"] = code
         request.session["verify_email"] = email
+        request.session["verify_expires_at"] = time.time() + 600
     except Exception:
         pass
     send_verification_email(cfg, email, code)
@@ -406,26 +429,20 @@ async def forgot_page(request: Request, error: str = "", sent: str = ""):
 async def forgot_submit(request: Request, email: str = Form(...)):
     cfg = config_manager.get_all()
     users = cfg.get("users") or {}
-    if email not in users:
-        return await forgot_page(request, error=_t("forgot.not_found", _get_lang()))
-    from pm_os.web.email_service import is_smtp_configured, send_verification_email
+    from pm_os.web.email_service import is_smtp_configured, send_password_reset_email
     if not is_smtp_configured(cfg):
         return await forgot_page(request, error=_t("forgot.no_smtp", _get_lang()))
-        import time
+    if email not in users:
+        return await forgot_page(request, sent="1")
     token = _secrets_module.token_hex(32)
     reset_tokens = dict(cfg.get("reset_tokens") or {})
     reset_tokens[token] = {"email": email, "expires_at": time.time() + 1800}
     config_manager.set("reset_tokens", reset_tokens)
-    code = "".join(str(_secrets_module.randbelow(10)) for _ in range(6))
-    sent = send_verification_email(cfg, email, code)
-    try:
-        request.session["reset_token"] = token
-        request.session["reset_email"] = email
-    except Exception:
-        pass
+    reset_url = str(request.base_url).rstrip("/") + f"/reset?email={urllib.parse.quote(email)}&token={token}"
+    sent = send_password_reset_email(cfg, email, reset_url)
     _logger.info("Password reset requested for %s", email)
     return RedirectResponse(
-        url=f"/reset?email={urllib.parse.quote(email)}&token={token}&code={'1' if sent else '0'}",
+        url=f"/forgot?sent={'1' if sent else '0'}",
         status_code=302,
     )
 
@@ -440,8 +457,6 @@ async def reset_page(request: Request, email: str = "", token: str = "", code: s
 
 @app.post("/reset")
 async def reset_submit(request: Request, email: str = Form(...), token: str = Form(...), password: str = Form(...), confirm: str = Form(...)):
-    import hashlib
-    import time
     cfg = config_manager.get_all()
     reset_tokens = cfg.get("reset_tokens") or {}
     stored = reset_tokens.get(token)
@@ -449,12 +464,12 @@ async def reset_submit(request: Request, email: str = Form(...), token: str = Fo
         return await reset_page(request, email=email, token=token, error=_t("reset.invalid_token", _get_lang()))
     if password != confirm:
         return await reset_page(request, email=email, token=token, error=_t("reset.mismatch", _get_lang()))
-    if len(password) < 4:
+    if not password_is_strong(password):
         return await reset_page(request, email=email, token=token, error=_t("reset.short_password", _get_lang()))
     users = dict(cfg.get("users") or {})
     if email not in users:
         return await reset_page(request, email=email, token=token, error=_t("forgot.not_found", _get_lang()))
-    users[email] = hashlib.sha256(password.encode()).hexdigest()
+    users[email] = hash_password(password)
     config_manager.set("users", users)
     del reset_tokens[token]
     config_manager.set("reset_tokens", reset_tokens)
@@ -571,6 +586,8 @@ def _ctx(request: Request, **extra: object) -> dict:
 def _build_ai_client() -> AIClient:
     cfg = config_manager.get_all()
     provider = cfg.get("ai_provider", "ollama")
+    if provider == "demo":
+        return FakeAIClient()
     if provider == "openai":
         return OpenAIClient(
             model=cfg.get("openai_model", "gpt-4o-mini"),
@@ -2020,7 +2037,6 @@ async def squad_join_page(request: Request, error: str = ""):
 
 @app.post("/squad/create")
 async def squad_create(request: Request, name: str = Form(...), display_name: str = Form(""), password: str = Form(...)):
-    import hashlib
     cfg = config_manager.get_all()
     squads = dict(cfg.get("squads") or {})
     squad_key = name.strip().lower().replace(" ", "-")
@@ -2036,7 +2052,7 @@ async def squad_create(request: Request, name: str = Form(...), display_name: st
         return RedirectResponse(url="/login", status_code=302)
     squads[squad_key] = {
         "display_name": display_name.strip() or squad_key,
-        "password_hash": hashlib.sha256(password.encode()).hexdigest(),
+        "password_hash": hash_password(password),
         "members": [user_email],
         "created_by": user_email,
         "created_at": str(date.today()),
@@ -2052,7 +2068,6 @@ async def squad_create(request: Request, name: str = Form(...), display_name: st
 
 @app.post("/squad/join")
 async def squad_join(request: Request, name: str = Form(...), password: str = Form(...)):
-    import hashlib
     cfg = config_manager.get_all()
     squads = dict(cfg.get("squads") or {})
     squad_key = name.strip().lower().replace(" ", "-")
@@ -2060,9 +2075,12 @@ async def squad_join(request: Request, name: str = Form(...), password: str = Fo
         return await squad_page(request, error=_t("squad.not_found", _get_lang()))
     sq = squads[squad_key]
     stored_hash = sq.get("password_hash", "")
-    pw_hash = hashlib.sha256(password.encode()).hexdigest()
-    if not _secrets_module.compare_digest(stored_hash, pw_hash):
+    valid, needs_rehash = verify_password(stored_hash, password)
+    if not valid:
         return await squad_page(request, error=_t("squad.wrong_password", _get_lang()))
+    if needs_rehash:
+        sq["password_hash"] = hash_password(password)
+        config_manager.set("squads", squads)
     try:
         user_email = request.session.get("user_email", "")
     except Exception:

@@ -1,6 +1,7 @@
 import json
 import os
 import tempfile
+from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
@@ -45,14 +46,14 @@ SCHEMA: dict[str, type] = {
 DEFAULT_CONFIG: dict[str, Any] = {
     "model": "llama3.2:1b",
     "ollama_url": "http://localhost:11434",
-    "lang": "en",
+    "lang": "pt-BR",
     "onboarding_dismissed": False,
     "mcp_servers": [],
     "auth_enabled": False,
     "auth_bypass_localhost": True,
     "auth_username": "",
     "auth_password": "",
-    "ai_provider": "ollama",
+    "ai_provider": "demo",
     "openai_api_key": "",
     "openai_model": "gpt-4o-mini",
     "anthropic_api_key": "",
@@ -124,7 +125,7 @@ class ConfigManager:
         config_dir = _get_config_dir()
         config_file = _get_config_file()
         config_dir.mkdir(parents=True, exist_ok=True)
-        to_save = dict(self._config)
+        to_save = deepcopy(self._config)
         for key in _SENSITIVE_KEYS:
             if key in to_save and to_save[key]:
                 to_save[key] = encrypt(to_save[key])

@@ -16,7 +16,7 @@ def fresh_config(tmp_path):
 
 def test_default_config(fresh_config):
     cm = ConfigManager()
-    assert cm.get("lang") == "en"
+    assert cm.get("lang") == "pt-BR"
     assert cm.get("model") == "llama3.2:1b"
     assert cm.get("mcp_servers") == []
 
@@ -96,7 +96,7 @@ def test_handles_corrupted_file(tmp_path):
     os.environ["PM_OS_CONFIG_DIR"] = str(config_dir)
     try:
         cm = ConfigManager()
-        assert cm.get("lang") == "en"
+        assert cm.get("lang") == "pt-BR"
     finally:
         os.environ.pop("PM_OS_CONFIG_DIR", None)
 
