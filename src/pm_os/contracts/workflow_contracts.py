@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Protocol
 
 from pm_os.domain.initiative import Initiative
+from pm_os.domain.validation_report import ValidationReport
 
 
 class AIProviderError(RuntimeError):

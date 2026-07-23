@@ -29,6 +29,11 @@ PM Studio evolution happens through incremental capabilities, reusing a common a
 | Timeline / Roadmap | ✅ Completed | Sprint 004 |
 | PRD Version History | ✅ Completed | Sprint 004 |
 | Validation with Diff | ✅ Completed | Sprint 004 |
+| Secure Authentication Foundation | ✅ Completed | Sprint 007 |
+| Demo Mode (No External AI) | ✅ Completed | Sprint 007 |
+| Reproducible Setup & CI | ✅ Completed | Sprint 007 |
+| Open Source Governance | ✅ Completed | Sprint 007 |
+| Functional MCP Server | ✅ Completed | Sprint 007 |
 | Create Backlog | 🟡 Planned | Sprint 005 |
 | OKRs | 🟡 Planned | Sprint 005 |
 | AI Prototyping | 🟡 Planned | Sprint 006 |
@@ -42,20 +47,25 @@ PM Studio evolution happens through incremental capabilities, reusing a common a
 
 ---
 
-# Next Sprint
+# Current Focus
 
-## Sprint 004
+## Sprint 007 — Trust and Access
 
-### Epic
+### Delivered
 
-Platform Evolution
+- Argon2 passwords with automatic migration of legacy hashes.
+- Expiring, one-time password reset links.
+- CSRF coverage for state-changing routes.
+- Demo mode with no external model call.
+- Reproducible dependencies, test matrix and linting in CI.
+- Functional MCP tools and open source governance files.
 
-### Objectives
+### Next
 
-- Implement centralized configuration layer.
-- Create integration tests.
-- Improve CLI.
-- Prepare platform for multiple AI providers.
+- Structured context with source metadata and citations.
+- Privacy preview before sending context to a provider.
+- Persistent jobs scoped to user and squad.
+- Learning path for Product Managers beginning with AI.
 
 ---
 

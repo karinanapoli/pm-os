@@ -3,6 +3,10 @@ import os
 import hashlib
 from pathlib import Path
 
+from cryptography.fernet import Fernet, InvalidToken
+
+
+_FERNET_PREFIX = "fernet:"
 
 def _get_key_path() -> Path:
     from pm_os.web.config_manager import _get_config_dir
@@ -25,18 +29,29 @@ def _derive_key(salt: bytes) -> bytes:
     return hashlib.pbkdf2_hmac("sha256", master, salt, 100_000, dklen=32)
 
 
+def _fernet() -> Fernet:
+    key = base64.urlsafe_b64encode(hashlib.sha256(_ensure_key()).digest())
+    return Fernet(key)
+
+
 def encrypt(plaintext: str) -> str:
     if not plaintext:
         return ""
-    salt = os.urandom(16)
-    key = _derive_key(salt)
-    ciphertext = bytes(a ^ b for a, b in zip(plaintext.encode("utf-8"), key * (len(plaintext) // len(key) + 1)))
-    return base64.urlsafe_b64encode(salt + ciphertext).decode("ascii")
+    token = _fernet().encrypt(plaintext.encode("utf-8")).decode("ascii")
+    return _FERNET_PREFIX + token
 
 
 def decrypt(encrypted: str) -> str:
     if not encrypted:
         return ""
+    if encrypted.startswith(_FERNET_PREFIX):
+        try:
+            token = encrypted[len(_FERNET_PREFIX):].encode("ascii")
+            return _fernet().decrypt(token).decode("utf-8")
+        except (InvalidToken, ValueError, UnicodeDecodeError):
+            raise ValueError("Encrypted configuration value could not be authenticated.")
+    # Backward-compatible read for values created before authenticated
+    # encryption was introduced. ConfigManager rewrites them on the next save.
     try:
         raw = base64.urlsafe_b64decode(encrypted.encode("ascii"))
     except Exception:

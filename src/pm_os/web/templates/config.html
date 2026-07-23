@@ -125,6 +125,7 @@
                 <div class="form-group" style="border-top: 1px solid var(--border); padding-top: 20px; margin-top: 8px;">
                     <label for="ai_provider">{{ "config.ai_provider"|t }}</label>
                     <select name="ai_provider" id="ai_provider" onchange="toggleProviderFields()">
+                        <option value="demo" {% if config.ai_provider == 'demo' %}selected{% endif %}>Demo (sem IA externa)</option>
                         <option value="ollama" {% if config.ai_provider == 'ollama' %}selected{% endif %}>Ollama (local)</option>
                         <option value="openai" {% if config.ai_provider == 'openai' %}selected{% endif %}>OpenAI</option>
                         <option value="anthropic" {% if config.ai_provider == 'anthropic' %}selected{% endif %}>Anthropic</option>
@@ -133,6 +134,10 @@
                         {% endfor %}
                     </select>
                     <div class="form-hint">{{ "config.ai_provider_hint"|t }}</div>
+                </div>
+
+                <div id="provider-demo" class="provider-fields" style="display:none">
+                    <div class="form-hint">Gera um PRD ilustrativo localmente. Nenhum documento é enviado para um provedor externo.</div>
                 </div>
 
                 <div id="provider-ollama" class="provider-fields">
