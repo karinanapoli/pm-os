@@ -39,7 +39,9 @@ Provider is selected in Settings → AI Provider. API keys can also be set via `
 | `/` | GET | Dashboard with stats, initiative grid, onboarding |
 | `/onboarding/show` | GET | Re-opens interactive tour |
 | `/onboarding/dismiss` | POST | Dismisses onboarding |
-| `/generate` | GET/POST | Generate PRD + auto-validate (supports cross-initiative context + product docs) |
+| `/generate` | GET/POST | **Async** PRD generation with progress bar + auto-validate |
+| `/generate/status/{task_id}` | GET | Polling endpoint for generation progress (JSON) |
+| `/generate/result/{task_id}` | GET | Fetches final PRD result HTML (supports `?fragment=1` for inline injection) |
 | `/consult` | GET/POST | Q&A over product documentation + initiative docs |
 | `/validate/{name}` | GET/POST | Validate existing PRD |
 | `/config` | GET/POST | Model, URL, language settings |
@@ -59,9 +61,11 @@ Provider is selected in Settings → AI Provider. API keys can also be set via `
 
 ## Templates (Jinja2)
 All templates use `|t` filter for i18n:
-- `base.html` — Layout, sidebar with "?" tour button, "Docs do Produto" + "Consult Docs" links, loading overlay
+- `base.html` — Layout, sidebar with "?" tour button, "Docs do Produto" + "Consult Docs" links, loading overlay, skip-to-content link
 - `dashboard.html` — Stats row, initiative grid, empty state, tour trigger
-- `generate.html` — Initiative selector, multi-select for additional context, product docs checkbox, result with sections + PRD preview
+- `generate.html` — Initiative selector, multi-select for additional context, product docs checkbox, inline stepper (hidden), result with sections + PRD preview
+- `generate_processing.html` — Fallback progress page (no-JS, step indicator + auto-polling)
+- `generate_result_fragment.html` — Partial result card for inline injection (`?fragment=1`)
 - `consult.html` — Q&A form with initiative multi-select + product docs checkbox, answer with references
 - `validate.html` — Validation report with scores per section
 - `config.html` — Model, URL, language selector
@@ -141,7 +145,17 @@ All templates use `|t` filter for i18n:
 - Manual "Revalidar" button on initiative detail page calls `POST /validate/{name}/revalidate`
 - Redirects back to detail page with updated score
 
-## UX Fixes (11 findings resolved)
+### Async PRD Generation (sprint 006 — inline stepper)
+- Generation runs in background thread via `ThreadPoolExecutor` — servidor não bloqueia
+- Form submit interceptado via JS (`fetch POST /generate` com `X-Requested-With: fetch`)
+- Retorna `{"job_id": "..."}` → stepper inline renderizado na mesma página
+- `GET /generate/status/{task_id}` retorna JSON com `steps[]` + `step`/`message` (backward compat)
+- `GET /generate/result/{task_id}` retorna HTML; `?fragment=1` retorna só o card do resultado
+- Stepper vertical com 4 etapas + progress bar, polling a cada 800ms
+- Progressive enhancement: JS desabilitado → fallback para `generate_processing.html`
+- Job store estruturado: `{steps: [{status, detail}], step, message, done, error, result}`
+
+## UX Fixes (11+ findings resolved)
 
 | # | Priority | Issue | Fix |
 |---|----------|-------|-----|
@@ -156,14 +170,23 @@ All templates use `|t` filter for i18n:
 | P9 | LOW | `"✓"` shown when validation score is unreadable (wrongly implies perfect) | Changed to `"-"` in `app.py:197` |
 | P10 | LOW | Same "✕" icon for archive and permanent delete | Archive (reversible) keeps soft icon button; permanent deletes get explicit "Excluir" button text |
 | P11 | LOW | Tour lacks keyboard focus management, Esc key, aria-live | Added `aria-live="polite"`, `role="dialog"`, `aria-label` on tooltip; `Escape` key handler dismisses tour |
+| P12 | MEDIUM | UX Writing — sidebar labels genéricos | "Gerar documentação" → "Gerar PRD"; "Perguntas" → "Consultar Docs" |
+| P13 | MEDIUM | UX Writing — menção a Ollama em erros | Removido de `error.ollama` e `quickstart.prd_fail` |
+| P14 | MEDIUM | Status "discovery" sem tradução | Adicionadas chaves `status.*` + templates usam prefixo `"status." + status` |
+| P15 | MEDIUM | Geração de PRD travava o servidor | Async via `ThreadPoolExecutor` + barra de progresso com 3 etapas + polling |
+| P16 | LOW | Skip-link com texto longo e animação brusca | "Pular para o conteúdo principal" → "Ir para conteúdo"; `top: -1000px` → `transform: translateY()` full-width |
+| P17 | LOW | Tour não aparecia em nova conta | `config_manager.set("onboarding_dismissed", False)` no registro |
+| P18 | LOW | Hardcoded "sem docs", "Em breve...", "Observações" | Migrados para chaves i18n em `generate.html`, `config.html`, `initiative_new.html` |
 
 ## Key UX Writing Decisions
 - "Gerando com IA..." instead of "Processando..."
-- "Enquanto isso, revise os documentos" instead of "Isso pode levar minutos"
+- "Só um instante — não deve demorar." instead of "Enquanto isso, revise os documentos"
 - "Pular" instead of "Depois"
 - "Salvar" instead of "Salvar Configurações"
 - "Nota Média" instead of "Média de Validação"
+- "Nota do PRD" / "Nota de Validação" instead of "Score do PRD" / "Score de Validação"
 - Archive confirm: "pode ser restaurada depois" (reversible tone)
+- "Ir para conteúdo" instead of "Pular para o conteúdo principal" (skip link)
 
 ## Config (`~/.pm_os/config.json`)
 ```json
@@ -180,16 +203,22 @@ All templates use `|t` filter for i18n:
 
 ## Files to Reference
 - `src/pm_os/web/app.py` — All route handlers
-- `src/pm_os/web/templates/` — All 10 Jinja2 templates (incl. `archived.html`)
-- `src/pm_os/web/static/style.css` — Complete CSS (880 lines)
+- `src/pm_os/web/templates/` — All 12 Jinja2 templates (incl. `archived.html` + `generate_processing.html` + `generate_result_fragment.html`)
+- `src/pm_os/web/static/style.css` — Complete CSS (1795 lines)
 - `src/pm_os/web/static/tour.js` — Interactive tour engine
 - `src/pm_os/web/static/tour.css` — Tour overlay styles
 - `src/pm_os/web/i18n.py` — Translation dicts (pt-BR + en)
 - `src/pm_os/web/config_manager.py` — Config persistence
 - `scripts/run_web.py` — Entry point (uvicorn with reload)
+- `docs/reviews/sprint-005-review.md` — Sprint 005 review (async, UX writing, etc.)
+- `docs/learning/sprint-005-learning.md` — Sprint 005 learnings
+- `docs/retrospectives/sprint-005-retrospective.md` — Sprint 005 retrospective
+- `docs/reviews/sprint-006-review.md` — Sprint 006 review (inline stepper, structured job store)
+- `docs/learning/sprint-006-learning.md` — Sprint 006 learnings
+- `docs/retrospectives/sprint-006-retrospective.md` — Sprint 006 retrospective
 
 ## Tests
-- 116 tests pass (103 original + 13 auth)
+- 151 tests pass (138 original + 13 auth/async)
 - Run: `.venv/bin/python -m pytest tests/ -v`
 
 ## Running

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
 from pm_os.contracts.logger import Logger
 from pm_os.contracts.workflow_contracts import (
@@ -34,6 +34,7 @@ class CreatePRDWorkflow:
         change_tracker: Optional[ChangeTracker] = None,
         scope_guard: Optional[ScopeGuard] = None,
         prd_validator: Optional[PRDValidator] = None,
+        on_step: Optional[Callable[[str, str, str], None]] = None,
     ):
         self.initiative_repository = initiative_repository
         self.context_builder = context_builder
@@ -44,13 +45,20 @@ class CreatePRDWorkflow:
         self.change_tracker = change_tracker
         self.scope_guard = scope_guard
         self.prd_validator = prd_validator
+        self.on_step = on_step
+
+    def _on_step(self, step_id: str, status: str, detail: str = "") -> None:
+        if self.on_step:
+            self.on_step(step_id, status, detail)
 
     def run(self, output_path: str, initiative_name: Optional[str] = None) -> Path:
+        self._on_step("context", "active", "Loading initiatives")
         self.logger.info("Loading initiatives from workspace.")
 
         initiatives = self.initiative_repository.list_initiatives()
 
         if not initiatives:
+            self._on_step("context", "error", "No initiatives found")
             raise ValueError("No initiatives found in the workspace.")
 
         initiative = None
@@ -60,6 +68,7 @@ class CreatePRDWorkflow:
                     initiative = i
                     break
             if not initiative:
+                self._on_step("context", "error", f"Initiative '{initiative_name}' not found")
                 raise ValueError(f"Initiative '{initiative_name}' not found.")
         else:
             initiative = initiatives[0]
@@ -68,21 +77,28 @@ class CreatePRDWorkflow:
         if self.change_tracker:
             self._track_changes(initiative.path)
 
+        self._on_step("context", "active", "Building context")
         self.logger.info("Building context.")
         context = self.context_builder.build(initiative)
 
         if self.scope_guard:
             self._analyze_scope(context)
 
+        self._on_step("context", "done", "Context ready")
+        self._on_step("draft", "active", "Building prompt")
         self.logger.info("Building prompt for create_prd workflow.")
         prompt = self.prompt_builder.build(
             workflow_name="create_prd",
             context=context,
         )
 
+        self._on_step("draft", "done", "Prompt ready")
+        self._on_step("refine", "active", "Generating PRD with AI")
         self.logger.info("Generating PRD content with AI client.")
         prd_content = self.ai_client.generate(prompt)
 
+        self._on_step("refine", "done", "Generation complete")
+        self._on_step("validate", "active", "Writing PRD")
         self.logger.info(f"Writing PRD to {output_path}.")
         output_file = self.markdown_writer.write(
             content=prd_content,
@@ -95,6 +111,7 @@ class CreatePRDWorkflow:
         if self.change_tracker:
             self.change_tracker.update_manifest(str(initiative.path))
 
+        self._on_step("validate", "done", "Workflow complete")
         self.logger.info("Create PRD workflow completed successfully.")
 
         return output_file

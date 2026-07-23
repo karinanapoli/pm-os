@@ -38,7 +38,7 @@
                         {% if init.documents|length > 0 %}
                         <span class="doc-size" style="margin-left:auto; background: rgba(124,92,231,0.1); color: var(--primary-light); padding: 1px 8px; border-radius: 8px; font-size: 11px;">{{ init.documents|length }} {{ "dashboard.docs"|t }}</span>
                         {% else %}
-                        <span class="doc-size" style="margin-left:auto; font-size: 11px; color: var(--text-muted); opacity: 0.5;">sem docs</span>
+                        <span class="doc-size" style="margin-left:auto; font-size: 11px; color: var(--text-muted); opacity: 0.5;">{{ "generate.no_docs_badge"|t }}</span>
                         {% endif %}
                     </label>
                     {% endfor %}
@@ -98,6 +98,63 @@
             <button type="submit" class="btn btn-ai" id="genCta">{{ "generate.cta"|t }}</button>
         </form>
     </div>
+</div>
+
+<div id="genStepper" style="display:none">
+<div class="prd-card">
+    <h3 class="prd-title">{{ "generate.stepper_title"|t }}</h3>
+    <p class="prd-subtitle">{{ "generate.stepper_subtitle"|t }}</p>
+
+    <div class="prd-progress-bar">
+        <div class="prd-progress-header">
+            <span>Progresso geral</span>
+            <span class="prd-progress-pct" id="fpPct">0%</span>
+        </div>
+        <div class="prd-progress-track">
+            <div class="prd-progress-fill" id="fpFill" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+    </div>
+
+    <ol class="prd-steps" id="fpSteps">
+        {% for i in range(1, 5) %}
+        <li class="prd-step is-pending" data-fp-step="{{ i }}">
+            <div class="prd-marker">
+                <div class="prd-circle">
+                    <span class="prd-num">{{ i }}</span>
+                    <svg class="prd-check" viewBox="0 0 24 24" width="14" height="14">
+                        <path d="M20 6L9 17l-5-5" stroke="white" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <svg class="prd-error-icon" viewBox="0 0 24 24" width="14" height="14">
+                        <path d="M18 6L6 18M6 6l12 12" stroke="white" stroke-width="3" fill="none" stroke-linecap="round"/>
+                    </svg>
+                    <svg class="prd-spinner" viewBox="0 0 24 24" width="14" height="14">
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="31.4 31.4" stroke-linecap="round"/>
+                    </svg>
+                </div>
+                {% if i < 4 %}<div class="prd-line"></div>{% endif %}
+            </div>
+            <div class="prd-body">
+                <p class="prd-label">{{ ("generate.stepper_step" ~ i)|t }}</p>
+                <p class="prd-detail" id="fpDetail{{ i }}"></p>
+                <div class="prd-retry" id="fpRetry{{ i }}" style="display:none;">
+                    <button class="prd-retry-btn">{{ "generate.stepper_retry"|t }}</button>
+                </div>
+            </div>
+        </li>
+        {% endfor %}
+    </ol>
+
+    <button class="prd-cancel" id="fpCancel">{{ "generate.cancel"|t }}</button>
+</div>
+
+<div class="prd-card prd-error-card" id="fpError" style="display:none;">
+    <div class="prd-error-body">
+        <div class="prd-error-circle">✕</div>
+        <h4>{{ "error.ollama"|t }}</h4>
+        <p id="fpErrorDetail"></p>
+        <a href="/generate" class="btn btn-primary">{{ "generate.stepper_retry"|t }}</a>
+    </div>
+</div>
 </div>
 
 {% if error %}
@@ -325,5 +382,202 @@ document.addEventListener('DOMContentLoaded', function() {
     mainSelect.addEventListener('change', filterAdditional);
     filterAdditional();
 });
+
+// ── Async stepper (JS‑enhanced form submit) ──
+(function() {
+    var form = document.getElementById('genForm');
+    if (!form) return;
+
+    var stepper = document.getElementById('genStepper');
+    var stepEls = document.querySelectorAll('[data-fp-step]');
+    var detailIds = ['fpDetail1', 'fpDetail2', 'fpDetail3', 'fpDetail4'];
+    var retryIds = ['fpRetry1', 'fpRetry2', 'fpRetry3', 'fpRetry4'];
+    var fillEl = document.getElementById('fpFill');
+    var pctEl = document.getElementById('fpPct');
+    var errorEl = document.getElementById('fpError');
+    var errorDetailEl = document.getElementById('fpErrorDetail');
+    var cancelBtn = document.getElementById('fpCancel');
+    var overlay = document.getElementById('loadingOverlay');
+
+    var STATUS = { PENDING: 0, ACTIVE: 1, DONE: 2, ERROR: 3 };
+
+    function setStep(idx, state, detail) {
+        var el = stepEls[idx];
+        if (!el) return;
+        el.className = 'prd-step';
+        if (state === STATUS.PENDING) el.classList.add('is-pending');
+        else if (state === STATUS.ACTIVE) el.classList.add('is-active');
+        else if (state === STATUS.DONE) el.classList.add('is-done');
+        else if (state === STATUS.ERROR) el.classList.add('is-error');
+
+        var d = document.getElementById(detailIds[idx]);
+        if (d) { d.textContent = detail || ''; d.style.display = ''; }
+
+        var r = document.getElementById(retryIds[idx]);
+        if (r) r.style.display = state === STATUS.ERROR ? '' : 'none';
+    }
+
+    function updateProgress(steps) {
+        var pct = 0;
+        for (var i = 0; i < steps.length; i++) {
+            if (steps[i].status === 'done') pct += 25;
+            else if (steps[i].status === 'active') { pct += 12.5; break; }
+            else break;
+        }
+        fillEl.style.width = pct + '%';
+        fillEl.setAttribute('aria-valuenow', pct);
+        pctEl.textContent = Math.round(pct) + '%';
+    }
+
+    function applySteps(steps, hasError) {
+        for (var i = 0; i < 4; i++) {
+            var s = steps[i] || { status: 'pending', detail: '' };
+            if (hasError && s.status === 'active') {
+                setStep(i, STATUS.ERROR, s.detail || '{{ "generate.stepper_error"|t }}');
+            } else if (s.status === 'done') {
+                setStep(i, STATUS.DONE, '{{ "generate.stepper_done"|t }}');
+            } else if (s.status === 'active') {
+                setStep(i, STATUS.ACTIVE, s.detail || '');
+            } else {
+                setStep(i, STATUS.PENDING, '{{ "generate.stepper_pending"|t }}');
+            }
+        }
+        updateProgress(steps);
+    }
+
+    function showForm() {
+        form.style.display = '';
+        stepper.style.display = 'none';
+        errorEl.style.display = 'none';
+        form.querySelector('button[type=submit]').disabled = false;
+    }
+
+    function showError(errMsg) {
+        applySteps(taskSteps || [{status:'pending'},{status:'pending'},{status:'pending'},{status:'pending'}], true);
+        setTimeout(function() {
+            errorEl.style.display = '';
+            errorDetailEl.textContent = errMsg;
+        }, 500);
+        cancelBtn.style.display = 'none';
+        // keep stepper visible so user can see which step failed
+    }
+
+    var taskSteps = null;
+    var pollTimer = null;
+    var MAX_POLLS = 300;
+    var pollCount = 0;
+
+    function poll(jobId) {
+        pollCount++;
+        if (pollCount > MAX_POLLS) return;
+
+        fetch('/generate/status/' + jobId)
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.error === 'not_found' || !data.steps) {
+                    setTimeout(function() { poll(jobId); }, 2000);
+                    return;
+                }
+                taskSteps = data.steps;
+                applySteps(data.steps, !!data.error);
+
+                if (data.done) {
+                    cancelBtn.style.display = 'none';
+                    if (data.error) {
+                        showError(data.error);
+                    } else {
+                        setTimeout(function() { fetchResult(jobId); }, 500);
+                    }
+                    return;
+                }
+                pollTimer = setTimeout(function() { poll(jobId); }, 800);
+            })
+            .catch(function() {
+                pollTimer = setTimeout(function() { poll(jobId); }, 2000);
+            });
+    }
+
+    function fetchResult(jobId) {
+        fetch('/generate/result/' + jobId + '?fragment=1')
+            .then(function(r) { return r.text(); })
+            .then(function(html) {
+                stepper.style.display = 'none';
+                var container = document.querySelector('.card:first-of-type');
+                if (container) container.style.display = 'none';
+                var resultArea = document.getElementById('genResult');
+                if (resultArea) {
+                    resultArea.outerHTML = html;
+                } else {
+                    var div = document.createElement('div');
+                    div.innerHTML = html;
+                    var main = document.querySelector('.card');
+                    if (main) main.parentNode.insertBefore(div, main.nextSibling);
+                }
+                // Re-run any inline <script> tags inside the fragment
+                var scripts = document.querySelectorAll('#genResult script, .card script');
+                scripts.forEach(function(old) {
+                    var s = document.createElement('script');
+                    if (old.src) s.src = old.src;
+                    else s.textContent = old.textContent;
+                    old.parentNode.replaceChild(s, old);
+                });
+            })
+            .catch(function() {
+                // fallback: redirect to result page
+                window.location.href = '/generate/result/' + jobId;
+            });
+    }
+
+    form.addEventListener('submit', function(e) {
+        // Only intercept if browser supports fetch
+        if (!window.fetch) return;
+
+        // Validate form
+        if (!form.checkValidity()) return;
+
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        var btn = form.querySelector('button[type=submit]');
+        btn.disabled = true;
+
+        // Hide form card, show stepper
+        var card = form.closest('.card');
+        if (card) card.style.display = 'none';
+        stepper.style.display = '';
+
+        // Hide loading overlay (if base.html listener already fired)
+        if (overlay) { overlay.classList.remove('active'); overlay.setAttribute('aria-hidden', 'true'); }
+
+        // Reset stepper to initial state
+        applySteps([
+            { status: 'active', detail: '{{ "generate.progress_starting"|t }}' },
+            { status: 'pending', detail: '' },
+            { status: 'pending', detail: '' },
+            { status: 'pending', detail: '' }
+        ]);
+
+        var fd = new FormData(form);
+        fd.set('csrf_token', '{{ csrf_token }}');
+
+        fetch('/generate', {
+            method: 'POST',
+            body: fd,
+            headers: { 'X-Requested-With': 'fetch' }
+        })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.job_id) {
+                    poll(data.job_id);
+                } else {
+                    showForm();
+                }
+            })
+            .catch(function() {
+                // Fallback: normal form submit
+                showForm();
+                form.submit();
+            });
+    });
+})();
 </script>
 {% endblock %}

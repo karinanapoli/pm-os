@@ -2,15 +2,17 @@ import os
 import re
 import json
 import shutil
+import uuid
 import urllib.parse
 import urllib.request
 import yaml
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Optional
+from concurrent.futures import ThreadPoolExecutor
 
 from fastapi import FastAPI, File, Form, Request, UploadFile, HTTPException
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -47,6 +49,10 @@ from pm_os.web.product_docs_service import PRODUCT_DOCS_DIR, ProductDocsService
 from pm_os.writers.markdown_writer import MarkdownWriter
 import logging
 _logger = logging.getLogger("pm_os")
+
+# ─── Background task registry for async PRD generation ───
+_gen_tasks: dict = {}
+_gen_executor = ThreadPoolExecutor(max_workers=2)
 
 app = FastAPI(title="PM Studio")
 
@@ -182,6 +188,20 @@ class _AuthMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
         if request.url.path.startswith("/squad") or request.url.path.startswith("/workspace"):
             return await call_next(request)
+        if config_manager.get("auth_bypass_localhost", False):
+            host = request.client.host if request.client else ""
+            if host in ("127.0.0.1", "::1", "localhost"):
+                # Auto-populate session so user_email is available for squads
+                users = config_manager.get("users") or {}
+                if not request.session.get("user_email"):
+                    if users:
+                        first_user = next(iter(users))
+                        request.session["user_email"] = first_user
+                        request.session["authenticated"] = True
+                    else:
+                        request.session["user_email"] = "local@localhost"
+                        request.session["authenticated"] = True
+                return await call_next(request)
         try:
             authenticated = request.session.get("authenticated")
             user_email = request.session.get("user_email")
@@ -297,6 +317,7 @@ async def register_submit(request: Request, email: str = Form(...), password: st
         return await register_page(request, error=_t("register.short_password", _get_lang()))
     users[email] = hashlib.sha256(password.encode()).hexdigest()
     config_manager.set("users", users)
+    config_manager.set("onboarding_dismissed", False)
     _logger.info("User registered: %s", email)
 
     from pm_os.web.email_service import is_smtp_configured, send_verification_email
@@ -630,6 +651,15 @@ def _get_initiative_by_name(name: str, request_or_squad: Optional[Request] = Non
         squad_name = _get_session_squad(request_or_squad)
     else:
         squad_name = request_or_squad
+    repo = InitiativeRepository(squad_name=squad_name)
+    for i in repo.list_initiatives():
+        if i.name == name:
+            return i
+    return None
+
+
+def _get_initiative_by_name_sync(name: str, squad_name: Optional[str] = None) -> Optional[Initiative]:
+    """Sync variant for background threads (no Request object)."""
     repo = InitiativeRepository(squad_name=squad_name)
     for i in repo.list_initiatives():
         if i.name == name:
@@ -1127,90 +1157,207 @@ async def generate_prd(
             "generate.html",
             _ctx(request, initiatives=initiatives, result=None,
                  error=f"Initiative '{initiative_name}' {_t('error.not_found', _get_lang())}",
-                 product_docs_count=pd_service.count_docs(),
+                 product_docs_count=0,
                  mcp_count=len(_get_mcp_servers())),
         )
 
+    pd_service = ProductDocsService()
     additional = [n for n in additional_initiatives if n != initiative_name]
+    squad_name = _get_session_squad(request)
 
-    try:
-        ai_client = _build_ai_client()
+    # Kick off background generation task
+    lang = _get_lang()
 
-        context_parts = []
-        main_context = ContextBuilder().build(selected)
-        if main_context.strip():
-            context_parts.append(f"--- Contexto Principal: {selected.name} ---\n\n{main_context}")
+    def _set_step(step_idx: int, status: str, detail: str = ""):
+        """Update step at index + keep task['step']/task['message'] for backward compat."""
+        if 0 <= step_idx < 4:
+            task["steps"][step_idx]["status"] = status
+            task["steps"][step_idx]["detail"] = detail
+            task["step"] = step_idx + 1
+            task["message"] = detail
 
-        used_additional = []
-        for add_name in additional:
-            add_init = _get_initiative_by_name(add_name, request)
-            if add_init and add_init.documents:
-                add_docs = "\n\n".join(add_init.documents)
-                if add_docs.strip():
-                    context_parts.append(f"--- Contexto Adicional: {add_init.name} ---\n\n{add_docs}")
-                    used_additional.append(add_name)
+    def _run_gen():
+        """Runs PRD generation + validation in background thread, updating progress in _gen_tasks."""
+        try:
+            _set_step(0, "active", _t("generate.progress_context", lang))
+            ai_client = _build_ai_client()
 
-        used_product_docs = False
-        if use_product_docs:
-            pd_context = pd_service.build_context()
-            if pd_context.strip():
-                context_parts.append(f"--- Documentação complementar ---\n\n{pd_context}")
-                used_product_docs = True
+            context_parts = []
+            main_context = ContextBuilder().build(selected)
+            if main_context.strip():
+                context_parts.append(f"--- Contexto Principal: {selected.name} ---\n\n{main_context}")
 
-        used_mcp_servers = []
-        if use_mcp:
-            mcp_contexts = _fetch_mcp_context()
-            for mc in mcp_contexts:
-                context_parts.append(f"--- Contexto MCP: {mc['name']} ---\n\n{mc['content']}")
-                used_mcp_servers.append(mc['name'])
+            used_additional = []
+            for add_name in additional:
+                add_init = _get_initiative_by_name_sync(add_name, squad_name)
+                if add_init and add_init.documents:
+                    add_docs = "\n\n".join(add_init.documents)
+                    if add_docs.strip():
+                        context_parts.append(f"--- Contexto Adicional: {add_init.name} ---\n\n{add_docs}")
+                        used_additional.append(add_name)
 
-        context = "\n\n".join(context_parts) if context_parts else ""
-        prompt = PromptBuilder().build("create_prd", context, lang=_get_lang())
+            used_product_docs = False
+            if use_product_docs:
+                pd_context = pd_service.build_context()
+                if pd_context.strip():
+                    context_parts.append(f"--- Documentação complementar ---\n\n{pd_context}")
+                    used_product_docs = True
 
-        prd_content = ai_client.generate(prompt)
+            used_mcp_servers = []
+            if use_mcp:
+                mcp_contexts = _fetch_mcp_context()
+                for mc in mcp_contexts:
+                    context_parts.append(f"--- Contexto MCP: {mc['name']} ---\n\n{mc['content']}")
+                    used_mcp_servers.append(mc['name'])
 
-        artifacts_dir = selected.path / "artifacts"
-        artifacts_dir.mkdir(parents=True, exist_ok=True)
+            context = "\n\n".join(context_parts) if context_parts else ""
 
-        version_file(artifacts_dir / "prd.md")
-        version_file(artifacts_dir / "prd-validation.md")
+            _set_step(0, "done")
+            _set_step(1, "active", _t("generate.progress_generating", lang))
+            prompt = PromptBuilder().build("create_prd", context, lang=lang)
 
-        MarkdownWriter().write(content=prd_content, output_path=str(artifacts_dir / "prd.md"))
+            _set_step(1, "done")
+            _set_step(2, "active", detail="")
+            prd_content = ai_client.generate(prompt)
 
-        validator = PRDValidator(ai_client=ai_client, lang=_get_lang())
-        report = validator.validate(prd_content)
+            artifacts_dir = selected.path / "artifacts"
+            artifacts_dir.mkdir(parents=True, exist_ok=True)
 
-        report_path = str(artifacts_dir / "prd-validation.md")
-        MarkdownWriter().write(content=report.to_markdown(lang=_get_lang()), output_path=report_path)
+            version_file(artifacts_dir / "prd.md")
+            version_file(artifacts_dir / "prd-validation.md")
 
-        tracker = create_change_tracker()
-        tracker.update_manifest(str(selected.path))
+            MarkdownWriter().write(content=prd_content, output_path=str(artifacts_dir / "prd.md"))
 
+            _set_step(2, "done")
+            _set_step(3, "active", _t("generate.progress_validating", lang))
+
+            validator = PRDValidator(ai_client=ai_client, lang=lang)
+            report = validator.validate(prd_content)
+
+            report_path = str(artifacts_dir / "prd-validation.md")
+            MarkdownWriter().write(content=report.to_markdown(lang=lang), output_path=report_path)
+
+            tracker = create_change_tracker()
+            tracker.update_manifest(str(selected.path))
+
+            task["result"] = {
+                "prd": prd_content,
+                "score": report.overall_score,
+                "sections": report.sections,
+                "initiative": initiative_name,
+                "additional": used_additional,
+                "product_docs_used": used_product_docs,
+                "mcp_used": used_mcp_servers,
+            }
+            task["done"] = True
+            task["steps"][3]["status"] = "done"
+            task["step"] = 4
+
+        except OllamaConnectionError:
+            task["error"] = _t("error.ollama", lang)
+            task["done"] = True
+        except Exception as exc:
+            _logger.exception("Background PRD generation failed")
+            task["error"] = str(exc)
+            task["done"] = True
+
+    task_id = uuid.uuid4().hex[:8]
+    task = {
+        "steps": [
+            {"status": "pending", "detail": ""},
+            {"status": "pending", "detail": ""},
+            {"status": "pending", "detail": ""},
+            {"status": "pending", "detail": ""},
+        ],
+        "step": 0,
+        "message": _t("generate.progress_starting", lang),
+        "done": False,
+        "error": None,
+        "result": None,
+    }
+    _gen_tasks[task_id] = task
+
+    _gen_executor.submit(_run_gen)
+
+    # If called via fetch (JS stepper), return JSON; otherwise render fallback page
+    if request.headers.get("x-requested-with") == "fetch":
+        return JSONResponse({"job_id": task_id})
+
+    pd_service = ProductDocsService()
+    return templates.TemplateResponse(
+        "generate_processing.html",
+        _ctx(request,
+             task_id=task_id,
+             initiative_name=initiative_name,
+             product_docs_count=pd_service.count_docs()),
+    )
+
+
+@app.get("/generate/status/{task_id}", response_class=JSONResponse)
+async def generate_status(task_id: str):
+    task = _gen_tasks.get(task_id)
+    if not task:
+        return {"error": "not_found"}
+    return {
+        "steps": task["steps"],
+        "step": task["step"],
+        "message": task["message"],
+        "done": task["done"],
+        "error": task.get("error"),
+    }
+
+
+@app.get("/generate/result/{task_id}", response_class=HTMLResponse)
+async def generate_result(request: Request, task_id: str):
+    pd_service = ProductDocsService()
+    task = _gen_tasks.get(task_id)
+    is_fragment = request.query_params.get("fragment") == "1"
+
+    if not task or not task.get("done"):
+        if is_fragment:
+            return _t("generate.error_not_ready", _get_lang())
         return templates.TemplateResponse(
             "generate.html",
-            _ctx(request, initiatives=initiatives,
-                 result={
-                     "prd": prd_content,
-                     "score": report.overall_score,
-                     "sections": report.sections,
-                     "initiative": initiative_name,
-                     "additional": used_additional,
-                     "product_docs_used": used_product_docs,
-                     "mcp_used": used_mcp_servers,
-                 },
-                 error=None,
+            _ctx(request, initiatives=[], result=None,
+                 error=_t("generate.error_not_ready", _get_lang()),
                  product_docs_count=pd_service.count_docs(),
                  mcp_count=len(_get_mcp_servers())),
         )
 
-    except OllamaConnectionError:
+    if task.get("error"):
+        if is_fragment:
+            return templates.TemplateResponse(
+                "generate_result_fragment.html",
+                _ctx(request, result=None, error=task["error"]),
+            )
         return templates.TemplateResponse(
             "generate.html",
-            _ctx(request, initiatives=initiatives, result=None,
-                 error=_t("error.ollama", _get_lang()),
+            _ctx(request, initiatives=[], result=None,
+                 error=task["error"],
                  product_docs_count=pd_service.count_docs(),
                  mcp_count=len(_get_mcp_servers())),
         )
+
+    result = task["result"]
+    # Clean up task
+    _gen_tasks.pop(task_id, None)
+
+    if is_fragment:
+        return templates.TemplateResponse(
+            "generate_result_fragment.html",
+            _ctx(request, result=result, error=None),
+        )
+
+    repo = _repo(_get_session_squad(request))
+    initiatives = repo.list_initiatives()
+    return templates.TemplateResponse(
+        "generate.html",
+        _ctx(request, initiatives=initiatives,
+             result=result,
+             error=None,
+             product_docs_count=pd_service.count_docs(),
+             mcp_count=len(_get_mcp_servers())),
+    )
 
 
 # ─── Validate PRD ───
@@ -1232,11 +1379,20 @@ async def validate_page(request: Request, initiative_name: str):
     prd_path = selected.path / "artifacts" / "prd.md"
     prd_content = prd_path.read_text(encoding="utf-8") if prd_path.exists() else ""
 
+    validation_report_content = ""
+    report_path = selected.path / "artifacts" / "prd-validation.md"
+    if report_path.exists():
+        try:
+            validation_report_content = report_path.read_text(encoding="utf-8")
+        except OSError:
+            validation_report_content = ""
+
     return templates.TemplateResponse(
         "validate.html",
         _ctx(request, initiative=selected, report=None, error=None,
              validation_history=read_validation_history(selected.path / "artifacts"),
-             prd_content=prd_content),
+             prd_content=prd_content,
+             validation_report_content=validation_report_content),
     )
 
 
