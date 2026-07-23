@@ -5,7 +5,6 @@ import json
 import shutil
 import uuid
 import urllib.parse
-import urllib.request
 import time
 import yaml
 from dataclasses import asdict
@@ -54,6 +53,7 @@ from pm_os.web.config_manager import ConfigManager
 from pm_os.web.i18n import t as _t, LANGS
 from pm_os.web.markdown_renderer import render_safe_markdown
 from pm_os.web.product_docs_service import ProductDocsService
+from pm_os.web.safe_http import fetch_public_url, validate_public_url
 from pm_os.writers.markdown_writer import MarkdownWriter
 import logging
 _logger = logging.getLogger("pm_os")
@@ -626,21 +626,8 @@ def _get_mcp_servers() -> list[dict]:
 
 
 def _validate_mcp_url(url: str) -> str:
-    """Validate and sanitize MCP server URL to prevent SSRF."""
-    url = url.strip()
-    if not url:
-        raise ValueError("URL cannot be empty")
-    parsed = urllib.parse.urlparse(url)
-    if parsed.scheme not in ("http", "https"):
-        raise ValueError(f"Invalid scheme: {parsed.scheme}. Only http/https allowed.")
-    host = parsed.hostname or ""
-    if host in ("localhost", "127.0.0.1", "::1", "0.0.0.0"):
-        raise ValueError("Localhost URLs are not allowed for MCP servers.")
-    if host.startswith("169.254."):
-        raise ValueError("Link-local addresses are not allowed.")
-    if host.startswith("10.") or host.startswith("172.") or host.startswith("192.168."):
-        raise ValueError("Private IP ranges are not allowed for MCP servers.")
-    return url
+    """Validate MCP URL structure before it is stored."""
+    return validate_public_url(url, resolve_dns=False)
 
 
 def _fetch_mcp_context() -> list[dict]:
@@ -653,33 +640,31 @@ def _fetch_mcp_context() -> list[dict]:
         if not url:
             continue
         try:
-            _validate_mcp_url(url)
-            req = urllib.request.Request(url, method="GET", headers={"Accept": "text/plain,application/json"})
-            with urllib.request.urlopen(req, timeout=5) as resp:
-                raw = resp.read().decode("utf-8", errors="replace")
-                try:
-                    data = json.loads(raw)
-                    if isinstance(data, (dict, list)):
-                        content = json.dumps(data, indent=2, ensure_ascii=False)
-                    else:
-                        content = str(data)
-                except (json.JSONDecodeError, ValueError):
-                    content = raw
-                content = content[:3000]
-                if content.strip():
-                    digest = hashlib.sha256(f"mcp/{name}/{url}".encode("utf-8")).hexdigest()
-                    source = ContextSource(
-                        source_id=f"SRC-{digest[:8].upper()}",
-                        name=name,
-                        content=content,
-                        source_type="mcp",
-                        confidentiality="internal",
-                        size_bytes=len(content.encode("utf-8")),
-                    )
-                    results.append({
-                        "name": name,
-                        "content": ContextBuilder.build_sources([source]),
-                    })
+            raw_bytes, _ = fetch_public_url(url, timeout=5)
+            raw = raw_bytes.decode("utf-8", errors="replace")
+            try:
+                data = json.loads(raw)
+                if isinstance(data, (dict, list)):
+                    content = json.dumps(data, indent=2, ensure_ascii=False)
+                else:
+                    content = str(data)
+            except (json.JSONDecodeError, ValueError):
+                content = raw
+            content = content[:3000]
+            if content.strip():
+                digest = hashlib.sha256(f"mcp/{name}/{url}".encode("utf-8")).hexdigest()
+                source = ContextSource(
+                    source_id=f"SRC-{digest[:8].upper()}",
+                    name=name,
+                    content=content,
+                    source_type="mcp",
+                    confidentiality="internal",
+                    size_bytes=len(content.encode("utf-8")),
+                )
+                results.append({
+                    "name": name,
+                    "content": ContextBuilder.build_sources([source]),
+                })
         except Exception as exc:
             _logger.warning("MCP fetch failed for %s: %s", name, exc)
     return results
@@ -1681,10 +1666,7 @@ async def delete_mcp_server(
 @app.post("/config/mcp/test", response_class=HTMLResponse)
 async def test_mcp_connection(request: Request, url: str = Form(...)):
     try:
-        validated = _validate_mcp_url(url)
-        req = urllib.request.Request(validated, method="GET", headers={"Accept": "text/plain,application/json"})
-        with urllib.request.urlopen(req, timeout=5) as resp:
-            resp.read()
+        fetch_public_url(url, timeout=5)
         return HTMLResponse(
             f'<span style="color:var(--success);">✓ {_t("mcp.test_success", _get_lang())}</span>'
         )
