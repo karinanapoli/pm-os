@@ -15,6 +15,7 @@ import os
 import re
 import shutil
 import sys
+import time
 from pathlib import Path
 from typing import Generator
 
@@ -919,6 +920,72 @@ class TestGenerateAdditionalContext:
         # Should have the additional context section with checkboxes
         assert 'type="checkbox"' in resp.text
         assert "gen-extra" in resp.text
+
+
+class TestGenerationJobIsolation:
+    def test_generation_job_is_persisted_through_completion(self, client):
+        from pm_os.web.app import job_repository
+
+        _create_initiative(client, name="Persistent", init_id="INT-PERSISTENT")
+        response = client.post(
+            "/generate",
+            data={"initiative_name": "INT-PERSISTENT"},
+            headers={"X-Requested-With": "fetch"},
+        )
+        job_id = response.json()["job_id"]
+
+        task = None
+        for _ in range(40):
+            task = job_repository.get_for_scope(job_id, "test@pmstudio.app", "")
+            if task and task["done"]:
+                break
+            time.sleep(0.05)
+
+        assert task is not None
+        assert task["done"] is True
+        assert task["error"] is None
+        assert task["result"]["initiative"] == "INT-PERSISTENT"
+        assert task["result"]["prd"].startswith("# PRD demonstrativo")
+
+    def test_status_only_returns_jobs_owned_by_current_scope(self, client):
+        from pm_os.web.app import job_repository
+
+        payload = {
+            "steps": [],
+            "step": 1,
+            "message": "Private",
+            "done": False,
+            "error": None,
+            "result": None,
+        }
+        job_repository.create("owned-job", "test@pmstudio.app", "", payload)
+        job_repository.create("foreign-job", "other@pmstudio.app", "", payload)
+
+        owned = client.get("/generate/status/owned-job")
+        foreign = client.get("/generate/status/foreign-job")
+
+        assert owned.status_code == 200
+        assert owned.json()["message"] == "Private"
+        assert foreign.status_code == 200
+        assert foreign.json() == {"error": "not_found"}
+
+    def test_result_only_returns_jobs_from_current_squad(self, client):
+        from pm_os.web.app import job_repository
+
+        payload = {
+            "steps": [],
+            "step": 4,
+            "message": "",
+            "done": True,
+            "error": None,
+            "result": {"prd": "Secret", "initiative": "INT-X"},
+        }
+        job_repository.create("other-squad-job", "test@pmstudio.app", "other", payload)
+
+        response = client.get("/generate/result/other-squad-job?fragment=1")
+
+        assert response.status_code == 200
+        assert "Secret" not in response.text
 
 
 class TestInitiativeCreationPage:
