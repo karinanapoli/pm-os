@@ -47,6 +47,32 @@
             </div>
             {% endif %}
 
+            <div class="form-group" id="sourceSelection">
+                <input type="hidden" name="source_selection_enabled" value="true">
+                <label>{{ "generate.sources_title"|t }}</label>
+                <div class="form-hint">{{ "generate.sources_hint"|t }}</div>
+                {% for init in initiatives %}
+                <div class="source-group" data-source-initiative="{{ init.name }}" style="margin-top:10px;">
+                    <strong style="font-size:12px;">{{ init.name }}</strong>
+                    {% for source in init.sources %}
+                    <label class="checkbox-row">
+                        <input type="checkbox" name="selected_source_ids" value="{{ source.source_id }}"
+                               class="gen-source" checked
+                               data-initiative="{{ init.name }}"
+                               data-chars="{{ source.content|length }}"
+                               data-tokens="{{ source.estimated_tokens }}"
+                               data-confidentiality="{{ source.confidentiality }}"
+                               onchange="updatePreview()">
+                        <span>{{ source.name }}</span>
+                        <span class="doc-size" style="margin-left:auto;font-size:11px;color:var(--text-muted);">
+                            {{ source.source_id }} · {{ source.confidentiality }}
+                        </span>
+                    </label>
+                    {% endfor %}
+                </div>
+                {% endfor %}
+            </div>
+
             <div class="form-group">
                 <label class="checkbox-label">
                     <input type="checkbox" name="use_product_docs" value="true" id="gen-product-docs" onchange="updatePreview()">
@@ -308,6 +334,28 @@ function updatePreview() {
             ? mainOpt.dataset.confidentiality.split(',').filter(Boolean)
             : []
     );
+    var selectedNames = new Set([mainSel.value]);
+    document.querySelectorAll('.gen-extra:checked').forEach(function(cb) {
+        selectedNames.add(cb.value);
+    });
+    document.querySelectorAll('.source-group').forEach(function(group) {
+        group.style.display = selectedNames.has(group.dataset.sourceInitiative) ? '' : 'none';
+    });
+    var relevantSources = Array.from(document.querySelectorAll('.gen-source')).filter(function(source) {
+        return selectedNames.has(source.dataset.initiative);
+    });
+    var visibleSources = relevantSources.filter(function(source) { return source.checked; });
+    if (relevantSources.length) {
+        totalChars = visibleSources.reduce(function(sum, source) {
+            return sum + parseInt(source.dataset.chars || '0');
+        }, 0);
+        totalTokens = visibleSources.reduce(function(sum, source) {
+            return sum + parseInt(source.dataset.tokens || '0');
+        }, 0);
+        confidentiality = new Set(visibleSources.map(function(source) {
+            return source.dataset.confidentiality;
+        }).filter(Boolean));
+    }
 
     box.textContent = '';
     privacyBox.textContent = '';
@@ -342,11 +390,13 @@ function updatePreview() {
     document.querySelectorAll('.gen-extra:checked').forEach(function(cb) {
         var d = parseInt(cb.dataset.docs);
         total += d;
-        totalChars += parseInt(cb.dataset.chars || '0');
-        totalTokens += parseInt(cb.dataset.tokens || '0');
-        (cb.dataset.confidentiality || '').split(',').filter(Boolean).forEach(function(level) {
-            confidentiality.add(level);
-        });
+        if (!relevantSources.length) {
+            totalChars += parseInt(cb.dataset.chars || '0');
+            totalTokens += parseInt(cb.dataset.tokens || '0');
+            (cb.dataset.confidentiality || '').split(',').filter(Boolean).forEach(function(level) {
+                confidentiality.add(level);
+            });
+        }
         var line = document.createElement('div');
         line.className = 'preview-line';
         var dot = document.createElement('span');

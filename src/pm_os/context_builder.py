@@ -19,6 +19,14 @@ class ContextBuilder:
 
         return self.build_sources(initiative.sources)
 
+    def build_selected(self, initiative: Initiative, source_ids: set[str]) -> str:
+        """Builds context from explicitly selected sources."""
+        if not initiative.sources:
+            return self.build(initiative)
+        return self.build_sources(
+            source for source in initiative.sources if source.source_id in source_ids
+        )
+
     @staticmethod
     def build_sources(sources: Iterable[ContextSource]) -> str:
         """Renders sources with machine-readable boundaries and stable IDs."""
