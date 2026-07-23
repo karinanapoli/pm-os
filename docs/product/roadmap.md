@@ -34,6 +34,9 @@ PM Studio evolution happens through incremental capabilities, reusing a common a
 | Reproducible Setup & CI | ✅ Completed | Sprint 007 |
 | Open Source Governance | ✅ Completed | Sprint 007 |
 | Functional MCP Server | ✅ Completed | Sprint 007 |
+| Traceable Context Sources | ✅ Completed | Sprint 008 |
+| Privacy Preview | ✅ Completed | Sprint 008 |
+| Evidence-aware Prompts | ✅ Completed | Sprint 008 |
 | Create Backlog | 🟡 Planned | Sprint 005 |
 | OKRs | 🟡 Planned | Sprint 005 |
 | AI Prototyping | 🟡 Planned | Sprint 006 |
@@ -49,7 +52,7 @@ PM Studio evolution happens through incremental capabilities, reusing a common a
 
 # Current Focus
 
-## Sprint 007 — Trust and Access
+## Sprint 008 — Trustworthy Context
 
 ### Delivered
 
@@ -60,12 +63,16 @@ PM Studio evolution happens through incremental capabilities, reusing a common a
 - Reproducible dependencies, test matrix and linting in CI.
 - Functional MCP tools and open source governance files.
 
+- Structured context with stable source IDs and metadata.
+- Evidence citations and separation of facts, inferences, and recommendations.
+- Privacy, confidentiality, and size preview before generation.
+- Learning module for Product Managers beginning with context engineering.
+
 ### Next
 
-- Structured context with source metadata and citations.
-- Privacy preview before sending context to a provider.
 - Persistent jobs scoped to user and squad.
-- Learning path for Product Managers beginning with AI.
+- Source-level controls to include or exclude individual documents.
+- Citation verification in generated artifacts.
 
 ---
 

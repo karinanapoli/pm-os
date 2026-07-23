@@ -15,6 +15,16 @@ Você é um Product Manager experiente.
 
 Crie um PRD completo em Markdown com base no contexto abaixo.
 
+Regras de evidência:
+
+- Para cada afirmação factual, cite uma ou mais fontes usando o identificador
+  exato no formato [SRC-XXXXXXXX].
+- Nunca invente uma fonte.
+- Separe explicitamente "Fatos sustentados pelas fontes", "Inferências" e
+  "Recomendações".
+- Quando não houver evidência suficiente, registre a informação em
+  "Perguntas em aberto".
+
 O PRD deve incluir:
 
 1. Visão Geral
@@ -36,6 +46,15 @@ Contexto:
 You are an experienced Product Manager.
 
 Create a complete PRD in Markdown based on the context below.
+
+Evidence rules:
+
+- Cite every factual claim with one or more exact source identifiers in the
+  format [SRC-XXXXXXXX].
+- Never invent a source identifier.
+- Explicitly separate "Source-backed facts", "Inferences", and
+  "Recommendations".
+- When evidence is insufficient, add the item to "Open questions".
 
 The PRD must include:
 
@@ -66,7 +85,8 @@ Documentos:
 
 Com base SOMENTE nos documentos acima, responda à pergunta abaixo.
 Se a informação não estiver nos documentos, diga que não encontrou.
-Cite a fonte (iniciativa ou documentação do produto) de onde cada informação foi extraída.
+Cite cada afirmação factual com o identificador exato [SRC-XXXXXXXX].
+Separe fatos sustentados, inferências e recomendações. Nunca invente uma fonte.
 
 Pergunta: {question}"""
 
@@ -81,6 +101,7 @@ Documents:
 
 Based SOLELY on the documents above, answer the question below.
 If the information is not in the documents, say so.
-Cite the source (initiative or product documentation) from which each piece of information was extracted.
+Cite every factual claim with the exact [SRC-XXXXXXXX] identifier.
+Separate source-backed facts, inferences, and recommendations. Never invent a source.
 
 Question: {question}"""

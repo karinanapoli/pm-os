@@ -11,6 +11,10 @@ def test_prompt_builder_builds_create_prd_prompt():
 
     assert "Create a complete PRD" in prompt
     assert "Test context" in prompt
+    assert "[SRC-XXXXXXXX]" in prompt
+    assert "Source-backed facts" in prompt
+    assert "Inferences" in prompt
+    assert "Recommendations" in prompt
 
 
 def test_prompt_builder_rejects_unknown_workflow():

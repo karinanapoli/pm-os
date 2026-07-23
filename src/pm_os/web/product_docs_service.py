@@ -1,5 +1,8 @@
+import hashlib
 from pathlib import Path
 
+from pm_os.context_builder import ContextBuilder
+from pm_os.domain.context_source import ContextSource
 from pm_os.infrastructure.utils import ALLOWED_EXTENSIONS, extract_pdf_text
 
 PRODUCT_DOCS_DIR = Path("workspace/product-docs")
@@ -39,11 +42,28 @@ class ProductDocsService:
         )
 
     def build_context(self) -> str:
-        parts = []
+        sources = []
         for d in self.load_docs():
-            parts.append(f"--- Documentação complementar: {d['name']} ---\n\n{d['content']}")
-        links = self.load_links()
-        if links:
-            lines = "\n".join(f"- {l['title']}: {l['url']}" for l in links)
-            parts.append(f"--- Links de Referência do Produto ---\n\n{lines}")
-        return "\n\n".join(parts)
+            sources.append(ContextSource(
+                source_id=self._source_id(f"document/{d['name']}"),
+                name=d["name"],
+                content=d["content"],
+                source_type=Path(d["name"]).suffix.lstrip(".") or "text",
+                confidentiality="internal",
+                size_bytes=len(d["content"].encode("utf-8")),
+            ))
+        for link in self.load_links():
+            sources.append(ContextSource(
+                source_id=self._source_id(f"link/{link['url']}"),
+                name=link["title"],
+                content=link["url"],
+                source_type="link",
+                confidentiality="internal",
+                size_bytes=len(link["url"].encode("utf-8")),
+            ))
+        return ContextBuilder.build_sources(sources)
+
+    @staticmethod
+    def _source_id(value: str) -> str:
+        digest = hashlib.sha256(f"product-docs/{value}".encode("utf-8")).hexdigest()
+        return f"SRC-{digest[:8].upper()}"
