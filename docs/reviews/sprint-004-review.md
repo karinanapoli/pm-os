@@ -190,6 +190,40 @@ The platform is now a viable daily workspace for Product Managers.
 
 ---
 
+## Post-Sprint 004 Improvements
+
+The following features were added after the sprint review, continuing the same epic:
+
+### Async PRD Generation + Progress Bar
+- Generation runs in background thread (`ThreadPoolExecutor`) — server não bloqueia mais
+- `POST /generate` retorna página intermediária com task_id
+- Barra de 4 etapas visíveis: Preparando → Analisando → Gerando → Validando
+- `GET /generate/status/{task_id}` endpoint de polling (JSON)
+- `GET /generate/result/{task_id}` endpoint de resultado (HTML)
+- Auto-redireciona ao concluir; polling a cada 2s com timeout de 10 min
+
+### UX Writing Audit (P12–P18)
+| # | Issue | Fix |
+|---|-------|------|
+| P12 | Sidebar labels genéricos | "Gerar documentação" → "Gerar PRD"; "Perguntas" → "Consultar Docs" |
+| P13 | Menção a Ollama em erros | Removido de `error.ollama` e `quickstart.prd_fail` |
+| P14 | Status "discovery" sem tradução | Adicionadas chaves `status.*` + prefixo `"status." + status` nos templates |
+| P15 | Geração travava o servidor | Async via ThreadPoolExecutor + barra de progresso |
+| P16 | Skip-link com texto longo | "Ir para conteúdo"; `transform: translateY()` full-width |
+| P17 | Tour não aparecia em nova conta | `onboarding_dismissed = False` no registro |
+| P18 | Hardcoded strings | "sem docs", "Em breve...", "Observações" → i18n |
+
+### Accessibility
+- Skip-link: texto enxuto ("Ir para conteúdo"), barra full-width, animação com transform
+- `aria-live="polite"`, `role="dialog"`, `aria-label` no tour tooltip
+- Escape key handler fecha o tour
+- Autocomplete nos formulários de login/registro
+
+### Tests
+- 151 tests passing (up from 74)
+
+---
+
 # Next Sprint
 
 The next objectives are:

@@ -83,14 +83,18 @@ The spoiler section adds a human touch, hinting at future capabilities without o
 Sprint 004 added the following layers to the platform:
 
 ```text
-Sprint 003                       Sprint 004
-─────────                        ─────────
-Ollama only    →    Ollama + OpenAI + Anthropic
-No auth        →    Optional auth with login page
-No product docs →   Product Documentation Hub
-No roadmap     →    Interactive Timeline page
-Basic validation →  Validation with diff + actions
-No versioning  →    PRD + validation version history
+Sprint 003                       Sprint 004                       Post-Sprint 004
+─────────                        ─────────                        ───────────────
+Ollama only    →    Ollama + OpenAI + Anthropic    →    (no change)
+No auth        →    Optional auth with login page  →    Register flow complete
+No product docs →   Product Documentation Hub      →    (no change)
+No roadmap     →    Interactive Timeline page      →    (no change)
+Basic validation →  Validation with diff + actions →    (no change)
+No versioning  →    PRD + validation version history →  (no change)
+Sync generation →   (same)                         →    Async with progress bar
+Raw status      →   (same)                         →    Status translated via i18n
+Long skip-link  →   (same)                         →    Full-width bar, shorter text
+Tour manual     →   (same)                         →    Auto-trigger on register
 ```
 
 ---
@@ -113,3 +117,21 @@ Sprint 004 transformed PM Studio into a platform that Product Managers can use d
 The addition of multiple AI providers, authentication, product docs, roadmap, and actionable validation moved the tool beyond "PRD generator" into "PM workspace."
 
 The architectural foundation from Sprint 003 proved flexible enough to absorb these new capabilities without structural changes — validating the investment in clean architecture.
+
+---
+
+## Post-Sprint Addendum: Async & UX Depth
+
+After the sprint, the following improvements addressed blocking issues:
+
+### Async Generation
+Synchronous PRD generation (up to 7 min) blocked the entire uvicorn worker. Moving to `ThreadPoolExecutor` + polling allowed the server to remain responsive; other users could browse while generation ran. The 4-step progress bar gave users visibility into what was happening.
+
+### UX Writing as System Design
+Sidebar labels, error messages, and loading text are not copywriting — they're information architecture. Removing "Ollama" from error messages, replacing "Score" with "Nota" in pt-BR, and simplifying CTAs from "Gerar documentação + Validar" to "Gerar e validar PRD" reduced cognitive load without changing any functionality.
+
+### Hidden i18n Gaps
+The biggest gap was status translation: `{{ init.status|t }}` passed raw values like "discovery" as translation keys, which didn't exist. This was invisible in English but broke the pt-BR experience. The fix required both adding keys and changing the lookup pattern to use a prefix `("status." + status)|t`.
+
+### Accessibility is a One-Time Cost
+The skip-link, aria-live regions, keyboard focus management, and autocomplete attributes were implemented in minutes but benefit every user on every session. The main cost was knowing what to do, not doing it.

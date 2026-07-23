@@ -77,6 +77,18 @@ During this Sprint we learned about:
 
 # Actions for Sprint 005
 
+## Completed (Post-Sprint)
+
+- **Async PRD Generation** — moved from blocking sync to background `ThreadPoolExecutor` with progress bar and polling; server no longer freezes during generation
+- **UX Writing Overhaul** — updated sidebar labels, CTA buttons, error messages, empty states across all templates; removed Ollama references from user-facing text; standardized "Nota" vs "Score" in pt-BR
+- **Status Translation** — added `status.*` i18n keys so "discovery" renders as "Descoberta"
+- **Skip-link Redesign** — shorter text, full-width bar, smooth `transform` animation
+- **Tour Auto-Trigger** — `onboarding_dismissed = False` set on registration so new users see the tour
+- **Hardcoded Strings Eliminated** — "sem docs", "Em breve...", "Observações" and others migrated to i18n keys
+- **151 Tests Passing** (up from 74)
+
+## Carried Forward
+
 - Create Backlog capability (user stories from PRDs);
 - Smart OKRs aligned to initiatives;
 - AI Prototyping from PRDs;
