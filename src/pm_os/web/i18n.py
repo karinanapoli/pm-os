@@ -179,6 +179,15 @@ TRANSLATIONS = {
         "generate.preview_heading": "PRÉVIA DO CONTEXTO",
         "generate.preview_total_prefix": "Total:",
         "generate.preview_total_suffix": "documentos no contexto",
+        "generate.privacy_title": "Privacidade e tamanho estimado",
+        "generate.privacy_none": "Selecione uma iniciativa para avaliar o envio.",
+        "generate.privacy_local": "O contexto permanecerá no ambiente local.",
+        "generate.privacy_external": "O contexto será enviado ao provedor externo:",
+        "generate.privacy_size": "Tamanho estimado:",
+        "generate.privacy_confidentiality": "Classificação:",
+        "generate.privacy_unclassified": "não classificado",
+        "generate.privacy_review": "Revise as fontes confidenciais ou restritas antes de gerar.",
+        "generate.provider_local": "execução local, sem envio externo",
 
         # Validate
         "validate.title": "Validar PRD",
@@ -693,6 +702,15 @@ TRANSLATIONS = {
         "generate.preview_heading": "CONTEXT PREVIEW",
         "generate.preview_total_prefix": "Total:",
         "generate.preview_total_suffix": "documents in context",
+        "generate.privacy_title": "Privacy and estimated size",
+        "generate.privacy_none": "Select an initiative to evaluate the transfer.",
+        "generate.privacy_local": "Context will remain in the local environment.",
+        "generate.privacy_external": "Context will be sent to the external provider:",
+        "generate.privacy_size": "Estimated size:",
+        "generate.privacy_confidentiality": "Classification:",
+        "generate.privacy_unclassified": "unclassified",
+        "generate.privacy_review": "Review confidential or restricted sources before generating.",
+        "generate.provider_local": "local execution, no external transfer",
 
         # Validate
         "validate.title": "Validate PRD",

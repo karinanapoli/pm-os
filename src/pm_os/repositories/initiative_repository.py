@@ -1,9 +1,12 @@
+import hashlib
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
 import yaml
 
 from pm_os.domain.initiative import Initiative
+from pm_os.domain.context_source import CONFIDENTIALITY_LEVELS, ContextSource
 from pm_os.infrastructure.utils import ALLOWED_EXTENSIONS, extract_pdf_text
 
 
@@ -58,24 +61,63 @@ class InitiativeRepository:
             context_path = initiative_path / "context"
 
             documents: list[str] = []
+            sources: list[ContextSource] = []
+            source_metadata = self._load_source_metadata(context_path)
 
             if context_path.exists():
-                for document_path in context_path.iterdir():
-                    if document_path.is_file() and document_path.suffix in ALLOWED_EXTENSIONS:
+                for document_path in sorted(context_path.iterdir()):
+                    if (
+                        document_path.is_file()
+                        and not document_path.name.startswith(".")
+                        and document_path.suffix in ALLOWED_EXTENSIONS
+                    ):
                         if document_path.suffix == ".pdf":
-                            documents.append(extract_pdf_text(document_path))
+                            content = extract_pdf_text(document_path)
                         else:
-                            documents.append(document_path.read_text(encoding="utf-8"))
+                            content = document_path.read_text(encoding="utf-8")
+                        documents.append(content)
+                        metadata = source_metadata.get(document_path.name, {})
+                        confidentiality = metadata.get("confidentiality", "internal")
+                        if confidentiality not in CONFIDENTIALITY_LEVELS:
+                            confidentiality = "internal"
+                        stat = document_path.stat()
+                        sources.append(ContextSource(
+                            source_id=self._source_id(initiative_path.name, document_path.name),
+                            name=document_path.name,
+                            content=content,
+                            source_type=document_path.suffix.lstrip(".") or "text",
+                            confidentiality=confidentiality,
+                            author=str(metadata.get("author", "")),
+                            modified_at=datetime.fromtimestamp(stat.st_mtime),
+                            size_bytes=stat.st_size,
+                        ))
 
             initiatives.append(
                 Initiative(
                     name=initiative_path.name,
                     path=initiative_path,
                     documents=documents,
+                    sources=sources,
                 )
             )
 
         return initiatives
+
+    @staticmethod
+    def _source_id(initiative_name: str, filename: str) -> str:
+        raw = f"{initiative_name}/{filename}".encode("utf-8")
+        return f"SRC-{hashlib.sha256(raw).hexdigest()[:8].upper()}"
+
+    @staticmethod
+    def _load_source_metadata(context_path: Path) -> dict:
+        metadata_path = context_path / ".sources.yaml"
+        if not metadata_path.is_file():
+            return {}
+        try:
+            data = yaml.safe_load(metadata_path.read_text(encoding="utf-8")) or {}
+            return data.get("sources", {}) if isinstance(data, dict) else {}
+        except (OSError, yaml.YAMLError):
+            return {}
 
     def _get_squad(self, name: str) -> str:
         path = self.initiatives_path / name / "metadata.yaml"

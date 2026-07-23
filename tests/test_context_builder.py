@@ -1,5 +1,7 @@
-from pathlib import Path
+from datetime import datetime
+
 from pm_os.context_builder import ContextBuilder
+from pm_os.domain.context_source import ContextSource
 from pm_os.domain.initiative import Initiative
 
 
@@ -39,3 +41,29 @@ def test_build_without_documents(tmp_path):
     builder = ContextBuilder()
     result = builder.build(initiative)
     assert result == ""
+
+
+def test_build_with_traceable_sources(tmp_path):
+    source = ContextSource(
+        source_id="SRC-A1B2C3D4",
+        name="discovery.md",
+        content="Customers need a faster onboarding.",
+        source_type="md",
+        confidentiality="confidential",
+        author="Product Team",
+        modified_at=datetime(2026, 7, 23, 10, 30),
+        size_bytes=35,
+    )
+    initiative = Initiative(
+        name="INT-TRACEABLE",
+        path=tmp_path,
+        sources=[source],
+    )
+
+    result = ContextBuilder().build(initiative)
+
+    assert 'id="SRC-A1B2C3D4"' in result
+    assert 'confidentiality="confidential"' in result
+    assert 'author="Product Team"' in result
+    assert "Customers need a faster onboarding." in result
+    assert '<<<END SOURCE id="SRC-A1B2C3D4">>>' in result

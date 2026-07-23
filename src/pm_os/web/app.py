@@ -1,3 +1,4 @@
+import hashlib
 import os
 import re
 import json
@@ -35,6 +36,7 @@ from pm_os.infrastructure.ai.clients.fake_ai_client import FakeAIClient
 from pm_os.infrastructure.security import hash_password, password_is_strong, verify_password
 from pm_os.contracts.workflow_contracts import AIClient
 from pm_os.domain.initiative import Initiative
+from pm_os.domain.context_source import ContextSource
 from pm_os.infrastructure.validators.prd_validator import PRDValidator
 from pm_os.infrastructure.utils import (
     ALLOWED_EXTENSIONS,
@@ -657,7 +659,19 @@ def _fetch_mcp_context() -> list[dict]:
                     content = raw
                 content = content[:3000]
                 if content.strip():
-                    results.append({"name": name, "content": content})
+                    digest = hashlib.sha256(f"mcp/{name}/{url}".encode("utf-8")).hexdigest()
+                    source = ContextSource(
+                        source_id=f"SRC-{digest[:8].upper()}",
+                        name=name,
+                        content=content,
+                        source_type="mcp",
+                        confidentiality="internal",
+                        size_bytes=len(content.encode("utf-8")),
+                    )
+                    results.append({
+                        "name": name,
+                        "content": ContextBuilder.build_sources([source]),
+                    })
         except Exception as exc:
             _logger.warning("MCP fetch failed for %s: %s", name, exc)
     return results
@@ -1208,7 +1222,7 @@ async def generate_prd(
             for add_name in additional:
                 add_init = _get_initiative_by_name_sync(add_name, squad_name)
                 if add_init and add_init.documents:
-                    add_docs = "\n\n".join(add_init.documents)
+                    add_docs = ContextBuilder().build(add_init)
                     if add_docs.strip():
                         context_parts.append(f"--- Contexto Adicional: {add_init.name} ---\n\n{add_docs}")
                         used_additional.append(add_name)
@@ -1817,7 +1831,7 @@ async def consult_docs(
         for init in all_inits:
             if init.name in initiatives:
                 if init.documents:
-                    docs_text = "\n\n".join(init.documents)
+                    docs_text = ContextBuilder().build(init)
                     context_parts.append(f"--- Iniciativa: {init.name} ---\n\n{docs_text}")
 
         if use_product_docs:
