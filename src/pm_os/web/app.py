@@ -53,6 +53,10 @@ from pm_os.web.config_manager import ConfigManager
 from pm_os.web.i18n import t as _t, LANGS
 from pm_os.web.markdown_renderer import render_safe_markdown
 from pm_os.web.product_docs_service import ProductDocsService
+from pm_os.web.request_limits import (
+    MAX_UPLOAD_FILE_BYTES,
+    RequestBodyLimitMiddleware,
+)
 from pm_os.web.safe_http import fetch_public_url, validate_public_url
 from pm_os.writers.markdown_writer import MarkdownWriter
 import logging
@@ -245,6 +249,7 @@ app.add_middleware(
     same_site="lax",
     https_only=os.getenv("PM_OS_ENV") == "production",
 )
+app.add_middleware(RequestBodyLimitMiddleware)
 
 
 _LOGIN_ATTEMPTS: dict[str, list[datetime]] = {}
@@ -1002,8 +1007,8 @@ async def upload_context_doc(
                 continue
             safe_name = _safe_filename(doc.filename)
             if safe_name:
-                content = await doc.read()
-                if len(content) > 10 * 1024 * 1024:
+                content = await doc.read(MAX_UPLOAD_FILE_BYTES + 1)
+                if len(content) > MAX_UPLOAD_FILE_BYTES:
                     continue
                 (ctx_dir / safe_name).write_bytes(content)
                 uploaded += 1
@@ -1459,7 +1464,20 @@ async def validate_prd(request: Request, initiative_name: str):
     uploaded_file = form.get("prd_file")
 
     if uploaded_file and uploaded_file.filename and uploaded_file.filename != "":
-        content_bytes = await uploaded_file.read()
+        content_bytes = await uploaded_file.read(MAX_UPLOAD_FILE_BYTES + 1)
+        if len(content_bytes) > MAX_UPLOAD_FILE_BYTES:
+            return templates.TemplateResponse(
+                "validate.html",
+                _ctx(
+                    request,
+                    initiative=selected,
+                    report=None,
+                    error=_t("upload.too_large", _get_lang()),
+                    validation_history=read_validation_history(selected.path / "artifacts"),
+                    prd_content=prd_path.read_text(encoding="utf-8") if prd_path.exists() else "",
+                ),
+                status_code=413,
+            )
         prd_path.parent.mkdir(parents=True, exist_ok=True)
         prd_path.write_bytes(content_bytes)
 
@@ -1939,8 +1957,8 @@ async def upload_product_docs(
                 continue
             safe_name = _safe_filename(doc.filename)
             if safe_name:
-                content = await doc.read()
-                if len(content) > 10 * 1024 * 1024:
+                content = await doc.read(MAX_UPLOAD_FILE_BYTES + 1)
+                if len(content) > MAX_UPLOAD_FILE_BYTES:
                     continue
                 (ctx / safe_name).write_bytes(content)
     return await product_docs_page(request)
