@@ -53,7 +53,7 @@ from pm_os.prompt_builder import PromptBuilder
 from pm_os.web.config_manager import ConfigManager
 from pm_os.web.i18n import t as _t, LANGS
 from pm_os.web.markdown_renderer import render_safe_markdown
-from pm_os.web.product_docs_service import PRODUCT_DOCS_DIR, ProductDocsService
+from pm_os.web.product_docs_service import ProductDocsService
 from pm_os.writers.markdown_writer import MarkdownWriter
 import logging
 _logger = logging.getLogger("pm_os")
@@ -278,7 +278,6 @@ app.mount("/static", StaticFiles(directory=str(HERE / "static")), name="static")
 templates = Jinja2Templates(directory=str(HERE / "templates"))
 
 config_manager = ConfigManager()
-pd_service = ProductDocsService()
 job_repository = JobRepository()
 
 # ALLOWED_EXTENSIONS imported from pm_os.infrastructure.utils
@@ -504,6 +503,18 @@ def _get_session_user_email(request: Request) -> str:
         return request.session.get("user_email", "")
     except Exception:
         return ""
+
+
+def _product_docs_service(request: Request) -> ProductDocsService:
+    squad_name = _get_session_squad(request)
+    service = ProductDocsService(
+        owner_email=_get_session_user_email(request),
+        squad_name=squad_name,
+    )
+    # Safe automatic migration is limited to personal, single-user installations.
+    if not squad_name and len(config_manager.get("users") or {}) <= 1:
+        service.migrate_legacy_if_empty()
+    return service
 
 
 def _get_user_squads(email: str) -> list[str]:
@@ -1151,7 +1162,7 @@ async def create_initiative(
 async def generate_page(request: Request):
     repo = _repo(_get_session_squad(request))
     initiatives = repo.list_initiatives()
-    pd_service = ProductDocsService()
+    pd_service = _product_docs_service(request)
     product_docs_count = pd_service.count_docs()
     selected_initiative = request.query_params.get("initiative", "")
     return templates.TemplateResponse(
@@ -1191,7 +1202,7 @@ async def generate_prd(
                  mcp_count=len(_get_mcp_servers())),
         )
 
-    pd_service = ProductDocsService()
+    pd_service = _product_docs_service(request)
     additional = [n for n in additional_initiatives if n != initiative_name]
     selected_source_set = set(selected_source_ids)
     squad_name = _get_session_squad(request)
@@ -1326,7 +1337,7 @@ async def generate_prd(
     if request.headers.get("x-requested-with") == "fetch":
         return JSONResponse({"job_id": task_id})
 
-    pd_service = ProductDocsService()
+    pd_service = _product_docs_service(request)
     return templates.TemplateResponse(
         "generate_processing.html",
         _ctx(request,
@@ -1356,7 +1367,7 @@ async def generate_status(request: Request, task_id: str):
 
 @app.get("/generate/result/{task_id}", response_class=HTMLResponse)
 async def generate_result(request: Request, task_id: str):
-    pd_service = ProductDocsService()
+    pd_service = _product_docs_service(request)
     task = job_repository.get_for_scope(
         task_id,
         _get_session_user_email(request),
@@ -1852,7 +1863,7 @@ async def consult_docs(
                     context_parts.append(f"--- Iniciativa: {init.name} ---\n\n{docs_text}")
 
         if use_product_docs:
-            pd_context = pd_service.build_context()
+            pd_context = _product_docs_service(request).build_context()
             if pd_context.strip():
                 context_parts.append(f"--- Documentação complementar ---\n\n{pd_context}")
 
@@ -1916,8 +1927,9 @@ async def consult_docs(
 
 @app.get("/product-docs", response_class=HTMLResponse)
 async def product_docs_page(request: Request):
+    pd_service = _product_docs_service(request)
     docs = []
-    ctx = PRODUCT_DOCS_DIR / "context"
+    ctx = pd_service.context_dir
     if ctx.exists():
         for f in sorted(ctx.iterdir()):
             if f.is_file():
@@ -1936,7 +1948,7 @@ async def upload_product_docs(
     request: Request,
     docs: list[UploadFile] = File(...),
 ):
-    ctx = PRODUCT_DOCS_DIR / "context"
+    ctx = _product_docs_service(request).context_dir
     ctx.mkdir(parents=True, exist_ok=True)
     for doc in docs:
         if doc.filename:
@@ -1958,6 +1970,7 @@ async def add_product_link(
     title: str = Form(...),
     url: str = Form(...),
 ):
+    pd_service = _product_docs_service(request)
     links = pd_service.load_links()
     links.append({"title": title.strip(), "url": url.strip()})
     pd_service.save_links(links)
@@ -1966,10 +1979,11 @@ async def add_product_link(
 
 @app.post("/product-docs/delete-doc/{filename}", response_class=HTMLResponse)
 async def delete_product_doc(request: Request, filename: str):
+    pd_service = _product_docs_service(request)
     safe_name = _safe_filename(filename)
     if safe_name:
-        fp = (PRODUCT_DOCS_DIR / "context" / safe_name).resolve()
-        ctx_dir = (PRODUCT_DOCS_DIR / "context").resolve()
+        fp = (pd_service.context_dir / safe_name).resolve()
+        ctx_dir = pd_service.context_dir.resolve()
         if str(fp).startswith(str(ctx_dir)) and fp.exists() and fp.is_file():
             fp.unlink()
     return await product_docs_page(request)
@@ -1980,6 +1994,7 @@ async def delete_product_link(
     request: Request,
     url: str = Form(...),
 ):
+    pd_service = _product_docs_service(request)
     links = [l for l in pd_service.load_links() if l["url"] != url]
     pd_service.save_links(links)
     return await product_docs_page(request)

@@ -75,14 +75,10 @@ def _isolate_each_test(_session_base: Path, monkeypatch):
         for d in list(archived_dir.iterdir()):
             if d.is_dir():
                 shutil.rmtree(d, ignore_errors=True)
-    # Clean product-docs
-    pd_ctx = _session_base / "workspace" / "product-docs" / "context"
-    for f in list(pd_ctx.iterdir()):
-        if f.is_file():
-            f.unlink()
-    links_file = _session_base / "workspace" / "product-docs" / "links.json"
-    if links_file.exists():
-        links_file.unlink()
+    # Clean all personal, squad and legacy product-doc scopes.
+    product_docs_root = _session_base / "workspace" / "product-docs"
+    shutil.rmtree(product_docs_root, ignore_errors=True)
+    (product_docs_root / "context").mkdir(parents=True)
 
     monkeypatch.chdir(_session_base)
 
@@ -130,6 +126,15 @@ def _create_initiative(client, name: str = "Test Initiative", init_id: str = "")
         return init_id
     safe = re.sub(r'[^A-Z0-9]+', '-', name.upper()).strip('-')
     return f"INT-{safe[:30]}"
+
+
+def _personal_product_docs_base(session_base: Path) -> Path:
+    from pm_os.web.product_docs_service import ProductDocsService
+
+    return ProductDocsService(
+        owner_email="test@pmstudio.app",
+        root_dir=session_base / "workspace" / "product-docs",
+    ).base_dir
 
 
 # ═══════════════════════════════════════════
@@ -356,7 +361,7 @@ class TestProductDocs:
             files={"docs": ("guide.md", b"# Guide\n\nContent")},
         )
         assert resp.status_code == 200
-        doc_path = session_base / "workspace" / "product-docs" / "context" / "guide.md"
+        doc_path = _personal_product_docs_base(session_base) / "context" / "guide.md"
         assert doc_path.exists()
         assert doc_path.read_text() == "# Guide\n\nContent"
 
@@ -366,13 +371,14 @@ class TestProductDocs:
             "url": "https://google.com",
         })
         assert resp.status_code == 200
-        links_file = session_base / "workspace" / "product-docs" / "links.json"
+        links_file = _personal_product_docs_base(session_base) / "links.json"
         assert links_file.exists()
         links = json.loads(links_file.read_text())
         assert any(l["title"] == "Google" and l["url"] == "https://google.com" for l in links)
 
     def test_delete_product_doc(self, client, session_base):
-        doc_path = session_base / "workspace" / "product-docs" / "context" / "delete_me.md"
+        doc_path = _personal_product_docs_base(session_base) / "context" / "delete_me.md"
+        doc_path.parent.mkdir(parents=True, exist_ok=True)
         doc_path.write_text("# Delete")
         resp = client.post("/product-docs/delete-doc/delete_me.md")
         assert resp.status_code == 200
@@ -385,9 +391,23 @@ class TestProductDocs:
         })
         resp = client.post("/product-docs/delete-link", data={"url": "https://example.com/delete"})
         assert resp.status_code == 200
-        links_file = session_base / "workspace" / "product-docs" / "links.json"
+        links_file = _personal_product_docs_base(session_base) / "links.json"
         links = json.loads(links_file.read_text())
         assert not any(l["url"] == "https://example.com/delete" for l in links)
+
+    def test_squad_docs_do_not_appear_in_personal_scope(self, client):
+        client.get("/workspace/default")
+        client.post(
+            "/product-docs/upload",
+            files={"docs": ("squad-only.md", b"# Squad only")},
+        )
+        squad_page = client.get("/product-docs")
+
+        client.get("/workspace/personal")
+        personal_page = client.get("/product-docs")
+
+        assert "squad-only.md" in squad_page.text
+        assert "squad-only.md" not in personal_page.text
 
 
 # ═══════════════════════════════════════════
