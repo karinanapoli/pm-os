@@ -8,6 +8,7 @@ import urllib.parse
 import urllib.request
 import time
 import yaml
+from dataclasses import asdict
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Optional
@@ -45,6 +46,7 @@ from pm_os.infrastructure.utils import (
     version_file,
 )
 from pm_os.repositories.initiative_repository import InitiativeRepository
+from pm_os.repositories.job_repository import JobRepository
 from pm_os.workflows.workspace_scan_workflow import WorkspaceScanWorkflow
 from pm_os.context_builder import ContextBuilder
 from pm_os.prompt_builder import PromptBuilder
@@ -56,8 +58,6 @@ from pm_os.writers.markdown_writer import MarkdownWriter
 import logging
 _logger = logging.getLogger("pm_os")
 
-# ─── Background task registry for async PRD generation ───
-_gen_tasks: dict = {}
 _gen_executor = ThreadPoolExecutor(max_workers=2)
 
 app = FastAPI(title="PM Studio")
@@ -279,6 +279,7 @@ templates = Jinja2Templates(directory=str(HERE / "templates"))
 
 config_manager = ConfigManager()
 pd_service = ProductDocsService()
+job_repository = JobRepository()
 
 # ALLOWED_EXTENSIONS imported from pm_os.infrastructure.utils
 
@@ -1194,6 +1195,7 @@ async def generate_prd(
     additional = [n for n in additional_initiatives if n != initiative_name]
     selected_source_set = set(selected_source_ids)
     squad_name = _get_session_squad(request)
+    owner_email = _get_session_user_email(request)
 
     # Kick off background generation task
     lang = _get_lang()
@@ -1205,6 +1207,7 @@ async def generate_prd(
             task["steps"][step_idx]["detail"] = detail
             task["step"] = step_idx + 1
             task["message"] = detail
+            job_repository.save(task_id, owner_email, squad_name, task)
 
     def _run_gen():
         """Runs PRD generation + validation in background thread, updating progress in _gen_tasks."""
@@ -1279,7 +1282,7 @@ async def generate_prd(
             task["result"] = {
                 "prd": prd_content,
                 "score": report.overall_score,
-                "sections": report.sections,
+                "sections": [asdict(section) for section in report.sections],
                 "initiative": initiative_name,
                 "additional": used_additional,
                 "product_docs_used": used_product_docs,
@@ -1289,16 +1292,19 @@ async def generate_prd(
             task["done"] = True
             task["steps"][3]["status"] = "done"
             task["step"] = 4
+            job_repository.save(task_id, owner_email, squad_name, task)
 
         except OllamaConnectionError:
             task["error"] = _t("error.ollama", lang)
             task["done"] = True
+            job_repository.save(task_id, owner_email, squad_name, task)
         except Exception as exc:
             _logger.exception("Background PRD generation failed")
             task["error"] = str(exc)
             task["done"] = True
+            job_repository.save(task_id, owner_email, squad_name, task)
 
-    task_id = uuid.uuid4().hex[:8]
+    task_id = uuid.uuid4().hex
     task = {
         "steps": [
             {"status": "pending", "detail": ""},
@@ -1312,7 +1318,7 @@ async def generate_prd(
         "error": None,
         "result": None,
     }
-    _gen_tasks[task_id] = task
+    job_repository.create(task_id, owner_email, squad_name, task)
 
     _gen_executor.submit(_run_gen)
 
@@ -1331,8 +1337,12 @@ async def generate_prd(
 
 
 @app.get("/generate/status/{task_id}", response_class=JSONResponse)
-async def generate_status(task_id: str):
-    task = _gen_tasks.get(task_id)
+async def generate_status(request: Request, task_id: str):
+    task = job_repository.get_for_scope(
+        task_id,
+        _get_session_user_email(request),
+        _get_session_squad(request),
+    )
     if not task:
         return {"error": "not_found"}
     return {
@@ -1347,7 +1357,11 @@ async def generate_status(task_id: str):
 @app.get("/generate/result/{task_id}", response_class=HTMLResponse)
 async def generate_result(request: Request, task_id: str):
     pd_service = ProductDocsService()
-    task = _gen_tasks.get(task_id)
+    task = job_repository.get_for_scope(
+        task_id,
+        _get_session_user_email(request),
+        _get_session_squad(request),
+    )
     is_fragment = request.query_params.get("fragment") == "1"
 
     if not task or not task.get("done"):
@@ -1376,9 +1390,6 @@ async def generate_result(request: Request, task_id: str):
         )
 
     result = task["result"]
-    # Clean up task
-    _gen_tasks.pop(task_id, None)
-
     if is_fragment:
         return templates.TemplateResponse(
             "generate_result_fragment.html",
