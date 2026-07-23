@@ -50,6 +50,7 @@ from pm_os.context_builder import ContextBuilder
 from pm_os.prompt_builder import PromptBuilder
 from pm_os.web.config_manager import ConfigManager
 from pm_os.web.i18n import t as _t, LANGS
+from pm_os.web.markdown_renderer import render_safe_markdown
 from pm_os.web.product_docs_service import PRODUCT_DOCS_DIR, ProductDocsService
 from pm_os.writers.markdown_writer import MarkdownWriter
 import logging
@@ -528,13 +529,8 @@ def _t_filter(ctx, key: str) -> str:
 templates.env.filters["t"] = _t_filter
 
 
-import markdown as _markdown_lib
-
-
 def _markdown_filter(text: str) -> str:
-    from markupsafe import Markup
-    html = _markdown_lib.markdown(text, extensions=["fenced_code", "tables"])
-    return Markup(html)
+    return render_safe_markdown(text)
 
 
 templates.env.filters["markdown"] = _markdown_filter
