@@ -1171,6 +1171,8 @@ async def generate_prd(
     request: Request,
     initiative_name: str = Form(...),
     additional_initiatives: list[str] = Form(default=[]),
+    selected_source_ids: list[str] = Form(default=[]),
+    source_selection_enabled: bool = Form(False),
     use_product_docs: bool = Form(False),
     use_mcp: bool = Form(False),
 ):
@@ -1194,6 +1196,7 @@ async def generate_prd(
 
     pd_service = ProductDocsService()
     additional = [n for n in additional_initiatives if n != initiative_name]
+    selected_source_set = set(selected_source_ids)
     squad_name = _get_session_squad(request)
 
     # Kick off background generation task
@@ -1214,7 +1217,10 @@ async def generate_prd(
             ai_client = _build_ai_client()
 
             context_parts = []
-            main_context = ContextBuilder().build(selected)
+            main_context = (
+                ContextBuilder().build_selected(selected, selected_source_set)
+                if source_selection_enabled else ContextBuilder().build(selected)
+            )
             if main_context.strip():
                 context_parts.append(f"--- Contexto Principal: {selected.name} ---\n\n{main_context}")
 
@@ -1222,7 +1228,10 @@ async def generate_prd(
             for add_name in additional:
                 add_init = _get_initiative_by_name_sync(add_name, squad_name)
                 if add_init and add_init.documents:
-                    add_docs = ContextBuilder().build(add_init)
+                    add_docs = (
+                        ContextBuilder().build_selected(add_init, selected_source_set)
+                        if source_selection_enabled else ContextBuilder().build(add_init)
+                    )
                     if add_docs.strip():
                         context_parts.append(f"--- Contexto Adicional: {add_init.name} ---\n\n{add_docs}")
                         used_additional.append(add_name)
@@ -1279,6 +1288,7 @@ async def generate_prd(
                 "additional": used_additional,
                 "product_docs_used": used_product_docs,
                 "mcp_used": used_mcp_servers,
+                "source_ids": sorted(selected_source_set),
             }
             task["done"] = True
             task["steps"][3]["status"] = "done"

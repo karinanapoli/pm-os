@@ -886,6 +886,15 @@ class TestGeneratePreSelection:
         # The selected initiative should show as selected in the dropdown
         assert "INT-ALPHA" in resp.text
 
+    def test_generate_lists_individual_source_controls(self, client, session_base):
+        _create_initiative(client, name="Alpha", init_id="INT-SOURCES")
+        resp = client.get("/generate?initiative=INT-SOURCES")
+
+        assert resp.status_code == 200
+        assert 'name="selected_source_ids"' in resp.text
+        assert "gen-source" in resp.text
+        assert "Fontes incluídas" in resp.text or "Included sources" in resp.text
+
 
 class TestGenerateAdditionalContext:
     """Additional context UX improvements on generate page."""

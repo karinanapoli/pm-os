@@ -67,3 +67,18 @@ def test_build_with_traceable_sources(tmp_path):
     assert 'author="Product Team"' in result
     assert "Customers need a faster onboarding." in result
     assert '<<<END SOURCE id="SRC-A1B2C3D4">>>' in result
+
+
+def test_build_selected_excludes_unchecked_sources(tmp_path):
+    sources = [
+        ContextSource("SRC-AAAAAAAA", "included.md", "Included", "md"),
+        ContextSource("SRC-BBBBBBBB", "excluded.md", "Excluded", "md"),
+    ]
+    initiative = Initiative(name="INT-FILTER", path=tmp_path, sources=sources)
+
+    result = ContextBuilder().build_selected(initiative, {"SRC-AAAAAAAA"})
+
+    assert "Included" in result
+    assert "SRC-AAAAAAAA" in result
+    assert "Excluded" not in result
+    assert "SRC-BBBBBBBB" not in result

@@ -188,6 +188,8 @@ TRANSLATIONS = {
         "generate.privacy_unclassified": "não classificado",
         "generate.privacy_review": "Revise as fontes confidenciais ou restritas antes de gerar.",
         "generate.provider_local": "execução local, sem envio externo",
+        "generate.sources_title": "Fontes incluídas",
+        "generate.sources_hint": "Desmarque documentos que não devem ser enviados ao modelo.",
 
         # Validate
         "validate.title": "Validar PRD",
@@ -711,6 +713,8 @@ TRANSLATIONS = {
         "generate.privacy_unclassified": "unclassified",
         "generate.privacy_review": "Review confidential or restricted sources before generating.",
         "generate.provider_local": "local execution, no external transfer",
+        "generate.sources_title": "Included sources",
+        "generate.sources_hint": "Uncheck documents that should not be sent to the model.",
 
         # Validate
         "validate.title": "Validate PRD",
