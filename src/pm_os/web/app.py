@@ -227,7 +227,8 @@ async def verify_page(request: Request, email: str = "", sent: str = ""):
     target = email or ses_email
     if not target:
         return RedirectResponse(url="/login", status_code=302)
-    return templates.TemplateResponse(request, "verify.html", _ctx(request, email=target, error="", sent=(sent == "1")))
+    error = _t("verify.send_failed", _get_lang()) if sent == "0" else ""
+    return templates.TemplateResponse(request, "verify.html", _ctx(request, email=target, error=error, sent=(sent == "1")))
 
 
 @app.post("/verify")
@@ -267,8 +268,11 @@ async def verify_resend(request: Request, email: str = Form(...)):
         request.session["verify_expires_at"] = time.time() + 600
     except Exception:
         pass
-    send_verification_email(cfg, email, code)
-    return RedirectResponse(url=f"/verify?email={urllib.parse.quote(email)}&sent=1", status_code=302)
+    sent = send_verification_email(cfg, email, code)
+    return RedirectResponse(
+        url=f"/verify?email={urllib.parse.quote(email)}&sent={'1' if sent else '0'}",
+        status_code=302,
+    )
 
 
 @app.get("/logout")
@@ -305,8 +309,10 @@ async def forgot_submit(request: Request, email: str = Form(...)):
     reset_url = str(request.base_url).rstrip("/") + f"/reset?email={urllib.parse.quote(email)}&token={token}"
     sent = send_password_reset_email(cfg, email, reset_url)
     _logger.info("Password reset requested for %s", email)
+    if not sent:
+        return await forgot_page(request, error=_t("forgot.send_failed", _get_lang()))
     return RedirectResponse(
-        url=f"/forgot?sent={'1' if sent else '0'}",
+        url="/forgot?sent=1",
         status_code=302,
     )
 
