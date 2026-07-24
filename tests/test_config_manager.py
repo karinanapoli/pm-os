@@ -1,5 +1,6 @@
 import json
 import os
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
@@ -117,3 +118,64 @@ def test_atomic_write(fresh_config):
     assert config_file.exists()
     data = json.loads(config_file.read_text(encoding="utf-8"))
     assert data["lang"] == "pt-BR"
+
+
+def test_get_returns_detached_nested_values(fresh_config):
+    cm = ConfigManager()
+    cm.set("users", {"person@example.com": "hash"})
+
+    users = cm.get("users")
+    users["attacker@example.com"] = "other-hash"
+    all_config = cm.get_all()
+    all_config["users"].clear()
+
+    assert cm.get("users") == {"person@example.com": "hash"}
+
+
+def test_atomic_update_preserves_concurrent_mapping_changes(fresh_config):
+    cm = ConfigManager()
+
+    def add_user(index):
+        email = f"person-{index}@example.com"
+        cm.update(
+            "users",
+            lambda users: {**(users or {}), email: f"hash-{index}"},
+        )
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        list(executor.map(add_user, range(40)))
+
+    users = cm.get("users")
+    assert len(users) == 40
+    assert users["person-39@example.com"] == "hash-39"
+
+
+def test_transaction_updates_multiple_keys_together(fresh_config):
+    cm = ConfigManager()
+
+    def activate_user(config):
+        config["users"]["person@example.com"] = "hash"
+        config["pending_registrations"].pop("person@example.com", None)
+        return "activated"
+
+    cm.set("pending_registrations", {"person@example.com": {"expires_at": 1}})
+    result = cm.transaction(activate_user)
+
+    assert result == "activated"
+    assert cm.get("users") == {"person@example.com": "hash"}
+    assert cm.get("pending_registrations") == {}
+
+
+def test_failed_write_keeps_previous_in_memory_state(fresh_config, monkeypatch):
+    cm = ConfigManager()
+    cm.set("lang", "pt-BR")
+
+    def fail_save(_config):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(cm, "_save", fail_save)
+
+    with pytest.raises(OSError):
+        cm.set("lang", "en")
+
+    assert cm.get("lang") == "pt-BR"
