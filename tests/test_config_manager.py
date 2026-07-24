@@ -179,3 +179,52 @@ def test_failed_write_keeps_previous_in_memory_state(fresh_config, monkeypatch):
         cm.set("lang", "en")
 
     assert cm.get("lang") == "pt-BR"
+
+
+def test_unchanged_updates_do_not_rewrite_existing_file(
+    fresh_config, monkeypatch
+):
+    cm = ConfigManager()
+    cm.set("lang", "pt-BR")
+    writes = []
+    original_save = cm._save
+
+    def track_save(config):
+        writes.append(config)
+        original_save(config)
+
+    monkeypatch.setattr(cm, "_save", track_save)
+
+    cm.set("lang", "pt-BR")
+    cm.set_all({"lang": "pt-BR"})
+    cm.update("users", lambda users: users or {})
+    result = cm.transaction(lambda config: "unchanged")
+
+    assert result == "unchanged"
+    assert writes == []
+
+
+def test_changed_transaction_writes_once(fresh_config, monkeypatch):
+    cm = ConfigManager()
+    cm.set("lang", "pt-BR")
+    writes = []
+    original_save = cm._save
+
+    def track_save(config):
+        writes.append(config)
+        original_save(config)
+
+    monkeypatch.setattr(cm, "_save", track_save)
+
+    cm.transaction(lambda config: config.update(lang="en"))
+
+    assert len(writes) == 1
+    assert cm.get("lang") == "en"
+
+
+def test_config_file_permissions_are_private(fresh_config):
+    cm = ConfigManager()
+    cm.set("lang", "en")
+    config_file = Path(os.environ["PM_OS_CONFIG_DIR"]) / "config.json"
+
+    assert config_file.stat().st_mode & 0o777 == 0o600
