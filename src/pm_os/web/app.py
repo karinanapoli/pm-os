@@ -1,7 +1,5 @@
-import hashlib
 import os
 import re
-import json
 import shutil
 import urllib.parse
 import time
@@ -36,7 +34,6 @@ from pm_os.infrastructure.ai.clients.fake_ai_client import FakeAIClient
 from pm_os.infrastructure.security import hash_password, password_is_strong, verify_password
 from pm_os.contracts.workflow_contracts import AIClient
 from pm_os.domain.initiative import Initiative
-from pm_os.domain.context_source import ContextSource
 from pm_os.infrastructure.validators.prd_validator import PRDValidator
 from pm_os.infrastructure.utils import (
     ALLOWED_EXTENSIONS,
@@ -64,6 +61,7 @@ from pm_os.web.prd_generation_operation import (
     PRDGenerationRequest,
 )
 from pm_os.web.product_consultation_service import ProductConsultationService
+from pm_os.web.mcp_context_service import MCPContextService
 from pm_os.web.public_urls import allowed_hosts_from_env, external_base_url
 from pm_os.web.request_limits import (
     MAX_UPLOAD_FILE_BYTES,
@@ -656,43 +654,7 @@ def _validate_mcp_url(url: str) -> str:
 
 
 def _fetch_mcp_context() -> list[dict]:
-    results = []
-    for server in _get_mcp_servers():
-        if not server.get("enabled"):
-            continue
-        name = server.get("name", "Unknown")
-        url = server.get("url", "")
-        if not url:
-            continue
-        try:
-            raw_bytes, _ = fetch_public_url(url, timeout=5)
-            raw = raw_bytes.decode("utf-8", errors="replace")
-            try:
-                data = json.loads(raw)
-                if isinstance(data, (dict, list)):
-                    content = json.dumps(data, indent=2, ensure_ascii=False)
-                else:
-                    content = str(data)
-            except (json.JSONDecodeError, ValueError):
-                content = raw
-            content = content[:3000]
-            if content.strip():
-                digest = hashlib.sha256(f"mcp/{name}/{url}".encode("utf-8")).hexdigest()
-                source = ContextSource(
-                    source_id=f"SRC-{digest[:8].upper()}",
-                    name=name,
-                    content=content,
-                    source_type="mcp",
-                    confidentiality="internal",
-                    size_bytes=len(content.encode("utf-8")),
-                )
-                results.append({
-                    "name": name,
-                    "content": ContextBuilder.build_sources([source]),
-                })
-        except Exception as exc:
-            _logger.warning("MCP fetch failed for %s: %s", name, exc)
-    return results
+    return MCPContextService(fetcher=fetch_public_url).fetch(_get_mcp_servers())
 
 
 def _get_initiative_by_name(name: str, request_or_squad: Optional[Request] = None) -> Optional[Initiative]:
