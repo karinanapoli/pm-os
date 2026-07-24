@@ -37,6 +37,17 @@ Abra `http://127.0.0.1:8000` e crie sua conta. O **Modo Demo** já vem
 selecionado: use o início rápido para percorrer o fluxo completo sem configurar
 uma IA. Para ler PDFs, instale `python -m pip install -e ".[pdf]"`.
 
+### Exposição em rede
+
+O padrão `127.0.0.1` mantém o PM Studio acessível apenas no computador local.
+Antes de publicá-lo em uma rede, defina `PM_OS_ENV=production` e um
+`PM_OS_SECRET` longo e aleatório.
+
+Se houver um proxy reverso confiável entre as pessoas usuárias e o PM Studio,
+defina `PM_OS_TRUSTED_PROXY_COUNT` com a quantidade exata de proxies no caminho.
+O valor padrão é `0`: cabeçalhos de IP enviados pelo navegador são ignorados
+para impedir que o limite de tentativas de login seja contornado.
+
 ## Escolha de privacidade
 
 | Modo | Custo externo | Para onde vai o contexto? |
