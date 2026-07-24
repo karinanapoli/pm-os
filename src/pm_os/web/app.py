@@ -53,6 +53,7 @@ from pm_os.web.config_manager import ConfigManager
 from pm_os.web.i18n import t as _t, LANGS
 from pm_os.web.account_tokens import prune_expired, token_digest, token_matches
 from pm_os.web.login_security import LoginRateLimiter, resolve_client_ip
+from pm_os.web.squad_access import authorized_squad, normalize_squad_key
 from pm_os.web.markdown_renderer import render_safe_markdown
 from pm_os.web.middleware import AuthMiddleware, CSRFMiddleware, NoCacheMiddleware
 from pm_os.web.product_docs_service import ProductDocsService
@@ -422,9 +423,18 @@ def _get_lang() -> str:
 
 def _get_session_squad(request: Request) -> str:
     try:
-        return request.session.get("current_squad", "")
+        current_squad = request.session.get("current_squad", "")
     except Exception:
         return ""
+    user_email = _get_session_user_email(request)
+    squads = config_manager.get("squads") or {}
+    allowed_squad = authorized_squad(current_squad, user_email, squads)
+    if current_squad and not allowed_squad:
+        try:
+            request.session.pop("current_squad", None)
+        except Exception:
+            pass
+    return allowed_squad
 
 
 def _get_session_user_email(request: Request) -> str:
@@ -486,16 +496,17 @@ def _ctx(request: Request, **extra: object) -> dict:
     cfg.pop("anthropic_api_key", None)
     cfg.pop("auth_password", None)
     cfg.pop("smtp_password", None)
+    cfg.pop("pending_registrations", None)
+    cfg.pop("reset_tokens", None)
+    cfg.pop("retired_squad_names", None)
+    cfg.pop("squads", None)
     lang = cfg.get("lang", "en")
     try:
         user_email = request.session.get("user_email", "")
     except (AssertionError, KeyError, RuntimeError):
         user_email = ""
-    try:
-        current_squad = request.session.get("current_squad", "")
-    except (AssertionError, KeyError, RuntimeError):
-        current_squad = ""
-    squads_all = cfg.get("squads") or {}
+    current_squad = _get_session_squad(request)
+    squads_all = config_manager.get("squads") or {}
     user_squads_list = []
     for sk, sv in squads_all.items():
         if user_email in sv.get("members", []):
@@ -2015,10 +2026,10 @@ async def squad_join_page(request: Request, error: str = ""):
 async def squad_create(request: Request, name: str = Form(...), display_name: str = Form(""), password: str = Form(...)):
     cfg = config_manager.get_all()
     squads = dict(cfg.get("squads") or {})
-    squad_key = name.strip().lower().replace(" ", "-")
+    squad_key = normalize_squad_key(name)
     if not squad_key:
-        return await squad_page(request, error=_t("squad.exists", _get_lang()))
-    if squad_key in squads:
+        return await squad_page(request, error=_t("squad.invalid_name", _get_lang()))
+    if squad_key in squads or squad_key in (cfg.get("retired_squad_names") or []):
         return await squad_page(request, error=_t("squad.exists", _get_lang()))
     try:
         user_email = request.session.get("user_email", "")
@@ -2046,7 +2057,7 @@ async def squad_create(request: Request, name: str = Form(...), display_name: st
 async def squad_join(request: Request, name: str = Form(...), password: str = Form(...)):
     cfg = config_manager.get_all()
     squads = dict(cfg.get("squads") or {})
-    squad_key = name.strip().lower().replace(" ", "-")
+    squad_key = normalize_squad_key(name)
     if squad_key not in squads:
         return await squad_page(request, error=_t("squad.not_found", _get_lang()))
     sq = squads[squad_key]
@@ -2120,6 +2131,11 @@ async def squad_leave(request: Request):
     squads = dict(cfg.get("squads") or {})
     sq = squads.get(current_squad)
     if sq and user_email in sq.get("members", []):
+        if sq.get("created_by") == user_email:
+            return await squad_page(
+                request,
+                error=_t("squad.owner_cannot_leave", _get_lang()),
+            )
         sq["members"] = [m for m in sq["members"] if m != user_email]
         config_manager.set("squads", squads)
     try:
@@ -2183,6 +2199,8 @@ async def squad_remove_member(request: Request, squad_name: str, member_email: s
     sq = squads.get(squad_name)
     if not sq or sq.get("created_by") != user_email:
         return RedirectResponse(url="/", status_code=302)
+    if member_email == sq.get("created_by"):
+        return RedirectResponse(url=f"/squad/admin/{squad_name}", status_code=302)
     if member_email in sq["members"]:
         sq["members"] = [m for m in sq["members"] if m != member_email]
         config_manager.set("squads", squads)
@@ -2223,7 +2241,15 @@ async def squad_disband(request: Request, squad_name: str):
     if not sq or sq.get("created_by") != user_email:
         return RedirectResponse(url="/", status_code=302)
     del squads[squad_name]
-    config_manager.set("squads", squads)
+    retired_squad_names = list(cfg.get("retired_squad_names") or [])
+    if squad_name not in retired_squad_names:
+        retired_squad_names.append(squad_name)
+    config_manager.set_all(
+        {
+            "squads": squads,
+            "retired_squad_names": retired_squad_names,
+        }
+    )
     try:
         if request.session.get("current_squad") == squad_name:
             request.session.pop("current_squad", None)
