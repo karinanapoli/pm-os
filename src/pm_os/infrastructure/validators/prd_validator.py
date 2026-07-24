@@ -1,5 +1,7 @@
 import json
+import math
 import re
+from typing import Any
 
 from pm_os.contracts.workflow_contracts import AIClient
 from pm_os.domain.validation_report import SectionEvaluation, ValidationReport
@@ -100,38 +102,78 @@ Conteúdo do PRD:
         if json_match:
             raw = json_match.group(1)
         else:
-            json_match = re.search(r"\{.*\}", response, re.DOTALL)
-            if not json_match:
-                return ValidationReport(
-                    overall_score=0.0,
-                    summary="Could not parse validation response.",
-                    sections=[],
-                )
-            raw = json_match.group(0)
+            raw = response[response.find("{"):] if "{" in response else ""
 
         try:
-            data = json.loads(raw.strip())
-        except json.JSONDecodeError:
-            return ValidationReport(
-                overall_score=0.0,
-                summary="Invalid JSON in validation response.",
-                sections=[],
-            )
+            data, _ = json.JSONDecoder().raw_decode(raw.strip())
+        except (json.JSONDecodeError, TypeError):
+            return self._invalid_report()
 
-        sections = [
-            SectionEvaluation(
-                name=s.get("name", "Unknown"),
-                score=s.get("score", 0.0),
-                issues=s.get("issues", []),
-                suggestions=s.get("suggestions", []),
-                rationale=s.get("rationale", ""),
-                action_items=s.get("action_items", []),
+        if not isinstance(data, dict):
+            return self._invalid_report()
+
+        raw_sections = data.get("sections", [])
+        if not isinstance(raw_sections, list):
+            raw_sections = []
+
+        sections = []
+        for raw_section in raw_sections[:20]:
+            if not isinstance(raw_section, dict):
+                continue
+            sections.append(
+                SectionEvaluation(
+                    name=self._text(raw_section.get("name"), "Unknown"),
+                    score=self._score(raw_section.get("score")),
+                    issues=self._text_list(raw_section.get("issues")),
+                    suggestions=self._text_list(raw_section.get("suggestions")),
+                    rationale=self._text(raw_section.get("rationale")),
+                    action_items=self._text_list(raw_section.get("action_items")),
+                )
             )
-            for s in data.get("sections", [])
-        ]
 
         return ValidationReport(
-            overall_score=data.get("overall_score", 0.0),
-            summary=data.get("summary", ""),
+            overall_score=self._score(data.get("overall_score")),
+            summary=self._text(data.get("summary")),
             sections=sections,
         )
+
+    def _invalid_report(self) -> ValidationReport:
+        summary = (
+            "Não foi possível interpretar a resposta da IA. Tente validar novamente."
+            if self.lang == "pt-BR"
+            else "Could not parse the AI validation response. Please try again."
+        )
+        return ValidationReport(
+            overall_score=0.0,
+            summary=summary,
+            sections=[],
+            is_valid=False,
+        )
+
+    @staticmethod
+    def _score(value: Any) -> float:
+        if isinstance(value, bool):
+            return 0.0
+        try:
+            score = float(value)
+        except (TypeError, ValueError):
+            return 0.0
+        if not math.isfinite(score):
+            return 0.0
+        return min(10.0, max(0.0, score))
+
+    @staticmethod
+    def _text(value: Any, default: str = "") -> str:
+        if not isinstance(value, str):
+            return default
+        return value.strip()[:4000]
+
+    @classmethod
+    def _text_list(cls, value: Any) -> list[str]:
+        if not isinstance(value, list):
+            return []
+        return [
+            text
+            for item in value[:50]
+            if (text := cls._text(item)[:1000])
+        ]

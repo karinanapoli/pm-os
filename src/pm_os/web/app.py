@@ -1500,6 +1500,16 @@ async def validate_prd(request: Request, initiative_name: str):
         prd_content = prd_path.read_text(encoding="utf-8")
         report = validator.validate(prd_content)
 
+        if not report.is_valid:
+            return templates.TemplateResponse(
+                request,
+                "validate.html",
+                _ctx(request, initiative=selected, report=None, error=report.summary,
+                     validation_history=read_validation_history(selected.path / "artifacts"),
+                     prd_content=prd_content),
+                status_code=502,
+            )
+
         artifacts_dir = selected.path / "artifacts"
         version_file(artifacts_dir / "prd-validation.md")
         report_path = str(artifacts_dir / "prd-validation.md")
@@ -1539,6 +1549,8 @@ async def revalidate_prd(request: Request, initiative_name: str):
         validator = PRDValidator(ai_client=ai_client, lang=_get_lang())
         prd_content = prd_path.read_text(encoding="utf-8")
         report = validator.validate(prd_content)
+        if not report.is_valid:
+            return RedirectResponse(url=f"/initiative/{initiative_name}", status_code=302)
         artifacts_dir = selected.path / "artifacts"
         version_file(artifacts_dir / "prd-validation.md")
         report_path = str(artifacts_dir / "prd-validation.md")

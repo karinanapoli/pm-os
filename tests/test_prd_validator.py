@@ -76,6 +76,7 @@ def test_validator_handles_malformed_json():
 
     assert report.overall_score == 0.0
     assert "Could not parse" in report.summary
+    assert report.is_valid is False
 
 
 def test_validator_handles_empty_response():
@@ -85,6 +86,7 @@ def test_validator_handles_empty_response():
     report = validator.validate(SAMPLE_PRD)
 
     assert report.overall_score == 0.0
+    assert report.is_valid is False
 
 
 def test_validator_builds_prompt_with_prd_content():
@@ -108,3 +110,61 @@ def test_section_evaluation_defaults():
 
     assert section.issues == []
     assert section.suggestions == []
+
+
+def test_validator_normalizes_untrusted_ai_fields():
+    ai_client = FakeAIClientForValidator(response="""```json
+{
+  "overall_score": 12,
+  "summary": 42,
+  "sections": [
+    {
+      "name": "  Metrics  ",
+      "score": -3,
+      "issues": ["Missing target", 99, ""],
+      "suggestions": "not-a-list",
+      "rationale": false,
+      "action_items": ["Define a target"]
+    },
+    "not-an-object"
+  ]
+}
+```""")
+
+    report = PRDValidator(ai_client=ai_client).validate(SAMPLE_PRD)
+
+    assert report.is_valid is True
+    assert report.overall_score == 10.0
+    assert report.summary == ""
+    assert len(report.sections) == 1
+    assert report.sections[0].name == "Metrics"
+    assert report.sections[0].score == 0.0
+    assert report.sections[0].issues == ["Missing target"]
+    assert report.sections[0].suggestions == []
+    assert report.sections[0].rationale == ""
+    assert report.sections[0].action_items == ["Define a target"]
+
+
+def test_validator_extracts_first_json_object_without_greedy_matching():
+    response = (
+        'Analysis: {"overall_score": 8, "summary": "Useful", "sections": []} '
+        'Trailing example: {"ignored": true}'
+    )
+
+    report = PRDValidator(
+        ai_client=FakeAIClientForValidator(response=response)
+    ).validate(SAMPLE_PRD)
+
+    assert report.is_valid is True
+    assert report.overall_score == 8.0
+    assert report.summary == "Useful"
+
+
+def test_validator_localizes_invalid_response_message():
+    report = PRDValidator(
+        ai_client=FakeAIClientForValidator(response="resposta inválida"),
+        lang="pt-BR",
+    ).validate(SAMPLE_PRD)
+
+    assert report.is_valid is False
+    assert "Não foi possível" in report.summary
