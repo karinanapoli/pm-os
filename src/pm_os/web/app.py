@@ -1717,19 +1717,14 @@ async def consult_docs(
 @app.get("/product-docs", response_class=HTMLResponse)
 async def product_docs_page(request: Request):
     pd_service = _product_docs_service(request)
-    docs = []
-    ctx = pd_service.context_dir
-    if ctx.exists():
-        for f in sorted(ctx.iterdir()):
-            if f.is_file():
-                size = f.stat().st_size
-                size_str = f"{size} B" if size < 1024 else f"{size // 1024} KB"
-                docs.append({"name": f.name, "size": size_str})
-    links = pd_service.load_links()
     return templates.TemplateResponse(
         request,
         "product_docs.html",
-        _ctx(request, docs=docs, links=links),
+        _ctx(
+            request,
+            docs=pd_service.list_doc_metadata(),
+            links=pd_service.load_links(),
+        ),
     )
 
 
@@ -1738,19 +1733,15 @@ async def upload_product_docs(
     request: Request,
     docs: list[UploadFile] = File(...),
 ):
-    ctx = _product_docs_service(request).context_dir
-    ctx.mkdir(parents=True, exist_ok=True)
+    pd_service = _product_docs_service(request)
     for doc in docs:
         if doc.filename:
-            ext = Path(doc.filename).suffix.lower()
-            if ext not in ALLOWED_EXTENSIONS:
-                continue
-            safe_name = _safe_filename(doc.filename)
-            if safe_name:
-                content = await doc.read(MAX_UPLOAD_FILE_BYTES + 1)
-                if len(content) > MAX_UPLOAD_FILE_BYTES:
-                    continue
-                (ctx / safe_name).write_bytes(content)
+            content = await doc.read(MAX_UPLOAD_FILE_BYTES + 1)
+            pd_service.save_document(
+                doc.filename,
+                content,
+                MAX_UPLOAD_FILE_BYTES,
+            )
     return await product_docs_page(request)
 
 
@@ -1761,21 +1752,14 @@ async def add_product_link(
     url: str = Form(...),
 ):
     pd_service = _product_docs_service(request)
-    links = pd_service.load_links()
-    links.append({"title": title.strip(), "url": url.strip()})
-    pd_service.save_links(links)
+    pd_service.add_link(title, url)
     return await product_docs_page(request)
 
 
 @app.post("/product-docs/delete-doc/{filename}", response_class=HTMLResponse)
 async def delete_product_doc(request: Request, filename: str):
     pd_service = _product_docs_service(request)
-    safe_name = _safe_filename(filename)
-    if safe_name:
-        fp = (pd_service.context_dir / safe_name).resolve()
-        ctx_dir = pd_service.context_dir.resolve()
-        if str(fp).startswith(str(ctx_dir)) and fp.exists() and fp.is_file():
-            fp.unlink()
+    pd_service.delete_document(filename)
     return await product_docs_page(request)
 
 
@@ -1785,8 +1769,7 @@ async def delete_product_link(
     url: str = Form(...),
 ):
     pd_service = _product_docs_service(request)
-    links = [l for l in pd_service.load_links() if l["url"] != url]
-    pd_service.save_links(links)
+    pd_service.delete_link(url)
     return await product_docs_page(request)
 
 

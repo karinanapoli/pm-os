@@ -2,6 +2,7 @@ import hashlib
 import json
 import re
 import shutil
+import unicodedata
 from pathlib import Path
 from typing import Optional
 
@@ -64,6 +65,46 @@ class ProductDocsService:
             return sum(1 for f in ctx.iterdir() if f.is_file() and f.suffix in ALLOWED_EXTENSIONS)
         return 0
 
+    def list_doc_metadata(self) -> list[dict]:
+        if not self.context_dir.exists():
+            return []
+        docs = []
+        for path in sorted(self.context_dir.iterdir()):
+            if path.is_file() and path.suffix.lower() in ALLOWED_EXTENSIONS:
+                size = path.stat().st_size
+                docs.append({
+                    "name": path.name,
+                    "size": f"{size} B" if size < 1024 else f"{size // 1024} KB",
+                })
+        return docs
+
+    def save_document(
+        self,
+        filename: str,
+        content: bytes,
+        max_bytes: int,
+    ) -> bool:
+        safe_name = self._safe_filename(filename)
+        if (
+            not safe_name
+            or Path(safe_name).suffix.lower() not in ALLOWED_EXTENSIONS
+            or len(content) > max_bytes
+        ):
+            return False
+        self.context_dir.mkdir(parents=True, exist_ok=True)
+        (self.context_dir / safe_name).write_bytes(content)
+        return True
+
+    def delete_document(self, filename: str) -> bool:
+        safe_name = self._safe_filename(filename)
+        if not safe_name:
+            return False
+        path = self.context_dir / safe_name
+        if not path.is_file():
+            return False
+        path.unlink()
+        return True
+
     def load_docs(self) -> list[dict]:
         ctx = self.context_dir
         docs = []
@@ -80,7 +121,11 @@ class ProductDocsService:
     def load_links(self) -> list[dict]:
         fp = self.base_dir / "links.json"
         if fp.exists():
-            return json.loads(fp.read_text(encoding="utf-8"))
+            try:
+                links = json.loads(fp.read_text(encoding="utf-8"))
+            except (json.JSONDecodeError, OSError):
+                return []
+            return links if isinstance(links, list) else []
         return []
 
     def save_links(self, links: list[dict]):
@@ -88,6 +133,25 @@ class ProductDocsService:
         (self.base_dir / "links.json").write_text(
             json.dumps(links, ensure_ascii=False, indent=2), encoding="utf-8"
         )
+
+    def add_link(self, title: str, url: str) -> bool:
+        cleaned = {"title": title.strip(), "url": url.strip()}
+        if not cleaned["title"] or not cleaned["url"]:
+            return False
+        links = self.load_links()
+        if any(link.get("url") == cleaned["url"] for link in links):
+            return False
+        links.append(cleaned)
+        self.save_links(links)
+        return True
+
+    def delete_link(self, url: str) -> bool:
+        links = self.load_links()
+        filtered = [link for link in links if link.get("url") != url]
+        if len(filtered) == len(links):
+            return False
+        self.save_links(filtered)
+        return True
 
     def build_context(self) -> str:
         sources = []
@@ -116,3 +180,17 @@ class ProductDocsService:
             f"product-docs/{self.scope_key}/{value}".encode("utf-8")
         ).hexdigest()
         return f"SRC-{digest[:8].upper()}"
+
+    @staticmethod
+    def _safe_filename(name: str) -> str:
+        normalized = unicodedata.normalize("NFKC", name or "")
+        if "/" in normalized or "\\" in normalized or ".." in normalized:
+            return ""
+        clean = Path(normalized).name
+        if (
+            not clean
+            or clean in {".", ".."}
+            or not re.match(r"^[a-zA-Z0-9 _.\-()\[\]]+$", clean)
+        ):
+            return ""
+        return clean
