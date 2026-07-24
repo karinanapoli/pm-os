@@ -10,11 +10,11 @@ class OpenAIClient:
         self,
         model: str = "",
         api_key: str = "",
-        base_url: str = "https://api.openai.com/v1",
+        base_url: str = "",
     ):
         self.model = model or os.getenv("PM_OS_OPENAI_MODEL", "gpt-4o-mini")
         self.api_key = api_key or os.getenv("OPENAI_API_KEY", "")
-        self.base_url = base_url or os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
+        self.base_url = (base_url or os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")).rstrip("/")
 
     def generate(self, prompt: str) -> str:
         if not self.api_key:
@@ -36,11 +36,18 @@ class OpenAIClient:
             )
             resp.raise_for_status()
             data = resp.json()
-            choices = data.get("choices", [])
-            if not choices:
-                return ""
-            return choices[0].get("message", {}).get("content", "")
+            choices = data.get("choices") if isinstance(data, dict) else None
+            if not isinstance(choices, list) or not choices:
+                raise AIProviderError("OpenAI returned no generated content.")
+            choice = choices[0] if isinstance(choices[0], dict) else {}
+            message = choice.get("message")
+            content = message.get("content") if isinstance(message, dict) else None
+            if not isinstance(content, str) or not content.strip():
+                raise AIProviderError("OpenAI returned no generated content.")
+            return content
         except httpx.HTTPStatusError as e:
             raise AIProviderError(f"OpenAI API error: {e.response.status_code}") from e
         except httpx.RequestError as e:
             raise AIProviderError(f"OpenAI request failed: {e}") from e
+        except (ValueError, TypeError) as e:
+            raise AIProviderError("OpenAI returned an invalid response.") from e

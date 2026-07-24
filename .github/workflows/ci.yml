@@ -24,7 +24,7 @@ jobs:
       - run: python -m pip install -e ".[dev]"
       - run: python -m compileall -q src mcp scripts
       - name: Test with coverage baseline
-        run: python -m pytest --cov=pm_os --cov-report=term-missing --cov-fail-under=68
+        run: python -m pytest --cov=pm_os --cov-report=term-missing --cov-fail-under=70
 
   lint:
     runs-on: ubuntu-latest
