@@ -149,7 +149,7 @@ async def login_page(request: Request, error: str = ""):
     cfg = config_manager.get_all()
     if not cfg.get("users"):
         return RedirectResponse(url="/register", status_code=302)
-    return templates.TemplateResponse("login.html", _ctx(request, error=error))
+    return templates.TemplateResponse(request, "login.html", _ctx(request, error=error))
 
 
 @app.post("/login")
@@ -185,7 +185,7 @@ async def register_page(request: Request, error: str = ""):
     users = config_manager.get("users") or {}
     if authenticated and user_email and user_email in users:
         return RedirectResponse(url="/", status_code=302)
-    return templates.TemplateResponse("register.html", _ctx(request, error=error))
+    return templates.TemplateResponse(request, "register.html", _ctx(request, error=error))
 
 
 @app.post("/register")
@@ -227,7 +227,7 @@ async def verify_page(request: Request, email: str = "", sent: str = ""):
     target = email or ses_email
     if not target:
         return RedirectResponse(url="/login", status_code=302)
-    return templates.TemplateResponse("verify.html", _ctx(request, email=target, error="", sent=(sent == "1")))
+    return templates.TemplateResponse(request, "verify.html", _ctx(request, email=target, error="", sent=(sent == "1")))
 
 
 @app.post("/verify")
@@ -240,9 +240,9 @@ async def verify_submit(request: Request, email: str = Form(...), code: str = Fo
         stored_code = ""
         stored_email = ""
     if not stored_email or stored_email != email or expires_at < time.time():
-        return templates.TemplateResponse("verify.html", _ctx(request, email=email, error=_t("verify.expired", _get_lang()), sent=False))
+        return templates.TemplateResponse(request, "verify.html", _ctx(request, email=email, error=_t("verify.expired", _get_lang()), sent=False))
     if not _secrets_module.compare_digest(stored_code, code.strip()):
-        return templates.TemplateResponse("verify.html", _ctx(request, email=email, error=_t("verify.invalid", _get_lang()), sent=False))
+        return templates.TemplateResponse(request, "verify.html", _ctx(request, email=email, error=_t("verify.invalid", _get_lang()), sent=False))
     try:
         request.session.pop("verify_code", None)
         request.session.pop("verify_email", None)
@@ -259,7 +259,7 @@ async def verify_resend(request: Request, email: str = Form(...)):
     cfg = config_manager.get_all()
     from pm_os.web.email_service import is_smtp_configured, send_verification_email
     if not is_smtp_configured(cfg):
-        return templates.TemplateResponse("verify.html", _ctx(request, email=email, error=_t("verify.no_smtp", _get_lang()), sent=False))
+        return templates.TemplateResponse(request, "verify.html", _ctx(request, email=email, error=_t("verify.no_smtp", _get_lang()), sent=False))
     code = "".join(str(_secrets_module.randbelow(10)) for _ in range(6))
     try:
         request.session["verify_code"] = code
@@ -286,7 +286,7 @@ async def logout(request: Request):
 
 @app.get("/forgot", response_class=HTMLResponse)
 async def forgot_page(request: Request, error: str = "", sent: str = ""):
-    return templates.TemplateResponse("forgot.html", _ctx(request, error=error, sent=(sent == "1")))
+    return templates.TemplateResponse(request, "forgot.html", _ctx(request, error=error, sent=(sent == "1")))
 
 
 @app.post("/forgot")
@@ -314,6 +314,7 @@ async def forgot_submit(request: Request, email: str = Form(...)):
 @app.get("/reset", response_class=HTMLResponse)
 async def reset_page(request: Request, email: str = "", token: str = "", code: str = "", error: str = ""):
     return templates.TemplateResponse(
+        request,
         "reset.html",
         _ctx(request, email=email, token=token, sent=(code == "1"), error=error),
     )
@@ -666,6 +667,7 @@ async def _dashboard(request: Request, force_onboarding: bool = False, squad_nam
     show_onboarding = (not dismissed and not has_completed) or force_onboarding
 
     return templates.TemplateResponse(
+        request,
         "dashboard.html",
         _ctx(request,
             initiatives=rows,
@@ -801,6 +803,7 @@ async def initiative_detail(request: Request, initiative_name: str):
     is_quickstart = request.query_params.get("quickstart") == "1"
 
     return templates.TemplateResponse(
+        request,
         "initiative_detail.html",
         _ctx(request,
             initiative=selected,
@@ -907,6 +910,7 @@ async def prd_version_view(request: Request, initiative_name: str, version: str)
             return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
     content = version_path.read_text(encoding="utf-8")
     return templates.TemplateResponse(
+        request,
         "initiative_detail.html",
         _ctx(request,
             initiative=selected,
@@ -926,6 +930,7 @@ async def prd_version_view(request: Request, initiative_name: str, version: str)
 @app.get("/initiatives/new", response_class=HTMLResponse)
 async def new_initiative_page(request: Request):
     return templates.TemplateResponse(
+        request,
         "initiative_new.html",
         _ctx(request),
     )
@@ -948,6 +953,7 @@ async def create_initiative(
     else:
         if not re.match(r'^[A-Za-z0-9_-]+$', init_id):
             return templates.TemplateResponse(
+                request,
                 "initiative_new.html",
                 _ctx(request, error=_t("initiative.new.invalid_id", _get_lang())),
             )
@@ -1003,6 +1009,7 @@ async def generate_page(request: Request):
     product_docs_count = pd_service.count_docs()
     selected_initiative = request.query_params.get("initiative", "")
     return templates.TemplateResponse(
+        request,
         "generate.html",
         _ctx(request, initiatives=initiatives, result=None, error=None,
              product_docs_count=product_docs_count,
@@ -1027,6 +1034,7 @@ async def generate_prd(
 
     if not selected:
         return templates.TemplateResponse(
+            request,
             "generate.html",
             _ctx(request, initiatives=initiatives, result=None,
                  error=f"Initiative '{initiative_name}' {_t('error.not_found', _get_lang())}",
@@ -1173,6 +1181,7 @@ async def generate_prd(
 
     pd_service = _product_docs_service(request)
     return templates.TemplateResponse(
+        request,
         "generate_processing.html",
         _ctx(request,
              task_id=task_id,
@@ -1213,6 +1222,7 @@ async def generate_result(request: Request, task_id: str):
         if is_fragment:
             return _t("generate.error_not_ready", _get_lang())
         return templates.TemplateResponse(
+            request,
             "generate.html",
             _ctx(request, initiatives=[], result=None,
                  error=_t("generate.error_not_ready", _get_lang()),
@@ -1223,10 +1233,12 @@ async def generate_result(request: Request, task_id: str):
     if task.get("error"):
         if is_fragment:
             return templates.TemplateResponse(
+                request,
                 "generate_result_fragment.html",
                 _ctx(request, result=None, error=task["error"]),
             )
         return templates.TemplateResponse(
+            request,
             "generate.html",
             _ctx(request, initiatives=[], result=None,
                  error=task["error"],
@@ -1237,6 +1249,7 @@ async def generate_result(request: Request, task_id: str):
     result = task["result"]
     if is_fragment:
         return templates.TemplateResponse(
+            request,
             "generate_result_fragment.html",
             _ctx(request, result=result, error=None),
         )
@@ -1244,6 +1257,7 @@ async def generate_result(request: Request, task_id: str):
     repo = _repo(_get_session_squad(request))
     initiatives = repo.list_initiatives(load_content=False)
     return templates.TemplateResponse(
+        request,
         "generate.html",
         _ctx(request, initiatives=initiatives,
              result=result,
@@ -1275,6 +1289,7 @@ async def validate_page(request: Request, initiative_name: str):
             validation_report_content = ""
 
     return templates.TemplateResponse(
+        request,
         "validate.html",
         _ctx(request, initiative=selected, report=None, error=None,
              validation_history=read_validation_history(selected.path / "artifacts"),
@@ -1301,6 +1316,7 @@ async def validate_prd(request: Request, initiative_name: str):
         content_bytes = await uploaded_file.read(MAX_UPLOAD_FILE_BYTES + 1)
         if len(content_bytes) > MAX_UPLOAD_FILE_BYTES:
             return templates.TemplateResponse(
+                request,
                 "validate.html",
                 _ctx(
                     request,
@@ -1317,6 +1333,7 @@ async def validate_prd(request: Request, initiative_name: str):
 
     if not prd_path.exists():
         return templates.TemplateResponse(
+            request,
             "validate.html",
             _ctx(request, initiative=selected, report=None, error=_t("validate.no_prd", _get_lang()),
                  validation_history=read_validation_history(selected.path / "artifacts"),
@@ -1337,6 +1354,7 @@ async def validate_prd(request: Request, initiative_name: str):
         MarkdownWriter().write(content=report.to_markdown(lang=_get_lang()), output_path=report_path)
 
         return templates.TemplateResponse(
+            request,
             "validate.html",
             _ctx(request, initiative=selected, report=report, error=None,
                  previous_score=previous_score,
@@ -1346,6 +1364,7 @@ async def validate_prd(request: Request, initiative_name: str):
 
     except OllamaConnectionError:
         return templates.TemplateResponse(
+            request,
             "validate.html",
             _ctx(request, initiative=selected, report=None, error=_t("error.ollama", _get_lang()),
                  validation_history=read_validation_history(selected.path / "artifacts"),
@@ -1382,6 +1401,7 @@ async def revalidate_prd(request: Request, initiative_name: str):
 @app.get("/config", response_class=HTMLResponse)
 async def config_page(request: Request):
     return templates.TemplateResponse(
+        request,
         "config.html",
         _ctx(request, saved=False),
     )
@@ -1441,6 +1461,7 @@ async def save_config(
     config_manager.set_all(updates)
     _logger.info("Config updated by %s", request.client.host if request.client else "unknown")
     return templates.TemplateResponse(
+        request,
         "config.html",
         _ctx(request, saved=True),
     )
@@ -1463,6 +1484,7 @@ async def add_mcp_server(
         validated_url = _validate_mcp_url(url)
     except ValueError as e:
         return templates.TemplateResponse(
+            request,
             "config.html",
             _ctx(request, saved=False, error=str(e)),
         )
@@ -1472,6 +1494,7 @@ async def add_mcp_server(
         _save_mcp_servers(servers)
         _logger.info("MCP server added: %s", name.strip())
     return templates.TemplateResponse(
+        request,
         "config.html",
         _ctx(request, saved=True),
     )
@@ -1490,6 +1513,7 @@ async def toggle_mcp_server(
             break
     _save_mcp_servers(servers)
     return templates.TemplateResponse(
+        request,
         "config.html",
         _ctx(request, saved=True),
     )
@@ -1506,6 +1530,7 @@ async def delete_mcp_server(
     if removed:
         _logger.info("MCP server removed: %s", removed[0])
     return templates.TemplateResponse(
+        request,
         "config.html",
         _ctx(request, saved=True),
     )
@@ -1558,6 +1583,7 @@ async def add_custom_provider(
     })
     _save_custom_providers(providers)
     return templates.TemplateResponse(
+        request,
         "config.html",
         _ctx(request, saved=True),
     )
@@ -1574,6 +1600,7 @@ async def delete_custom_provider(
     if config_manager.get("ai_provider") == name:
         config_manager.set("ai_provider", "ollama")
     return templates.TemplateResponse(
+        request,
         "config.html",
         _ctx(request, saved=True),
     )
@@ -1640,6 +1667,7 @@ async def consult_page(request: Request):
     repo = _repo(_get_session_squad(request))
     names = repo.list_names()
     return templates.TemplateResponse(
+        request,
         "consult.html",
         _ctx(request, initiative_names=names, selected_initiatives=names,
              question="", result=None, error=None,
@@ -1659,6 +1687,7 @@ async def consult_docs(
         repo = _repo(_get_session_squad(request))
         names = repo.list_names()
         return templates.TemplateResponse(
+            request,
             "consult.html",
             _ctx(request, initiative_names=names, selected_initiatives=initiatives or names,
                  question=question, result=None, error=_t("consult.empty_question", _get_lang()),
@@ -1669,6 +1698,7 @@ async def consult_docs(
         repo = _repo(_get_session_squad(request))
         names = repo.list_names()
         return templates.TemplateResponse(
+            request,
             "consult.html",
             _ctx(request, initiative_names=names, selected_initiatives=names,
                  question=question, result=None,
@@ -1722,6 +1752,7 @@ async def consult_docs(
                 references.append({"initiative": mc_name})
 
         return templates.TemplateResponse(
+            request,
             "consult.html",
             _ctx(request, initiative_names=all_names,
                  selected_initiatives=initiatives,
@@ -1741,6 +1772,7 @@ async def consult_docs(
         repo = _repo(_get_session_squad(request))
         names = repo.list_names()
         return templates.TemplateResponse(
+            request,
             "consult.html",
             _ctx(request, initiative_names=names, selected_initiatives=initiatives,
                  question=question, result=None,
@@ -1766,6 +1798,7 @@ async def product_docs_page(request: Request):
                 docs.append({"name": f.name, "size": size_str})
     links = pd_service.load_links()
     return templates.TemplateResponse(
+        request,
         "product_docs.html",
         _ctx(request, docs=docs, links=links),
     )
@@ -1833,6 +1866,7 @@ async def delete_product_link(
 @app.get("/timeline", response_class=HTMLResponse)
 async def timeline_page(request: Request):
     return templates.TemplateResponse(
+        request,
         "timeline.html",
         _ctx(request),
     )
@@ -1859,6 +1893,7 @@ async def archived_page(request: Request):
                     "archived_at": archived_at,
                 })
     return templates.TemplateResponse(
+        request,
         "archived.html",
         _ctx(request, archived=archived),
     )
@@ -1892,12 +1927,12 @@ async def restore_initiative(request: Request, name: str = Form(...)):
 
 @app.get("/squad", response_class=HTMLResponse)
 async def squad_page(request: Request, error: str = ""):
-    return templates.TemplateResponse("squad.html", _ctx(request, error=error))
+    return templates.TemplateResponse(request, "squad.html", _ctx(request, error=error))
 
 
 @app.get("/squad/create", response_class=HTMLResponse)
 async def squad_create_page(request: Request, error: str = ""):
-    return templates.TemplateResponse("squad_create.html", _ctx(request, error=error))
+    return templates.TemplateResponse(request, "squad_create.html", _ctx(request, error=error))
 
 
 @app.get("/squad/join", response_class=HTMLResponse)
@@ -1906,7 +1941,7 @@ async def squad_join_page(request: Request, error: str = ""):
     squads_list = _get_squad_names(cfg)
     user_email = _get_session_user_email(request)
     available = [sq for sq in squads_list if user_email not in (cfg.get("squads", {}).get(sq["name"], {}).get("members", []))]
-    return templates.TemplateResponse("squad_join.html", _ctx(request, squads=available, error=error))
+    return templates.TemplateResponse(request, "squad_join.html", _ctx(request, squads=available, error=error))
 
 
 @app.post("/squad/create")
@@ -1982,7 +2017,7 @@ async def squad_select(request: Request, error: str = ""):
     if not user_email:
         return RedirectResponse(url="/login", status_code=302)
     user_squads = _get_user_squads(user_email)
-    return templates.TemplateResponse("squad_select.html", _ctx(request, squads=user_squads, error=error))
+    return templates.TemplateResponse(request, "squad_select.html", _ctx(request, squads=user_squads, error=error))
 
 
 @app.post("/squad/select")
@@ -2065,7 +2100,7 @@ async def squad_admin_page(request: Request, squad_name: str):
     if not sq or user_email not in sq.get("members", []):
         return RedirectResponse(url="/", status_code=302)
     is_admin = sq.get("created_by") == user_email
-    return templates.TemplateResponse("squad_admin.html", _ctx(request, squad_name=squad_name, squad=sq, is_admin=is_admin))
+    return templates.TemplateResponse(request, "squad_admin.html", _ctx(request, squad_name=squad_name, squad=sq, is_admin=is_admin))
 
 
 @app.post("/squad/admin/{squad_name}/remove-member")
