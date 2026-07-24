@@ -6,7 +6,9 @@
 
 {% block content %}
 
-{% if saved %}
+{% if notice %}
+<div class="alert alert-success" role="status" aria-live="polite">{{ notice|t }}</div>
+{% elif saved %}
 <div class="alert alert-success" role="status" aria-live="polite">{{ "config.saved"|t }}</div>
 {% endif %}
 {% if error %}
@@ -222,6 +224,35 @@
                          role="status" aria-live="polite">
                         <span class="test-status" id="gatewayTestStatus"></span>
                     </div>
+                    <aside class="gateway-summary" aria-labelledby="gateway-summary-title">
+                        <div class="gateway-summary-header">
+                            <div>
+                                <strong id="gateway-summary-title">{{ "gateway.summary_title"|t }}</strong>
+                                <span>{{ "gateway.summary_external"|t }}</span>
+                            </div>
+                            <span class="connection-badge pending" id="gatewayConnectionBadge">
+                                {{ "gateway.summary_not_tested"|t }}
+                            </span>
+                        </div>
+                        <dl>
+                            <div>
+                                <dt>{{ "gateway.summary_provider"|t }}</dt>
+                                <dd id="gatewaySummaryProvider">{{ config.gateway_provider or '—' }}</dd>
+                            </div>
+                            <div>
+                                <dt>{{ "gateway.summary_project"|t }}</dt>
+                                <dd id="gatewaySummaryProject">{{ config.gateway_project_id or '—' }}</dd>
+                            </div>
+                            <div>
+                                <dt>{{ "gateway.summary_identifier"|t }}</dt>
+                                <dd id="gatewaySummaryIdentifier">{{ config.gateway_identifier or '—' }}</dd>
+                            </div>
+                            <div>
+                                <dt>{{ "gateway.summary_status"|t }}</dt>
+                                <dd id="gatewaySummaryStatus">{{ "gateway.summary_not_tested"|t }}</dd>
+                            </div>
+                        </dl>
+                    </aside>
                 </div>
 
                 {% for cp in custom_providers %}
@@ -419,6 +450,11 @@ function switchTab(name) {
 
 document.addEventListener('DOMContentLoaded', function() {
     toggleProviderFields();
+    updateGatewaySummary();
+    ['gateway_provider', 'gateway_project_id', 'gateway_identifier'].forEach(function(id) {
+        var field = document.getElementById(id);
+        if (field) field.addEventListener('input', updateGatewaySummary);
+    });
 
     document.querySelectorAll('[data-target]').forEach(function(btn) {
         btn.addEventListener('click', function() {
@@ -441,6 +477,19 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 });
+
+function updateGatewaySummary() {
+    var mapping = {
+        gateway_provider: 'gatewaySummaryProvider',
+        gateway_project_id: 'gatewaySummaryProject',
+        gateway_identifier: 'gatewaySummaryIdentifier'
+    };
+    Object.keys(mapping).forEach(function(sourceId) {
+        var source = document.getElementById(sourceId);
+        var target = document.getElementById(mapping[sourceId]);
+        if (source && target) target.textContent = source.value.trim() || '—';
+    });
+}
 
 function confirmDeleteAccount(email) {
     if (!email) {
@@ -547,9 +596,17 @@ async function testGatewayConnection(btn) {
         var result = await response.json();
         status.className = 'test-status ' + (result.ok ? 'success' : 'fail');
         status.textContent = (result.ok ? '✓ ' : '✗ ') + result.message;
+        var badge = document.getElementById('gatewayConnectionBadge');
+        var summaryStatus = document.getElementById('gatewaySummaryStatus');
+        badge.className = 'connection-badge ' + (result.ok ? 'success' : 'fail');
+        badge.textContent = result.ok ? '{{ "mcp.test_ok"|t }}' : '{{ "mcp.test_fail"|t }}';
+        summaryStatus.textContent = result.message;
     } catch (error) {
         status.className = 'test-status fail';
         status.textContent = '✗ {{ "gateway.test_network_error"|t }}';
+        document.getElementById('gatewayConnectionBadge').className = 'connection-badge fail';
+        document.getElementById('gatewayConnectionBadge').textContent = '{{ "mcp.test_fail"|t }}';
+        document.getElementById('gatewaySummaryStatus').textContent = '{{ "gateway.test_network_error"|t }}';
     } finally {
         btn.disabled = false;
     }

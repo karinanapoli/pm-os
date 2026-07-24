@@ -26,7 +26,7 @@
     --accent: #14b8a6;
     --accent-light: #5eead4;
 
-    /* AI-triggered actions — any action the model performs gets this color */
+    /* Semantic actions: violet = system, cyan = AI, amber = caution, coral = destructive */
     --ai: #22b8d9;
     --ai-light: #6fd8ef;
     --ai-glow: rgba(34, 184, 217, 0.28);
@@ -364,6 +364,95 @@ body {
     gap: 12px;
     flex-wrap: wrap;
     margin-top: 4px;
+}
+
+.gateway-summary {
+    margin-top: 18px;
+    padding: 16px;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius);
+    background: rgba(255,255,255,0.018);
+}
+
+.gateway-summary-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 14px;
+}
+
+.gateway-summary-header div {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.gateway-summary-header strong { color: var(--text); }
+.gateway-summary-header div span { color: var(--text-secondary); font-size: 12px; }
+
+.gateway-summary dl {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.gateway-summary dl div {
+    min-width: 0;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    background: rgba(255,255,255,0.025);
+}
+
+.gateway-summary dt {
+    color: var(--text-muted);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.gateway-summary dd {
+    overflow: hidden;
+    margin: 2px 0 0;
+    color: var(--text);
+    font-size: 13px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.connection-badge {
+    flex: 0 0 auto;
+    padding: 4px 9px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.connection-badge.pending {
+    background: rgba(139, 136, 173, 0.15);
+    color: var(--text-secondary);
+}
+
+.connection-badge.success {
+    background: rgba(16, 185, 129, 0.14);
+    color: #6ee7b7;
+}
+
+.connection-badge.fail {
+    background: var(--coral-dim);
+    color: #fda4af;
+}
+
+.btn-selected {
+    border-color: rgba(110, 86, 217, 0.5);
+    background: rgba(110, 86, 217, 0.18);
+    color: var(--primary-light);
+}
+
+.btn-selected:hover {
+    border-color: var(--primary-light);
+    background: rgba(110, 86, 217, 0.26);
 }
 
 .btn:disabled {
@@ -1762,6 +1851,8 @@ body {
         gap: 14px;
     }
     .next-action .btn { width: 100%; text-align: center; }
+    .gateway-summary dl { grid-template-columns: 1fr; }
+    .gateway-summary-header { flex-direction: column; }
 }
 
 /* ═══════════════════════════════════════════
