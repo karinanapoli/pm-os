@@ -51,6 +51,7 @@ from pm_os.context_builder import ContextBuilder
 from pm_os.prompt_builder import PromptBuilder
 from pm_os.web.config_manager import ConfigManager
 from pm_os.web.i18n import t as _t, LANGS
+from pm_os.web.account_tokens import prune_expired, token_digest, token_matches
 from pm_os.web.login_security import LoginRateLimiter, resolve_client_ip
 from pm_os.web.markdown_renderer import render_safe_markdown
 from pm_os.web.middleware import AuthMiddleware, CSRFMiddleware, NoCacheMiddleware
@@ -110,6 +111,8 @@ app.add_middleware(RequestBodyLimitMiddleware)
 
 
 _login_rate_limiter = LoginRateLimiter()
+_MAX_VERIFICATION_ATTEMPTS = 5
+_VERIFICATION_RESEND_SECONDS = 60
 
 
 def _get_client_ip(request: Request) -> str:
@@ -193,29 +196,41 @@ async def register_page(request: Request, error: str = ""):
 async def register_submit(request: Request, email: str = Form(...), password: str = Form(...)):
     cfg = config_manager.get_all()
     users = dict(cfg.get("users") or {})
-    if email in users:
+    pending_registrations = prune_expired(
+        dict(cfg.get("pending_registrations") or {}),
+        time.time(),
+    )
+    if email in users or email in pending_registrations:
         return await register_page(request, error=_t("register.exists", _get_lang()))
     if not email or "@" not in email:
         return await register_page(request, error=_t("register.invalid_email", _get_lang()))
     if not password_is_strong(password):
         return await register_page(request, error=_t("register.short_password", _get_lang()))
+    from pm_os.web.email_service import is_smtp_configured, send_verification_email
+    if is_smtp_configured(cfg):
+        code = "".join(str(_secrets_module.randbelow(10)) for _ in range(6))
+        pending_registrations[email] = {
+            "password_hash": hash_password(password),
+            "code_digest": token_digest(_secret, "verify", email, code),
+            "expires_at": time.time() + 600,
+            "attempts": 0,
+            "last_sent_at": 0,
+        }
+        config_manager.set("pending_registrations", pending_registrations)
+        try:
+            request.session["verify_email"] = email
+        except Exception:
+            pass
+        sent = send_verification_email(cfg, email, code)
+        if sent:
+            pending_registrations[email]["last_sent_at"] = time.time()
+            config_manager.set("pending_registrations", pending_registrations)
+        return RedirectResponse(url=f"/verify?email={urllib.parse.quote(email)}&sent={'1' if sent else '0'}", status_code=302)
+
     users[email] = hash_password(password)
     config_manager.set("users", users)
     config_manager.set("onboarding_dismissed", False)
     _logger.info("User registered: %s", email)
-
-    from pm_os.web.email_service import is_smtp_configured, send_verification_email
-    if is_smtp_configured(cfg):
-        code = "".join(str(_secrets_module.randbelow(10)) for _ in range(6))
-        try:
-            request.session["verify_code"] = code
-            request.session["verify_email"] = email
-            request.session["verify_expires_at"] = time.time() + 600
-        except Exception:
-            pass
-        sent = send_verification_email(cfg, email, code)
-        return RedirectResponse(url=f"/verify?email={urllib.parse.quote(email)}&sent={'1' if sent else '0'}", status_code=302)
-
     return RedirectResponse(url="/login", status_code=302)
 
 
@@ -234,22 +249,41 @@ async def verify_page(request: Request, email: str = "", sent: str = ""):
 
 @app.post("/verify")
 async def verify_submit(request: Request, email: str = Form(...), code: str = Form(...)):
-    try:
-        stored_code = request.session.get("verify_code", "")
-        stored_email = request.session.get("verify_email", "")
-        expires_at = request.session.get("verify_expires_at", 0)
-    except Exception:
-        stored_code = ""
-        stored_email = ""
-    if not stored_email or stored_email != email or expires_at < time.time():
+    cfg = config_manager.get_all()
+    pending_registrations = dict(cfg.get("pending_registrations") or {})
+    pending = pending_registrations.get(email)
+    if not pending or pending.get("expires_at", 0) < time.time():
+        pending_registrations.pop(email, None)
+        config_manager.set("pending_registrations", pending_registrations)
         return templates.TemplateResponse(request, "verify.html", _ctx(request, email=email, error=_t("verify.expired", _get_lang()), sent=False))
-    if not _secrets_module.compare_digest(stored_code, code.strip()):
-        return templates.TemplateResponse(request, "verify.html", _ctx(request, email=email, error=_t("verify.invalid", _get_lang()), sent=False))
+    if not token_matches(
+        pending.get("code_digest"),
+        _secret,
+        "verify",
+        email,
+        code.strip(),
+    ):
+        pending["attempts"] = int(pending.get("attempts", 0)) + 1
+        if pending["attempts"] >= _MAX_VERIFICATION_ATTEMPTS:
+            pending_registrations.pop(email, None)
+            error = _t("verify.too_many", _get_lang())
+        else:
+            pending_registrations[email] = pending
+            error = _t("verify.invalid", _get_lang())
+        config_manager.set("pending_registrations", pending_registrations)
+        return templates.TemplateResponse(request, "verify.html", _ctx(request, email=email, error=error, sent=False))
+    users = dict(cfg.get("users") or {})
+    users[email] = pending["password_hash"]
+    pending_registrations.pop(email, None)
+    config_manager.set_all(
+        {
+            "users": users,
+            "pending_registrations": pending_registrations,
+            "onboarding_dismissed": False,
+        }
+    )
     try:
-        request.session.pop("verify_code", None)
         request.session.pop("verify_email", None)
-        request.session.pop("verify_expires_at", None)
-        request.session["verified"] = True
     except Exception:
         pass
     _logger.info("Email verified: %s", email)
@@ -262,14 +296,29 @@ async def verify_resend(request: Request, email: str = Form(...)):
     from pm_os.web.email_service import is_smtp_configured, send_verification_email
     if not is_smtp_configured(cfg):
         return templates.TemplateResponse(request, "verify.html", _ctx(request, email=email, error=_t("verify.no_smtp", _get_lang()), sent=False))
+    pending_registrations = dict(cfg.get("pending_registrations") or {})
+    pending = pending_registrations.get(email)
+    if not pending or pending.get("expires_at", 0) < time.time():
+        pending_registrations.pop(email, None)
+        config_manager.set("pending_registrations", pending_registrations)
+        return templates.TemplateResponse(request, "verify.html", _ctx(request, email=email, error=_t("verify.expired", _get_lang()), sent=False))
+    now = time.time()
+    if now - pending.get("last_sent_at", 0) < _VERIFICATION_RESEND_SECONDS:
+        return templates.TemplateResponse(request, "verify.html", _ctx(request, email=email, error=_t("verify.wait", _get_lang()), sent=False))
     code = "".join(str(_secrets_module.randbelow(10)) for _ in range(6))
+    pending["code_digest"] = token_digest(_secret, "verify", email, code)
+    pending["expires_at"] = now + 600
+    pending["attempts"] = 0
+    pending_registrations[email] = pending
+    config_manager.set("pending_registrations", pending_registrations)
     try:
-        request.session["verify_code"] = code
         request.session["verify_email"] = email
-        request.session["verify_expires_at"] = time.time() + 600
     except Exception:
         pass
     sent = send_verification_email(cfg, email, code)
+    if sent:
+        pending_registrations[email]["last_sent_at"] = time.time()
+        config_manager.set("pending_registrations", pending_registrations)
     return RedirectResponse(
         url=f"/verify?email={urllib.parse.quote(email)}&sent={'1' if sent else '0'}",
         status_code=302,
@@ -304,13 +353,19 @@ async def forgot_submit(request: Request, email: str = Form(...)):
     if email not in users:
         return await forgot_page(request, sent="1")
     token = _secrets_module.token_hex(32)
-    reset_tokens = dict(cfg.get("reset_tokens") or {})
-    reset_tokens[token] = {"email": email, "expires_at": time.time() + 1800}
+    reset_tokens = prune_expired(
+        dict(cfg.get("reset_tokens") or {}),
+        time.time(),
+    )
+    digest = token_digest(_secret, "reset", email, token)
+    reset_tokens[digest] = {"email": email, "expires_at": time.time() + 1800}
     config_manager.set("reset_tokens", reset_tokens)
     reset_url = str(request.base_url).rstrip("/") + f"/reset?email={urllib.parse.quote(email)}&token={token}"
     sent = send_password_reset_email(cfg, email, reset_url)
     _logger.info("Password reset requested for %s", email)
     if not sent:
+        reset_tokens.pop(digest, None)
+        config_manager.set("reset_tokens", reset_tokens)
         return await forgot_page(request, error=_t("forgot.send_failed", _get_lang()))
     return RedirectResponse(
         url="/forgot?sent=1",
@@ -330,9 +385,14 @@ async def reset_page(request: Request, email: str = "", token: str = "", code: s
 @app.post("/reset")
 async def reset_submit(request: Request, email: str = Form(...), token: str = Form(...), password: str = Form(...), confirm: str = Form(...)):
     cfg = config_manager.get_all()
-    reset_tokens = cfg.get("reset_tokens") or {}
-    stored = reset_tokens.get(token)
+    reset_tokens = dict(cfg.get("reset_tokens") or {})
+    digest = token_digest(_secret, "reset", email, token)
+    stored_key = digest if digest in reset_tokens else token
+    stored = reset_tokens.get(stored_key)
     if not stored or stored.get("email") != email or stored.get("expires_at", 0) < time.time():
+        if stored and stored.get("expires_at", 0) < time.time():
+            reset_tokens.pop(stored_key, None)
+            config_manager.set("reset_tokens", reset_tokens)
         return await reset_page(request, email=email, token=token, error=_t("reset.invalid_token", _get_lang()))
     if password != confirm:
         return await reset_page(request, email=email, token=token, error=_t("reset.mismatch", _get_lang()))
@@ -343,7 +403,7 @@ async def reset_submit(request: Request, email: str = Form(...), token: str = Fo
         return await reset_page(request, email=email, token=token, error=_t("forgot.not_found", _get_lang()))
     users[email] = hash_password(password)
     config_manager.set("users", users)
-    del reset_tokens[token]
+    del reset_tokens[stored_key]
     config_manager.set("reset_tokens", reset_tokens)
     try:
         request.session.pop("reset_token", None)
