@@ -101,8 +101,7 @@ class ConfigManager:
         with self._lock:
             updated = deepcopy(self._config)
             updated[key] = deepcopy(value)
-            self._save(updated)
-            self._config = updated
+            self._commit(updated)
 
     def set_all(self, updates: dict) -> None:
         for k, v in updates.items():
@@ -110,8 +109,7 @@ class ConfigManager:
         with self._lock:
             updated = deepcopy(self._config)
             updated.update(deepcopy(updates))
-            self._save(updated)
-            self._config = updated
+            self._commit(updated)
 
     def update(self, key: str, updater: Callable[[Any], Any]) -> Any:
         """Atomically transform one setting and return a detached result."""
@@ -120,8 +118,7 @@ class ConfigManager:
             new_value = updater(deepcopy(updated.get(key)))
             _validate(key, new_value)
             updated[key] = deepcopy(new_value)
-            self._save(updated)
-            self._config = updated
+            self._commit(updated)
             return deepcopy(new_value)
 
     def transaction(self, updater: Callable[[dict], _T]) -> _T:
@@ -131,9 +128,15 @@ class ConfigManager:
             result = updater(updated)
             for key, value in updated.items():
                 _validate(key, value)
-            self._save(updated)
-            self._config = updated
+            self._commit(updated)
             return deepcopy(result)
+
+    def _commit(self, updated: dict) -> bool:
+        if updated == self._config and _get_config_file().exists():
+            return False
+        self._save(updated)
+        self._config = updated
+        return True
 
     def _load(self) -> dict:
         config_file = _get_config_file()
@@ -169,11 +172,45 @@ class ConfigManager:
         for cp in to_save.get("custom_providers") or []:
             if cp.get("api_key"):
                 cp["api_key"] = encrypt(cp["api_key"])
-        tmp = tempfile.NamedTemporaryFile(mode="w", dir=str(config_dir), delete=False, suffix=".tmp", encoding="utf-8")
+        tmp = tempfile.NamedTemporaryFile(
+            mode="w",
+            dir=str(config_dir),
+            delete=False,
+            suffix=".tmp",
+            encoding="utf-8",
+        )
+        tmp_path = Path(tmp.name)
         try:
             json.dump(to_save, tmp, indent=2, ensure_ascii=False)
+            tmp.flush()
+            os.fsync(tmp.fileno())
+            if hasattr(os, "fchmod"):
+                os.fchmod(tmp.fileno(), 0o600)
             tmp.close()
+            tmp_path.chmod(0o600)
             os.replace(tmp.name, str(config_file))
+            self._sync_directory(config_dir)
         except Exception:
-            os.unlink(tmp.name)
+            if not tmp.closed:
+                tmp.close()
+            try:
+                tmp_path.unlink()
+            except FileNotFoundError:
+                pass
             raise
+
+    @staticmethod
+    def _sync_directory(config_dir: Path) -> None:
+        flags = os.O_RDONLY
+        if hasattr(os, "O_DIRECTORY"):
+            flags |= os.O_DIRECTORY
+        try:
+            directory_fd = os.open(str(config_dir), flags)
+        except OSError:
+            return
+        try:
+            os.fsync(directory_fd)
+        except OSError:
+            pass
+        finally:
+            os.close(directory_fd)
