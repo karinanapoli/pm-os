@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', function() {
 {# ── Workspace Selector ── #}
 <div class="card" style="margin-bottom: 16px;">
     <div class="card-body" style="padding: 12px 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-        <span style="font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.3px;">Workspace:</span>
+        <span style="font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.3px;">{{ "nav.workspace"|t }}:</span>
 
         <a href="/workspace/personal" class="btn btn-sm {% if not current_squad %}btn-ai{% else %}btn-secondary{% endif %}">👤 {{ "squad.personal"|t }}</a>
 
@@ -37,6 +37,31 @@ document.addEventListener('DOMContentLoaded', function() {
 </div>
 
 {% if initiatives %}
+
+{# ── Recommended Next Action ── #}
+{% set without_prd = initiatives|rejectattr("has_prd")|list %}
+<section class="next-action" aria-labelledby="next-action-title">
+    <div>
+        <span class="next-action-eyebrow">{{ "dashboard.next.eyebrow"|t }}</span>
+        {% if total_docs == 0 %}
+        <h3 id="next-action-title">{{ "dashboard.next.add_context_title"|t }}</h3>
+        <p>{{ "dashboard.next.add_context_desc"|t }}</p>
+        {% elif without_prd %}
+        <h3 id="next-action-title">{{ "dashboard.next.generate_title"|t }}</h3>
+        <p>{{ "dashboard.next.generate_desc"|t }}</p>
+        {% else %}
+        <h3 id="next-action-title">{{ "dashboard.next.consult_title"|t }}</h3>
+        <p>{{ "dashboard.next.consult_desc"|t }}</p>
+        {% endif %}
+    </div>
+    {% if total_docs == 0 %}
+    <a href="/initiative/{{ initiatives[0].name }}" class="btn btn-primary">{{ "dashboard.next.add_context_cta"|t }}</a>
+    {% elif without_prd %}
+    <a href="/generate?initiative={{ without_prd[0].name }}" class="btn btn-ai">{{ "dashboard.next.generate_cta"|t }}</a>
+    {% else %}
+    <a href="/consult" class="btn btn-ai">{{ "dashboard.next.consult_cta"|t }}</a>
+    {% endif %}
+</section>
 
 {# ── Stats Row ── #}
 <div class="stats-row">

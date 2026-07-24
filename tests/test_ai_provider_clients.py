@@ -12,6 +12,7 @@ from pm_os.infrastructure.ai.clients.ollama_client import (
     OllamaResponseError,
 )
 from pm_os.infrastructure.ai.clients.openai_client import OpenAIClient
+from pm_os.infrastructure.ai.clients.gateway_client import GatewayClient
 
 
 class FakeHTTPResponse:
@@ -121,6 +122,48 @@ def test_anthropic_rejects_missing_key_and_empty_response(monkeypatch):
     )
     with pytest.raises(AIProviderError, match="no generated content"):
         AnthropicClient(api_key="key").generate("prompt")
+
+
+def test_gateway_sends_routing_metadata_and_returns_content(monkeypatch):
+    captured = {}
+
+    def fake_post(url, **kwargs):
+        captured.update(url=url, **kwargs)
+        return FakeHTTPResponse({
+            "choices": [{"message": {"content": "Gateway PRD"}}]
+        })
+
+    monkeypatch.setattr(
+        "pm_os.infrastructure.ai.clients.gateway_client.httpx.post",
+        fake_post,
+    )
+    client = GatewayClient(
+        base_url="https://gateway.example/v1/",
+        provider="openai",
+        project_id="pm-studio",
+        identifier="gpt-4o-mini-prod",
+        api_key="gateway-key",
+    )
+
+    assert client.generate("Product context") == "Gateway PRD"
+    assert captured["url"] == (
+        "https://gateway.example/v1/chat/completions"
+    )
+    assert captured["headers"]["X-Gateway-Provider"] == "openai"
+    assert captured["headers"]["X-Project-Id"] == "pm-studio"
+    assert captured["headers"]["X-Identifier"] == "gpt-4o-mini-prod"
+    assert captured["headers"]["Authorization"] == "Bearer gateway-key"
+    assert captured["json"]["model"] == "gpt-4o-mini-prod"
+
+
+def test_gateway_requires_complete_routing_configuration():
+    with pytest.raises(
+        AIProviderError,
+        match="Gateway configuration incomplete",
+    ):
+        GatewayClient(base_url="https://gateway.example/v1").generate(
+            "prompt"
+        )
 
 
 class FakeOllamaResponse:

@@ -871,6 +871,39 @@ class TestConfiguration:
         assert len(cfg["mcp_servers"]) == 1
         assert cfg["mcp_servers"][0]["name"] == "Test Server"
 
+    def test_save_gateway_config(self, client, session_base):
+        response = client.post("/config", data={
+            "model": "llama3.2:1b",
+            "ollama_url": "http://localhost:11434",
+            "lang": "pt-BR",
+            "ai_provider": "gateway",
+            "gateway_url": "https://gateway.example/v1",
+            "gateway_provider": "openai",
+            "gateway_project_id": "pm-studio",
+            "gateway_identifier": "gpt-prod",
+            "gateway_api_key": "secret-token",
+        })
+
+        assert response.status_code == 200
+        config_file = session_base / ".pm_os" / "config.json"
+        cfg = json.loads(config_file.read_text())
+        assert cfg["ai_provider"] == "gateway"
+        assert cfg["gateway_project_id"] == "pm-studio"
+        assert cfg["gateway_identifier"] == "gpt-prod"
+        assert cfg["gateway_api_key"] != "secret-token"
+
+    def test_rejects_incomplete_gateway_config(self, client):
+        response = client.post("/config", data={
+            "model": "llama3.2:1b",
+            "ollama_url": "http://localhost:11434",
+            "lang": "pt-BR",
+            "ai_provider": "gateway",
+            "gateway_url": "not-a-url",
+        })
+
+        assert response.status_code == 422
+        assert "gateway" in response.text.lower()
+
     def test_toggle_mcp_server(self, client, session_base):
         client.post("/config/mcp/add", data={
             "name": "Toggle Me",
@@ -1247,7 +1280,7 @@ class TestDashboardEmptyState:
         """Empty state dashboard should show workspace selector."""
         resp = client.get("/")
         assert resp.status_code == 200
-        assert "Workspace:" in resp.text
+        assert "Espaço de trabalho:" in resp.text
 
     def test_empty_state_has_quickstart_button(self, client):
         """Empty state should have the quickstart button."""

@@ -20,6 +20,7 @@ def test_default_config(fresh_config):
     assert cm.get("lang") == "pt-BR"
     assert cm.get("model") == "llama3.2:1b"
     assert cm.get("mcp_servers") == []
+    assert cm.get("gateway_project_id") == ""
 
 
 def test_set_and_get(fresh_config):
@@ -228,3 +229,19 @@ def test_config_file_permissions_are_private(fresh_config):
     config_file = Path(os.environ["PM_OS_CONFIG_DIR"]) / "config.json"
 
     assert config_file.stat().st_mode & 0o777 == 0o600
+
+
+def test_gateway_api_key_is_encrypted_at_rest(fresh_config):
+    cm = ConfigManager()
+    cm.set_all({
+        "gateway_url": "https://gateway.example/v1",
+        "gateway_provider": "openai",
+        "gateway_project_id": "pm-studio",
+        "gateway_identifier": "gpt-prod",
+        "gateway_api_key": "secret-token",
+    })
+    config_file = Path(os.environ["PM_OS_CONFIG_DIR"]) / "config.json"
+    persisted = config_file.read_text(encoding="utf-8")
+
+    assert "secret-token" not in persisted
+    assert ConfigManager().get("gateway_api_key") == "secret-token"

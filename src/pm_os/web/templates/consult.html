@@ -3,10 +3,11 @@
 
 {% block content %}
 <div class="card">
-    <div class="card-header">
-        <h3>{{ "consult.card_title"|t }}</h3>
-    </div>
     <div class="card-body">
+        <div class="learning-callout">
+            <strong>{{ "consult.guide_title"|t }}</strong>
+            <span>{{ "consult.guide_desc"|t }}</span>
+        </div>
         <form method="POST" action="/consult" class="form" data-loading="processing">
             <div class="form-group">
                 <label for="question">{{ "consult.question"|t }}</label>

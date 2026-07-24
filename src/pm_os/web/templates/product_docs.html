@@ -3,9 +3,6 @@
 
 {% block content %}
 <div class="card">
-    <div class="card-header">
-        <h3>{{ "product_docs.card_title"|t }}</h3>
-    </div>
     <div class="card-body">
         <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 24px;">
             {{ "product_docs.desc"|t }}
@@ -14,7 +11,14 @@
         <h4 style="margin-bottom: 12px;">{{ "product_docs.upload"|t }}</h4>
         <form method="POST" action="/product-docs/upload" enctype="multipart/form-data" class="form" style="margin-bottom: 32px;" data-loading="saving">
             <div class="form-group">
-                <input type="file" name="docs" multiple accept=".md,.txt,.pdf">
+                <label for="product-doc-files">{{ "product_docs.choose_files"|t }}</label>
+                <div class="file-picker">
+                    <input type="file" name="docs" id="product-doc-files" multiple
+                           accept=".md,.txt,.pdf"
+                           onchange="document.getElementById('selected-files').textContent = this.files.length ? this.files.length + ' {{ 'product_docs.files_selected'|t }}' : '{{ 'product_docs.no_file_selected'|t }}'">
+                    <label for="product-doc-files" class="btn btn-secondary btn-sm">{{ "product_docs.browse"|t }}</label>
+                    <span id="selected-files">{{ "product_docs.no_file_selected"|t }}</span>
+                </div>
                 <div class="form-hint">{{ "product_docs.upload_hint"|t }}</div>
             </div>
             <button type="submit" class="btn btn-primary btn-sm">{{ "product_docs.upload_cta"|t }}</button>
@@ -23,10 +27,12 @@
         <h4 style="margin-bottom: 12px;">{{ "product_docs.links"|t }}</h4>
         <form method="POST" action="/product-docs/add-link" class="form" style="margin-bottom: 16px; display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap;" data-loading="saving">
             <div class="form-group" style="flex: 1; min-width: 180px;">
-                <input type="text" name="title" placeholder="{{ 'product_docs.links_title_placeholder'|t }}" required>
+                <label for="product-link-title">{{ "product_docs.links_title"|t }}</label>
+                <input type="text" name="title" id="product-link-title" placeholder="{{ 'product_docs.links_title_placeholder'|t }}" required>
             </div>
             <div class="form-group" style="flex: 2; min-width: 240px;">
-                <input type="url" name="url" placeholder="{{ 'product_docs.links_url_placeholder'|t }}" required>
+                <label for="product-link-url">{{ "product_docs.links_url"|t }}</label>
+                <input type="url" name="url" id="product-link-url" placeholder="{{ 'product_docs.links_url_placeholder'|t }}" required>
             </div>
             <button type="submit" class="btn btn-primary btn-sm">{{ "product_docs.links_add"|t }}</button>
         </form>
