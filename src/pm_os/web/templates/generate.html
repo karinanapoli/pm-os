@@ -3,10 +3,11 @@
 
 {% block content %}
 <div class="card">
-    <div class="card-header">
-        <h3>{{ "generate.card_title"|t }}</h3>
-    </div>
     <div class="card-body">
+        <div class="learning-callout">
+            <strong>{{ "generate.guide_title"|t }}</strong>
+            <span>{{ "generate.guide_desc"|t }}</span>
+        </div>
         <form method="POST" action="/generate" class="form" data-loading="processing" id="genForm">
             <div class="form-group">
                 <label for="initiative_name">{{ "generate.initiative"|t }}</label>
@@ -18,6 +19,10 @@
                 </select>
                 <div class="form-hint">{{ "generate.initiative_hint"|t }}</div>
             </div>
+
+            <details class="advanced-options">
+                <summary>{{ "generate.advanced_title"|t }}</summary>
+                <p class="form-hint">{{ "generate.advanced_hint"|t }}</p>
 
             {% set has_extra = initiatives|selectattr("name", "ne", selected_initiative)|list %}
             {% if has_extra %}
@@ -89,6 +94,7 @@
                 <div class="form-hint">{{ "mcp.use_context_hint"|t }}</div>
             </div>
             {% endif %}
+            </details>
 
             {# ── Live context preview ── #}
             <div class="form-group">
@@ -113,6 +119,8 @@
                         OpenAI · {{ config.openai_model or 'gpt-4o-mini' }}
                     {% elif ai_provider == 'anthropic' %}
                         Anthropic · {{ config.anthropic_model or 'claude-3-haiku' }}
+                    {% elif ai_provider == 'gateway' %}
+                        Gateway · {{ config.gateway_provider or '—' }} · {{ config.gateway_identifier or '—' }}
                     {% else %}
                         {% set ns = namespace(custom_found=false) %}
                         {% for p in (config.custom_providers or []) %}
@@ -128,7 +136,7 @@
                     · <a href="/config" style="color: var(--primary-light);">{{ "generate.change"|t }}</a>
                 </p>
             </div>
-            <button type="submit" class="btn btn-ai" id="genCta">{{ "generate.cta"|t }}</button>
+            <button type="submit" class="btn btn-ai" id="genCta" disabled>{{ "generate.cta"|t }}</button>
         </form>
     </div>
 </div>
@@ -341,6 +349,8 @@ function updatePreview() {
     var box = document.getElementById('genPreview');
     var privacyBox = document.getElementById('privacyPreview');
     var mainSel = document.getElementById('initiative_name');
+    var generateButton = document.getElementById('genCta');
+    if (generateButton) generateButton.disabled = !mainSel.value;
     var mainOpt = mainSel.options[mainSel.selectedIndex];
     var mainDocs = mainOpt && mainOpt.dataset.docs ? parseInt(mainOpt.dataset.docs) : 0;
     var totalChars = mainOpt && mainOpt.dataset.chars ? parseInt(mainOpt.dataset.chars) : 0;
@@ -478,6 +488,7 @@ function updatePreview() {
 document.addEventListener('DOMContentLoaded', function() {
     var mainSelect = document.getElementById('initiative_name');
     var checkboxGroup = document.getElementById('additional_initiatives');
+    updatePreview();
     if (!checkboxGroup) return;
     var allLabels = Array.from(checkboxGroup.querySelectorAll('.checkbox-row')).map(function(lbl) {
         var cb = lbl.querySelector('input[type=checkbox]');

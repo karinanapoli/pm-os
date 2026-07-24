@@ -31,6 +31,7 @@ from pm_os.infrastructure.ai.clients.ollama_client import (
 from pm_os.infrastructure.ai.clients.openai_client import OpenAIClient
 from pm_os.infrastructure.ai.clients.anthropic_client import AnthropicClient
 from pm_os.infrastructure.ai.clients.fake_ai_client import FakeAIClient
+from pm_os.infrastructure.ai.clients.gateway_client import GatewayClient
 from pm_os.infrastructure.security import hash_password, password_is_strong, verify_password
 from pm_os.contracts.workflow_contracts import AIClient
 from pm_os.domain.initiative import Initiative
@@ -576,6 +577,7 @@ def _ctx(request: Request, **extra: object) -> dict:
     cfg.pop("users", None)
     cfg.pop("openai_api_key", None)
     cfg.pop("anthropic_api_key", None)
+    cfg.pop("gateway_api_key", None)
     cfg.pop("auth_password", None)
     cfg.pop("smtp_password", None)
     cfg.pop("pending_registrations", None)
@@ -630,6 +632,14 @@ def _build_ai_client() -> AIClient:
             model=cfg.get("anthropic_model", "claude-3-haiku-20240307"),
             api_key=cfg.get("anthropic_api_key", ""),
         )
+    if provider == "gateway":
+        return GatewayClient(
+            base_url=cfg.get("gateway_url", ""),
+            provider=cfg.get("gateway_provider", ""),
+            project_id=cfg.get("gateway_project_id", ""),
+            identifier=cfg.get("gateway_identifier", ""),
+            api_key=cfg.get("gateway_api_key", ""),
+        )
     for cp in cfg.get("custom_providers") or []:
         if cp.get("name") == provider:
             return OpenAIClient(
@@ -641,6 +651,23 @@ def _build_ai_client() -> AIClient:
         model=cfg.get("model", "llama3.2"),
         base_url=cfg.get("ollama_url", "http://localhost:11434"),
     )
+
+
+def _validate_gateway_config(
+    url: str,
+    provider: str,
+    project_id: str,
+    identifier: str,
+) -> None:
+    parsed = urllib.parse.urlsplit(url)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise ValueError(_t("gateway.invalid_url", _get_lang()))
+    if not all(value.strip() for value in (
+        provider,
+        project_id,
+        identifier,
+    )):
+        raise ValueError(_t("gateway.required_fields", _get_lang()))
 
 
 def _build_prd_validation_service(lang: str) -> PRDValidationService:
@@ -1412,6 +1439,11 @@ async def save_config(
     openai_model: str = Form(""),
     anthropic_api_key: str = Form(""),
     anthropic_model: str = Form(""),
+    gateway_url: str = Form(""),
+    gateway_provider: str = Form(""),
+    gateway_project_id: str = Form(""),
+    gateway_identifier: str = Form(""),
+    gateway_api_key: str = Form(""),
     smtp_host: str = Form(""),
     smtp_port: str = Form("587"),
     smtp_user: str = Form(""),
@@ -1419,6 +1451,21 @@ async def save_config(
     smtp_from_email: str = Form(""),
     smtp_from_name: str = Form("PM Studio"),
 ):
+    if ai_provider == "gateway":
+        try:
+            _validate_gateway_config(
+                gateway_url,
+                gateway_provider,
+                gateway_project_id,
+                gateway_identifier,
+            )
+        except ValueError as exc:
+            return templates.TemplateResponse(
+                request,
+                "config.html",
+                _ctx(request, saved=False, error=str(exc)),
+                status_code=422,
+            )
     updates = {
         "model": model,
         "ollama_url": ollama_url,
@@ -1431,6 +1478,10 @@ async def save_config(
         "smtp_user": smtp_user,
         "smtp_from_email": smtp_from_email,
         "smtp_from_name": smtp_from_name,
+        "gateway_url": gateway_url.strip(),
+        "gateway_provider": gateway_provider.strip(),
+        "gateway_project_id": gateway_project_id.strip(),
+        "gateway_identifier": gateway_identifier.strip(),
     }
     if auth_username:
         updates["auth_username"] = auth_username
@@ -1446,6 +1497,8 @@ async def save_config(
             updates["anthropic_api_key"] = anthropic_api_key
         if anthropic_model:
             updates["anthropic_model"] = anthropic_model
+    if ai_provider == "gateway" and gateway_api_key:
+        updates["gateway_api_key"] = gateway_api_key
     if smtp_password:
         updates["smtp_password"] = smtp_password
     config_manager.set_all(updates)

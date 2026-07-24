@@ -9,12 +9,11 @@
 {% if saved %}
 <div class="alert alert-success" role="status" aria-live="polite">{{ "config.saved"|t }}</div>
 {% endif %}
+{% if error %}
+<div class="alert alert-error" role="alert">{{ error }}</div>
+{% endif %}
 
 <div class="card">
-    <div class="card-header">
-        <h3>{{ "config.card_title"|t }}</h3>
-    </div>
-
     {# ─── Tab Navigation ─── #}
     <div class="tab-bar" style="display:flex;border-bottom:1px solid var(--border);padding:0 20px;">
         <button class="tab-btn active" data-tab="general" type="button" onclick="switchTab('general')">{{ "config.tab_general"|t }}</button>
@@ -65,7 +64,7 @@
                 <div class="form-group" style="border-top: 1px solid var(--border); padding-top: 20px; margin-top: 8px;">
                     <label style="font-weight: 600; font-size: 14px; color: var(--text);">{{ "config.smtp"|t }}</label>
                     <div class="form-hint" style="margin-bottom: 14px;">{{ "config.smtp_hint"|t }}</div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <div class="form-grid-2">
                         <div>
                             <label for="smtp_host">{{ "config.smtp_host"|t }}</label>
                             <input type="text" name="smtp_host" id="smtp_host" value="{{ config.smtp_host or '' }}" placeholder="smtp.gmail.com">
@@ -75,7 +74,7 @@
                             <input type="text" name="smtp_port" id="smtp_port" value="{{ config.smtp_port or '587' }}" placeholder="587">
                         </div>
                     </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
+                    <div class="form-grid-2" style="margin-top: 12px;">
                         <div>
                             <label for="smtp_user">{{ "config.smtp_user"|t }}</label>
                             <input type="text" name="smtp_user" id="smtp_user" value="{{ config.smtp_user or '' }}" placeholder="seu@email.com">
@@ -85,7 +84,7 @@
                             <input type="password" name="smtp_password" id="smtp_password" placeholder="••••••••" value="">
                         </div>
                     </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
+                    <div class="form-grid-2" style="margin-top: 12px;">
                         <div>
                             <label for="smtp_from_email">{{ "config.smtp_from_email"|t }}</label>
                             <input type="email" name="smtp_from_email" id="smtp_from_email" value="{{ config.smtp_from_email or '' }}" placeholder="noreply@pmstudio.app">
@@ -97,38 +96,29 @@
                     </div>
                 </div>
 
-                <div style="border-top: 2px solid rgba(239,68,68,0.3); padding-top: 24px; margin-top: 24px;">
-                    <label style="font-weight: 700; font-size: 14px; color: #ef4444; margin-bottom: 6px; display: block;">{{ "config.delete_account"|t }}</label>
-                    <div class="form-hint" style="margin-bottom: 14px;">{{ "config.delete_account_desc"|t }}</div>
-                    <div>
-                        <label for="delete_email" style="display: block; font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px;">{{ "config.delete_account_confirm"|t }}</label>
-                        <div style="display: flex; gap: 8px; align-items: center;">
-                            <input type="email" name="delete_email" id="delete_email" placeholder="email@exemplo.com" style="flex: 1; padding: 10px 14px; background: rgba(255,255,255,0.04); border: 1px solid rgba(239,68,68,0.3); border-radius: var(--radius-sm); color: var(--text); font-size: 14px; outline: none; box-sizing: border-box;">
-                            <button type="submit" class="btn" style="background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); white-space: nowrap;" onclick="return confirmDeleteAccount(document.getElementById('delete_email').value)">{{ "config.delete_account_cta"|t }}</button>
-                        </div>
-                    </div>
+                <div class="sticky-save-bar">
+                    <span>{{ "config.save_hint"|t }}</span>
+                    <button type="submit" class="btn btn-primary">{{ "config.save"|t }}</button>
                 </div>
-
-                <button type="submit" class="btn btn-primary">{{ "config.save"|t }}</button>
             </div>
         </div>
 
         {# ─── Tab: Providers ─── #}
         <div class="tab-panel" id="tab-providers">
             <div class="card-body">
-                <div class="form-group">
-                    <label for="ollama_url">{{ "config.ollama_url"|t }}</label>
-                    <input type="text" name="ollama_url" id="ollama_url" value="{{ config.ollama_url }}" required>
-                    <div class="form-hint">{{ "config.ollama_url_hint"|t }}</div>
+                <div class="learning-callout">
+                    <strong>{{ "config.ai_guide_title"|t }}</strong>
+                    <span>{{ "config.ai_guide_desc"|t }}</span>
                 </div>
 
-                <div class="form-group" style="border-top: 1px solid var(--border); padding-top: 20px; margin-top: 8px;">
+                <div class="form-group">
                     <label for="ai_provider">{{ "config.ai_provider"|t }}</label>
                     <select name="ai_provider" id="ai_provider" onchange="toggleProviderFields()">
                         <option value="demo" {% if config.ai_provider == 'demo' %}selected{% endif %}>Demo (sem IA externa)</option>
                         <option value="ollama" {% if config.ai_provider == 'ollama' %}selected{% endif %}>Ollama (local)</option>
                         <option value="openai" {% if config.ai_provider == 'openai' %}selected{% endif %}>OpenAI</option>
                         <option value="anthropic" {% if config.ai_provider == 'anthropic' %}selected{% endif %}>Anthropic</option>
+                        <option value="gateway" {% if config.ai_provider == 'gateway' %}selected{% endif %}>Gateway</option>
                         {% for cp in custom_providers %}
                         <option value="{{ cp.name }}" {% if config.ai_provider == cp.name %}selected{% endif %}>{{ cp.name }}</option>
                         {% endfor %}
@@ -141,6 +131,11 @@
                 </div>
 
                 <div id="provider-ollama" class="provider-fields">
+                    <div class="form-group">
+                        <label for="ollama_url">{{ "config.ollama_url"|t }}</label>
+                        <input type="url" name="ollama_url" id="ollama_url" value="{{ config.ollama_url }}" required>
+                        <div class="form-hint">{{ "config.ollama_url_hint"|t }}</div>
+                    </div>
                     <div class="form-group">
                         <label for="model">{{ "config.model"|t }}</label>
                         <input type="text" name="model" id="model" value="{{ config.model }}" required>
@@ -174,6 +169,49 @@
                     </div>
                 </div>
 
+                <div id="provider-gateway" class="provider-fields" style="display:none">
+                    <div class="learning-callout">
+                        <strong>{{ "gateway.what_is_title"|t }}</strong>
+                        <span>{{ "gateway.what_is_desc"|t }}</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="gateway_url">{{ "gateway.url"|t }}</label>
+                        <input type="url" name="gateway_url" id="gateway_url"
+                               value="{{ config.gateway_url or '' }}"
+                               placeholder="https://gateway.exemplo.com/v1">
+                        <div class="form-hint">{{ "gateway.url_hint"|t }}</div>
+                    </div>
+                    <div class="form-grid-2">
+                        <div class="form-group">
+                            <label for="gateway_provider">{{ "gateway.provider"|t }}</label>
+                            <input type="text" name="gateway_provider" id="gateway_provider"
+                                   value="{{ config.gateway_provider or '' }}"
+                                   placeholder="{{ 'gateway.provider_placeholder'|t }}">
+                        </div>
+                        <div class="form-group">
+                            <label for="gateway_project_id">{{ "gateway.project_id"|t }}</label>
+                            <input type="text" name="gateway_project_id" id="gateway_project_id"
+                                   value="{{ config.gateway_project_id or '' }}"
+                                   placeholder="{{ 'gateway.project_id_placeholder'|t }}">
+                        </div>
+                    </div>
+                    <div class="form-grid-2">
+                        <div class="form-group">
+                            <label for="gateway_identifier">{{ "gateway.identifier"|t }}</label>
+                            <input type="text" name="gateway_identifier" id="gateway_identifier"
+                                   value="{{ config.gateway_identifier or '' }}"
+                                   placeholder="{{ 'gateway.identifier_placeholder'|t }}">
+                            <div class="form-hint">{{ "gateway.identifier_hint"|t }}</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="gateway_api_key">{{ "gateway.api_key"|t }}</label>
+                            <input type="password" name="gateway_api_key" id="gateway_api_key"
+                                   value="" placeholder="{{ 'gateway.api_key_placeholder'|t }}">
+                            <div class="form-hint">{{ "config.api_key_hint"|t }}</div>
+                        </div>
+                    </div>
+                </div>
+
                 {% for cp in custom_providers %}
                 <div id="provider-{{ cp.name }}" class="provider-fields provider-custom" style="display:none">
                     <div class="form-group">
@@ -194,7 +232,10 @@
                 </div>
                 {% endfor %}
 
-                <button type="submit" class="btn btn-primary">{{ "config.save"|t }}</button>
+                <div class="sticky-save-bar">
+                    <span>{{ "config.save_hint"|t }}</span>
+                    <button type="submit" class="btn btn-primary">{{ "config.save"|t }}</button>
+                </div>
             </div>
         </form>
 
@@ -202,7 +243,7 @@
         <div class="card-body" style="border-top:1px solid var(--border);">
             <h4 style="margin-bottom: 16px;">{{ "config.provider_custom"|t }}</h4>
             <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 20px;">
-                Adicione providers compatíveis com a API da OpenAI (ex: Groq, Together AI, Perplexity, etc.).
+                {{ "config.provider_custom_desc"|t }}
             </p>
 
             <form method="POST" action="/config/provider/add" class="form" style="margin-bottom: 22px; padding-bottom: 22px; border-bottom: 1px solid var(--border);" data-loading="saving">
@@ -256,10 +297,12 @@
             <form method="POST" action="/config/mcp/add" class="form" style="margin-bottom: 22px; padding-bottom: 22px; border-bottom: 1px solid var(--border);" data-loading="saving" id="mcpAddForm">
                 <div style="display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;">
                     <div class="form-group" style="flex: 1; min-width: 170px; margin-bottom: 0;">
-                        <input type="text" name="name" placeholder="{{ 'mcp.name_placeholder'|t }}" required>
+                        <label for="mcp-name">{{ "mcp.name"|t }}</label>
+                        <input type="text" name="name" id="mcp-name" placeholder="{{ 'mcp.name_placeholder'|t }}" required>
                     </div>
                     <div class="form-group" style="flex: 2; min-width: 220px; margin-bottom: 0;">
-                        <input type="url" name="url" placeholder="{{ 'mcp.url_placeholder'|t }}" required oninput="document.getElementById('mcpTestRow').style.display='none'">
+                        <label for="mcp-url">{{ "mcp.url"|t }}</label>
+                        <input type="url" name="url" id="mcp-url" placeholder="{{ 'mcp.url_placeholder'|t }}" required oninput="document.getElementById('mcpTestRow').style.display='none'">
                     </div>
                     <button type="button" class="btn btn-secondary btn-sm" onclick="testMcpConnection(this)">{{ "mcp.test_connection"|t }}</button>
                     <button type="submit" class="btn btn-primary btn-sm">{{ "mcp.add"|t }}</button>
@@ -305,12 +348,26 @@
         <div class="card-body">
             <div class="empty-state" style="text-align:center;padding:40px 20px;">
                 <div style="font-size: 40px; margin-bottom: 16px;">🧩</div>
-                <h4 style="margin-bottom: 8px;">Plugins</h4>
-                <p style="color: var(--text-muted); font-size: 14px; max-width: 400px; margin: 0 auto;">Em breve — extensões e integrações para expandir as capacidades do PM Studio.</p>
+                <h4 style="margin-bottom: 8px;">{{ "config.extensions_title"|t }}</h4>
+                <p style="color: var(--text-muted); font-size: 14px; max-width: 400px; margin: 0 auto;">{{ "config.extensions_desc"|t }}</p>
             </div>
         </div>
     </div>
 </div>
+
+<section class="danger-zone" aria-labelledby="danger-zone-title">
+    <h3 id="danger-zone-title">{{ "config.danger_zone"|t }}</h3>
+    <p>{{ "config.delete_account_desc"|t }}</p>
+    <form method="POST" action="/config/delete-account" class="form" data-loading="deleting"
+          onsubmit="return confirm('{{ 'config.delete_account_desc'|t }}')">
+        <div class="form-group">
+            <label for="delete_email">{{ "config.delete_account_confirm"|t }}</label>
+            <input type="email" name="email" id="delete_email"
+                   placeholder="email@exemplo.com" required>
+        </div>
+        <button type="submit" class="btn btn-coral">{{ "config.delete_account_cta"|t }}</button>
+    </form>
+</section>
 
 {# ─── MCP Delete Modal ─── #}
 <div class="modal-overlay" id="modal-delete-mcp">

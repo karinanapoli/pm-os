@@ -8,7 +8,13 @@ from typing import Any, Callable, TypeVar
 
 from pm_os.infrastructure.cipher import decrypt, encrypt
 
-_SENSITIVE_KEYS = frozenset({"openai_api_key", "anthropic_api_key", "auth_password", "smtp_password"})
+_SENSITIVE_KEYS = frozenset({
+    "openai_api_key",
+    "anthropic_api_key",
+    "gateway_api_key",
+    "auth_password",
+    "smtp_password",
+})
 _T = TypeVar("_T")
 
 def _get_config_dir() -> Path:
@@ -33,6 +39,11 @@ SCHEMA: dict[str, type] = {
     "openai_model": str,
     "anthropic_api_key": str,
     "anthropic_model": str,
+    "gateway_url": str,
+    "gateway_provider": str,
+    "gateway_project_id": str,
+    "gateway_identifier": str,
+    "gateway_api_key": str,
     "custom_providers": list,
     "users": dict,
     "pending_registrations": dict,
@@ -62,6 +73,11 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "openai_model": "gpt-4o-mini",
     "anthropic_api_key": "",
     "anthropic_model": "claude-3-haiku-20240307",
+    "gateway_url": "",
+    "gateway_provider": "",
+    "gateway_project_id": "",
+    "gateway_identifier": "",
+    "gateway_api_key": "",
     "custom_providers": [],
     "users": {},
     "pending_registrations": {},

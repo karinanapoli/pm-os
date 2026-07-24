@@ -7,12 +7,13 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css?v=20260723-responsive">
+    <link rel="stylesheet" href="/static/style.css?v=20260724-ux-gateway">
     <link rel="stylesheet" href="/static/tour.css">
 </head>
 <body>
+    <a class="skip-link" href="#main-content">{{ "a11y.skip_content"|t }}</a>
     <div class="layout">
-        <aside class="sidebar">
+        <aside class="sidebar" id="appSidebar" aria-label="{{ 'a11y.primary_navigation'|t }}">
             <div class="sidebar-header">
                 <h1 class="logo">PM Studio</h1>
                 <span class="logo-sub">{{ "app.subtitle"|t }}</span>
@@ -96,12 +97,14 @@
                     {% endif %}
                     <div style="display: flex; align-items: center; justify-content: space-between;">
                         <span class="model-badge">
-                            <span class="model-dot"></span>
+                            <span class="model-dot configured" title="{{ 'model.configured_not_verified'|t }}"></span>
                             {% set ai_provider = config.ai_provider or 'ollama' %}
                             {% if ai_provider == 'openai' %}
                                 OpenAI · {{ config.openai_model or 'gpt-4o-mini' }}
                             {% elif ai_provider == 'anthropic' %}
                                 Anthropic · {{ config.anthropic_model or 'claude-3-haiku' }}
+                            {% elif ai_provider == 'gateway' %}
+                                Gateway · {{ config.gateway_provider or '—' }} · {{ config.gateway_identifier or '—' }}
                             {% else %}
                                 {% set ns = namespace(custom_found=false) %}
                                 {% for p in (config.custom_providers or []) %}
@@ -123,14 +126,19 @@
 
         <main class="main">
             <header class="topbar">
+                <button type="button" class="mobile-menu-toggle" id="mobileMenuToggle"
+                        aria-controls="appSidebar" aria-expanded="false"
+                        aria-label="{{ 'a11y.open_menu'|t }}">☰</button>
                 <h2 class="page-title">{% block page_title %}{{ "dashboard.title"|t }}{% endblock %}</h2>
                 {% block topbar_actions %}{% endblock %}
             </header>
-            <div class="content">
+            <div class="content" id="main-content" tabindex="-1">
                 {% block content %}{% endblock %}
             </div>
         </main>
     </div>
+    <button type="button" class="sidebar-backdrop" id="sidebarBackdrop"
+            aria-label="{{ 'a11y.close_menu'|t }}"></button>
 
     <div class="loading-overlay" id="loadingOverlay" role="status" aria-live="polite" aria-hidden="true">
         <div class="loading-spinner"></div>
@@ -188,6 +196,27 @@
 
         // Close modals on backdrop click
         document.addEventListener('DOMContentLoaded', function() {
+            var sidebar = document.getElementById('appSidebar');
+            var menuToggle = document.getElementById('mobileMenuToggle');
+            var backdrop = document.getElementById('sidebarBackdrop');
+
+            function setMenu(open) {
+                sidebar.classList.toggle('mobile-open', open);
+                backdrop.classList.toggle('active', open);
+                menuToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+                document.body.classList.toggle('menu-open', open);
+            }
+            menuToggle.addEventListener('click', function() {
+                setMenu(!sidebar.classList.contains('mobile-open'));
+            });
+            backdrop.addEventListener('click', function() { setMenu(false); });
+            sidebar.querySelectorAll('a').forEach(function(link) {
+                link.addEventListener('click', function() { setMenu(false); });
+            });
+            document.addEventListener('keydown', function(event) {
+                if (event.key === 'Escape') setMenu(false);
+            });
+
             document.querySelectorAll('.modal-overlay').forEach(function(modal) {
                 modal.addEventListener('click', function(e) {
                     if (e.target === modal) modal.classList.remove('active');
