@@ -62,6 +62,10 @@ from pm_os.web.prd_generation_operation import (
 )
 from pm_os.web.product_consultation_service import ProductConsultationService
 from pm_os.web.mcp_context_service import MCPContextService
+from pm_os.web.initiative_lifecycle_service import (
+    InitiativeLifecycleService,
+    InvalidInitiativeId,
+)
 from pm_os.web.public_urls import allowed_hosts_from_env, external_base_url
 from pm_os.web.request_limits import (
     MAX_UPLOAD_FILE_BYTES,
@@ -1070,56 +1074,21 @@ async def create_initiative(
     context: str = Form(""),
 ):
     repo = _repo(_get_session_squad(request))
-
-    init_id = id.strip()
-    if not init_id:
-        safe_name = re.sub(r'[^A-Z0-9]+', '-', name.strip().upper()).strip('-')
-        init_id = f"INT-{safe_name[:30]}"
-    else:
-        if not re.match(r'^[A-Za-z0-9_-]+$', init_id):
-            return templates.TemplateResponse(
-                request,
-                "initiative_new.html",
-                _ctx(request, error=_t("initiative.new.invalid_id", _get_lang())),
-            )
-        init_id = init_id.strip('-_.')
-        if not init_id:
-            safe_name = re.sub(r'[^A-Z0-9]+', '-', name.strip().upper()).strip('-')
-            init_id = f"INT-{safe_name[:30]}"
-
-    base_path = repo.initiatives_path / init_id
-    if base_path.exists():
-        counter = 1
-        while base_path.exists():
-            suffixed = f"{init_id}-{counter:03d}"
-            base_path = repo.initiatives_path / suffixed
-            counter += 1
-        init_id = base_path.name
-
-    base_path.mkdir(parents=True, exist_ok=True)
-    (base_path / "artifacts").mkdir(exist_ok=True)
-    (base_path / "context").mkdir(exist_ok=True)
-    (base_path / "logs").mkdir(exist_ok=True)
-
-    metadata = {
-        "id": init_id,
-        "name": name.strip(),
-        "status": status,
-        "squad": _get_session_squad(request),
-        "created_at": str(date.today()),
-        "artifacts": ["prd"],
-        "workflows": ["create_prd"],
-    }
-    meta_path = base_path / "metadata.yaml"
-    meta_path.write_text(yaml.dump(metadata, default_flow_style=False, allow_unicode=True), encoding="utf-8")
-
-    if context.strip():
-        ctx_path = base_path / "context" / "context.md"
-        ctx_path.write_text(context.strip(), encoding="utf-8")
-
-    tracker = create_change_tracker()
-    tracker.update_manifest(str(base_path))
-
+    service = InitiativeLifecycleService(repo, create_change_tracker)
+    try:
+        init_id = service.create(
+            name=name,
+            initiative_id=id,
+            status=status,
+            context=context,
+            squad_name=_get_session_squad(request),
+        )
+    except InvalidInitiativeId:
+        return templates.TemplateResponse(
+            request,
+            "initiative_new.html",
+            _ctx(request, error=_t("initiative.new.invalid_id", _get_lang())),
+        )
     _logger.info("Initiative created: %s", init_id)
     return await dashboard(request)
 
@@ -1643,27 +1612,11 @@ async def delete_account(request: Request, email: str = Form(...)):
 @app.post("/initiative/{initiative_name}/delete", response_class=HTMLResponse)
 async def delete_initiative(request: Request, initiative_name: str):
     repo = _repo(_get_session_squad(request))
-    selected = repo.get(initiative_name, load_content=False)
-
-    if not selected:
+    archived_name = InitiativeLifecycleService(
+        repo, create_change_tracker
+    ).archive(initiative_name)
+    if not archived_name:
         return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
-
-    # Archive instead of permanent delete
-    archive_base = repo.initiatives_path.parent / "archived"
-    archive_base.mkdir(parents=True, exist_ok=True)
-
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    archive_path = archive_base / f"{initiative_name}_{timestamp}"
-
-    if selected.path.exists():
-        shutil.move(str(selected.path), str(archive_path))
-
-        # Write archive metadata
-        archive_meta = archive_path / ".archive_meta"
-        archive_meta.write_text(
-            f"archived_at: {timestamp}\noriginal_name: {initiative_name}\n",
-            encoding="utf-8",
-        )
 
     _logger.info("Initiative archived: %s", initiative_name)
     return await dashboard(request)
@@ -1853,21 +1806,9 @@ async def timeline_page(request: Request):
 @app.get("/archived", response_class=HTMLResponse)
 async def archived_page(request: Request):
     repo = _repo(_get_session_squad(request))
-    archive_dir = repo.initiatives_path.parent / "archived"
-    archived = []
-    if archive_dir.exists():
-        for f in sorted(archive_dir.iterdir(), reverse=True):
-            if f.is_dir():
-                archived_at = ""
-                meta_file = f / ".archive_meta"
-                if meta_file.exists():
-                    for line in meta_file.read_text(encoding="utf-8").splitlines():
-                        if line.startswith("archived_at:"):
-                            archived_at = line.split(":", 1)[1].strip()
-                archived.append({
-                    "name": f.name,
-                    "archived_at": archived_at,
-                })
+    archived = InitiativeLifecycleService(
+        repo, create_change_tracker
+    ).list_archived()
     return templates.TemplateResponse(
         request,
         "archived.html",
@@ -1878,23 +1819,11 @@ async def archived_page(request: Request):
 @app.post("/archived/restore", response_class=HTMLResponse)
 async def restore_initiative(request: Request, name: str = Form(...)):
     repo = _repo(_get_session_squad(request))
-    archive_dir = repo.initiatives_path.parent / "archived"
-    # Prevent path traversal: reject names with parent dir components
-    clean_name = Path(name).name
-    if not clean_name:
-        return await archived_page(request)
-    src = archive_dir / clean_name
-    if src.exists() and src.is_dir():
-        # Extract original name from archive name (format: name_YYYYMMDD_HHMMSS)
-        parts = clean_name.rsplit("_", 2)
-        original_name = parts[0] if len(parts) >= 2 else clean_name
-        dst = repo.initiatives_path / original_name
-        if dst.exists():
-            dst = repo.initiatives_path / f"{original_name}_restored"
-        shutil.move(str(src), str(dst))
-        tracker = create_change_tracker()
-        tracker.update_manifest(str(dst))
-        _logger.info("Initiative restored: %s → %s", clean_name, dst.name)
+    restored_name = InitiativeLifecycleService(
+        repo, create_change_tracker
+    ).restore(name)
+    if restored_name:
+        _logger.info("Initiative restored: %s → %s", name, restored_name)
     return await archived_page(request)
 
 
