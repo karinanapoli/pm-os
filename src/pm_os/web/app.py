@@ -63,6 +63,7 @@ from pm_os.web.prd_generation_operation import (
     PRDGenerationOperation,
     PRDGenerationRequest,
 )
+from pm_os.web.product_consultation_service import ProductConsultationService
 from pm_os.web.public_urls import allowed_hosts_from_env, external_base_url
 from pm_os.web.request_limits import (
     MAX_UPLOAD_FILE_BYTES,
@@ -1755,47 +1756,20 @@ async def consult_docs(
     try:
         ai_client = _build_ai_client()
         repo = _repo(_get_session_squad(request))
-
-        context_parts = []
         all_names = repo.list_names()
-        for initiative_name in initiatives:
-            init = repo.get(initiative_name)
-            if init and init.documents:
-                docs_text = ContextBuilder().build(init)
-                context_parts.append(f"--- Iniciativa: {init.name} ---\n\n{docs_text}")
-
-        if use_product_docs:
-            pd_context = _product_docs_service(request).build_context()
-            if pd_context.strip():
-                context_parts.append(f"--- Documentação complementar ---\n\n{pd_context}")
-
-        used_mcp_servers = []
-        if use_mcp:
-            mcp_contexts = _fetch_mcp_context()
-            for mc in mcp_contexts:
-                context_parts.append(f"--- Contexto MCP: {mc['name']} ---\n\n{mc['content']}")
-                used_mcp_servers.append(mc['name'])
-
-        if not context_parts:
-            docs_context = "Nenhum documento disponível."
-        else:
-            docs_context = "\n\n".join(context_parts)
-
-        prompt = PromptBuilder().build("consult", docs_context, question)
-
-        answer = ai_client.generate(prompt)
-        citation_report = verify_citations(answer, extract_source_ids(docs_context))
-
-        # Extract references: initiative names + product docs mentioned
-        references = []
-        for name in initiatives:
-            if name in answer:
-                references.append({"initiative": name})
-        if use_product_docs and ("Documentação complementar" in answer or "produto" in answer.lower()):
-            references.append({"initiative": "Documentação complementar"})
-        for mc_name in used_mcp_servers:
-            if mc_name.lower() in answer.lower():
-                references.append({"initiative": mc_name})
+        service = ProductConsultationService(
+            ai_client=ai_client,
+            initiative_repository=repo,
+            product_docs_context_loader=_product_docs_service(request).build_context,
+            mcp_context_loader=_fetch_mcp_context,
+        )
+        result = service.consult(
+            question=question,
+            initiative_names=initiatives,
+            use_product_docs=use_product_docs,
+            use_mcp=use_mcp,
+            lang=_get_lang(),
+        )
 
         return templates.TemplateResponse(
             request,
@@ -1803,13 +1777,7 @@ async def consult_docs(
             _ctx(request, initiative_names=all_names,
                  selected_initiatives=initiatives,
                  question=question,
-                 result={
-                     "answer": answer,
-                     "initiatives": initiatives + (["Documentação complementar"] if use_product_docs else []) + (used_mcp_servers if use_mcp else []),
-                     "references": references,
-                     "mcp_used": used_mcp_servers,
-                     "citation_report": asdict(citation_report),
-                 },
+                 result=result.to_dict(),
                  error=None,
                  mcp_count=len(_get_mcp_servers())),
         )
