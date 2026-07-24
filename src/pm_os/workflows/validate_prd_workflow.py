@@ -42,6 +42,9 @@ class ValidatePRDWorkflow:
         validator = self.prd_validator or PRDValidator(ai_client=self.ai_client)
         report = validator.validate(prd_content)
 
+        if not report.is_valid:
+            raise ValueError(report.summary)
+
         self.logger.info(f"PRD quality score: {report.overall_score}/10")
 
         self.logger.info(f"Writing validation report to {output_path}.")

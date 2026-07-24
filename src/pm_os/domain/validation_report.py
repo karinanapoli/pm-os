@@ -16,6 +16,7 @@ class ValidationReport:
     overall_score: float
     summary: str
     sections: list[SectionEvaluation] = field(default_factory=list)
+    is_valid: bool = True
 
     def to_markdown(self, lang: str = "en") -> str:
         if lang == "pt-BR":
