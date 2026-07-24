@@ -18,6 +18,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.responses import FileResponse
 from jinja2 import pass_context
 
@@ -57,6 +58,7 @@ from pm_os.web.squad_access import authorized_squad, normalize_squad_key
 from pm_os.web.markdown_renderer import render_safe_markdown
 from pm_os.web.middleware import AuthMiddleware, CSRFMiddleware, NoCacheMiddleware
 from pm_os.web.product_docs_service import ProductDocsService
+from pm_os.web.public_urls import allowed_hosts_from_env, external_base_url
 from pm_os.web.request_limits import (
     MAX_UPLOAD_FILE_BYTES,
     RequestBodyLimitMiddleware,
@@ -109,6 +111,11 @@ app.add_middleware(
     https_only=os.getenv("PM_OS_ENV") == "production",
 )
 app.add_middleware(RequestBodyLimitMiddleware)
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=allowed_hosts_from_env(os.getenv("PM_OS_ALLOWED_HOSTS", "")),
+    www_redirect=False,
+)
 
 
 _login_rate_limiter = LoginRateLimiter()
@@ -361,7 +368,21 @@ async def forgot_submit(request: Request, email: str = Form(...)):
     digest = token_digest(_secret, "reset", email, token)
     reset_tokens[digest] = {"email": email, "expires_at": time.time() + 1800}
     config_manager.set("reset_tokens", reset_tokens)
-    reset_url = str(request.base_url).rstrip("/") + f"/reset?email={urllib.parse.quote(email)}&token={token}"
+    try:
+        public_base_url = external_base_url(
+            str(request.base_url),
+            os.getenv("PM_OS_PUBLIC_URL", ""),
+            production=os.getenv("PM_OS_ENV") == "production",
+        )
+    except ValueError:
+        reset_tokens.pop(digest, None)
+        config_manager.set("reset_tokens", reset_tokens)
+        _logger.error("Password reset public URL is invalid.")
+        return await forgot_page(
+            request,
+            error=_t("forgot.invalid_public_url", _get_lang()),
+        )
+    reset_url = public_base_url + f"/reset?email={urllib.parse.quote(email)}&token={token}"
     sent = send_password_reset_email(cfg, email, reset_url)
     _logger.info("Password reset requested for %s", email)
     if not sent:

@@ -48,6 +48,15 @@ defina `PM_OS_TRUSTED_PROXY_COUNT` com a quantidade exata de proxies no caminho.
 O valor padrão é `0`: cabeçalhos de IP enviados pelo navegador são ignorados
 para impedir que o limite de tentativas de login seja contornado.
 
+Defina também `PM_OS_ALLOWED_HOSTS` com os domínios aceitos, separados por
+vírgula, e `PM_OS_PUBLIC_URL` com o endereço HTTPS exibido nos links enviados
+por e-mail. Exemplo:
+
+```bash
+PM_OS_ALLOWED_HOSTS=pm.exemplo.com
+PM_OS_PUBLIC_URL=https://pm.exemplo.com
+```
+
 ## Escolha de privacidade
 
 | Modo | Custo externo | Para onde vai o contexto? |
