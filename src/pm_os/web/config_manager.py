@@ -1,13 +1,15 @@
 import json
 import os
 import tempfile
+import threading
 from copy import deepcopy
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable, TypeVar
 
 from pm_os.infrastructure.cipher import decrypt, encrypt
 
 _SENSITIVE_KEYS = frozenset({"openai_api_key", "anthropic_api_key", "auth_password", "smtp_password"})
+_T = TypeVar("_T")
 
 def _get_config_dir() -> Path:
     return Path(os.getenv("PM_OS_CONFIG_DIR", str(Path.home() / ".pm_os")))
@@ -83,24 +85,55 @@ def _validate(key: str, value: Any) -> None:
 
 class ConfigManager:
     def __init__(self):
+        self._lock = threading.RLock()
         self._config = self._load()
 
     def get(self, key: str, default=None):
-        return self._config.get(key, default)
+        with self._lock:
+            return deepcopy(self._config.get(key, default))
 
     def get_all(self) -> dict:
-        return dict(self._config)
+        with self._lock:
+            return deepcopy(self._config)
 
     def set(self, key: str, value: Any) -> None:
         _validate(key, value)
-        self._config[key] = value
-        self._save()
+        with self._lock:
+            updated = deepcopy(self._config)
+            updated[key] = deepcopy(value)
+            self._save(updated)
+            self._config = updated
 
     def set_all(self, updates: dict) -> None:
         for k, v in updates.items():
             _validate(k, v)
-        self._config.update(updates)
-        self._save()
+        with self._lock:
+            updated = deepcopy(self._config)
+            updated.update(deepcopy(updates))
+            self._save(updated)
+            self._config = updated
+
+    def update(self, key: str, updater: Callable[[Any], Any]) -> Any:
+        """Atomically transform one setting and return a detached result."""
+        with self._lock:
+            updated = deepcopy(self._config)
+            new_value = updater(deepcopy(updated.get(key)))
+            _validate(key, new_value)
+            updated[key] = deepcopy(new_value)
+            self._save(updated)
+            self._config = updated
+            return deepcopy(new_value)
+
+    def transaction(self, updater: Callable[[dict], _T]) -> _T:
+        """Atomically transform multiple settings or leave state unchanged."""
+        with self._lock:
+            updated = deepcopy(self._config)
+            result = updater(updated)
+            for key, value in updated.items():
+                _validate(key, value)
+            self._save(updated)
+            self._config = updated
+            return deepcopy(result)
 
     def _load(self) -> dict:
         config_file = _get_config_file()
@@ -125,11 +158,11 @@ class ConfigManager:
                 return dict(DEFAULT_CONFIG)
         return dict(DEFAULT_CONFIG)
 
-    def _save(self) -> None:
+    def _save(self, config: dict) -> None:
         config_dir = _get_config_dir()
         config_file = _get_config_file()
         config_dir.mkdir(parents=True, exist_ok=True)
-        to_save = deepcopy(self._config)
+        to_save = deepcopy(config)
         for key in _SENSITIVE_KEYS:
             if key in to_save and to_save[key]:
                 to_save[key] = encrypt(to_save[key])
