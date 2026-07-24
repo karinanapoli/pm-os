@@ -42,7 +42,6 @@ from pm_os.infrastructure.utils import (
     ALLOWED_EXTENSIONS,
     read_validation_history,
     read_validation_score_from_file,
-    version_file,
 )
 from pm_os.repositories.initiative_repository import InitiativeRepository
 from pm_os.repositories.job_repository import JobRepository
@@ -60,6 +59,10 @@ from pm_os.web.middleware import AuthMiddleware, CSRFMiddleware, NoCacheMiddlewa
 from pm_os.web.product_docs_service import ProductDocsService
 from pm_os.web.prd_validation_service import PRDValidationService
 from pm_os.web.generation_job_service import GenerationJobService
+from pm_os.web.prd_generation_operation import (
+    PRDGenerationOperation,
+    PRDGenerationRequest,
+)
 from pm_os.web.public_urls import allowed_hosts_from_env, external_base_url
 from pm_os.web.request_limits import (
     MAX_UPLOAD_FILE_BYTES,
@@ -1210,100 +1213,31 @@ async def generate_prd(
     # Kick off background generation task
     lang = _get_lang()
 
-    def _run_gen(job):
-        """Runs PRD generation + validation in background thread, updating progress in _gen_tasks."""
-        try:
-            job.set_step(0, "active", _t("generate.progress_context", lang))
-            ai_client = _build_ai_client()
-
-            context_parts = []
-            main_context = (
-                ContextBuilder().build_selected(selected, selected_source_set)
-                if source_selection_enabled else ContextBuilder().build(selected)
-            )
-            if main_context.strip():
-                context_parts.append(f"--- Contexto Principal: {selected.name} ---\n\n{main_context}")
-
-            used_additional = []
-            for add_name in additional:
-                add_init = _get_initiative_by_name_sync(add_name, squad_name)
-                if add_init and add_init.documents:
-                    add_docs = (
-                        ContextBuilder().build_selected(add_init, selected_source_set)
-                        if source_selection_enabled else ContextBuilder().build(add_init)
-                    )
-                    if add_docs.strip():
-                        context_parts.append(f"--- Contexto Adicional: {add_init.name} ---\n\n{add_docs}")
-                        used_additional.append(add_name)
-
-            used_product_docs = False
-            if use_product_docs:
-                pd_context = pd_service.build_context()
-                if pd_context.strip():
-                    context_parts.append(f"--- Documentação complementar ---\n\n{pd_context}")
-                    used_product_docs = True
-
-            used_mcp_servers = []
-            if use_mcp:
-                mcp_contexts = _fetch_mcp_context()
-                for mc in mcp_contexts:
-                    context_parts.append(f"--- Contexto MCP: {mc['name']} ---\n\n{mc['content']}")
-                    used_mcp_servers.append(mc['name'])
-
-            context = "\n\n".join(context_parts) if context_parts else ""
-
-            job.set_step(0, "done")
-            job.set_step(1, "active", _t("generate.progress_generating", lang))
-            prompt = PromptBuilder().build("create_prd", context, lang=lang)
-
-            job.set_step(1, "done")
-            job.set_step(2, "active", detail="")
-            prd_content = ai_client.generate(prompt)
-            citation_report = verify_citations(prd_content, extract_source_ids(context))
-
-            artifacts_dir = selected.path / "artifacts"
-            artifacts_dir.mkdir(parents=True, exist_ok=True)
-
-            version_file(artifacts_dir / "prd.md")
-            version_file(artifacts_dir / "prd-validation.md")
-
-            MarkdownWriter().write(content=prd_content, output_path=str(artifacts_dir / "prd.md"))
-
-            job.set_step(2, "done")
-            job.set_step(3, "active", _t("generate.progress_validating", lang))
-
-            validator = PRDValidator(ai_client=ai_client, lang=lang)
-            report = validator.validate(prd_content)
-
-            report_path = str(artifacts_dir / "prd-validation.md")
-            MarkdownWriter().write(content=report.to_markdown(lang=lang), output_path=report_path)
-
-            tracker = create_change_tracker()
-            tracker.update_manifest(str(selected.path))
-
-            job.complete({
-                "prd": prd_content,
-                "score": report.overall_score,
-                "sections": [asdict(section) for section in report.sections],
-                "initiative": initiative_name,
-                "additional": used_additional,
-                "product_docs_used": used_product_docs,
-                "mcp_used": used_mcp_servers,
-                "source_ids": citation_report.available_ids,
-                "citation_report": asdict(citation_report),
-            })
-
-        except OllamaConnectionError:
-            job.fail(_t("error.ollama", lang))
-        except Exception as exc:
-            _logger.exception("Background PRD generation failed")
-            job.fail(str(exc))
+    operation = PRDGenerationOperation(
+        ai_client_factory=_build_ai_client,
+        initiative_loader=_get_initiative_by_name_sync,
+        product_docs_service=pd_service,
+        mcp_context_loader=_fetch_mcp_context,
+        change_tracker_factory=create_change_tracker,
+        translate=_t,
+    )
+    generation_request = PRDGenerationRequest(
+        initiative_name=initiative_name,
+        selected=selected,
+        additional=additional,
+        selected_source_ids=selected_source_set,
+        source_selection_enabled=source_selection_enabled,
+        use_product_docs=use_product_docs,
+        use_mcp=use_mcp,
+        squad_name=squad_name,
+        lang=lang,
+    )
 
     task_id = generation_job_service.start(
         owner_email,
         squad_name,
         _t("generate.progress_starting", lang),
-        _run_gen,
+        lambda job: operation.run(job, generation_request),
     )
 
     # If called via fetch (JS stepper), return JSON; otherwise render fallback page
