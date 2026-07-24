@@ -51,8 +51,9 @@ from pm_os.workflows.workspace_scan_workflow import WorkspaceScanWorkflow
 from pm_os.context_builder import ContextBuilder
 from pm_os.prompt_builder import PromptBuilder
 from pm_os.web.config_manager import ConfigManager
+from pm_os.web import config_operations as config_ops
 from pm_os.web.i18n import t as _t, LANGS
-from pm_os.web.account_tokens import prune_expired, token_digest, token_matches
+from pm_os.web.account_tokens import prune_expired, token_digest
 from pm_os.web.login_security import LoginRateLimiter, resolve_client_ip
 from pm_os.web.squad_access import authorized_squad, normalize_squad_key
 from pm_os.web.markdown_renderer import render_safe_markdown
@@ -173,14 +174,14 @@ async def login_submit(request: Request, email: str = Form(...), password: str =
         _login_rate_limiter.reset(ip)
         if needs_rehash:
             upgraded_hash = hash_password(password)
-
-            def rehash_user(current_users):
-                current_users = dict(current_users or {})
-                if current_users.get(email) == users.get(email):
-                    current_users[email] = upgraded_hash
-                return current_users
-
-            config_manager.update("users", rehash_user)
+            config_manager.transaction(
+                lambda config: config_ops.rehash_user(
+                    config,
+                    email,
+                    users.get(email, ""),
+                    upgraded_hash,
+                )
+            )
         try:
             request.session["authenticated"] = True
             request.session["user_email"] = email
@@ -233,19 +234,14 @@ async def register_submit(request: Request, email: str = Form(...), password: st
             "last_sent_at": 0,
         }
 
-        def reserve_registration(config):
-            users = config.get("users") or {}
-            pending = prune_expired(
-                config.get("pending_registrations") or {},
+        if not config_manager.transaction(
+            lambda config: config_ops.reserve_registration(
+                config,
+                email,
+                pending_record,
                 time.time(),
             )
-            if email in users or email in pending:
-                return False
-            pending[email] = pending_record
-            config["pending_registrations"] = pending
-            return True
-
-        if not config_manager.transaction(reserve_registration):
+        ):
             return await register_page(
                 request,
                 error=_t("register.exists", _get_lang()),
@@ -256,33 +252,26 @@ async def register_submit(request: Request, email: str = Form(...), password: st
             pass
         sent = send_verification_email(cfg, email, code)
         if sent:
-            def mark_sent(current_pending):
-                current_pending = dict(current_pending or {})
-                current = current_pending.get(email)
-                if current and current.get("code_digest") == code_digest:
-                    current["last_sent_at"] = time.time()
-                return current_pending
-
-            config_manager.update("pending_registrations", mark_sent)
+            config_manager.transaction(
+                lambda config: config_ops.mark_pending_sent(
+                    config,
+                    email,
+                    code_digest,
+                    time.time(),
+                )
+            )
         return RedirectResponse(url=f"/verify?email={urllib.parse.quote(email)}&sent={'1' if sent else '0'}", status_code=302)
 
     password_hash = hash_password(password)
 
-    def create_local_user(config):
-        current_users = config.get("users") or {}
-        current_pending = prune_expired(
-            config.get("pending_registrations") or {},
+    if not config_manager.transaction(
+        lambda config: config_ops.create_local_user(
+            config,
+            email,
+            password_hash,
             time.time(),
         )
-        if email in current_users or email in current_pending:
-            return False
-        current_users[email] = password_hash
-        config["users"] = current_users
-        config["pending_registrations"] = current_pending
-        config["onboarding_dismissed"] = False
-        return True
-
-    if not config_manager.transaction(create_local_user):
+    ):
         return await register_page(
             request,
             error=_t("register.exists", _get_lang()),
@@ -306,38 +295,16 @@ async def verify_page(request: Request, email: str = "", sent: str = ""):
 
 @app.post("/verify")
 async def verify_submit(request: Request, email: str = Form(...), code: str = Form(...)):
-    def complete_verification(config):
-        pending_registrations = config.get("pending_registrations") or {}
-        pending = pending_registrations.get(email)
-        if not pending or pending.get("expires_at", 0) < time.time():
-            pending_registrations.pop(email, None)
-            config["pending_registrations"] = pending_registrations
-            return "expired"
-        if not token_matches(
-            pending.get("code_digest"),
-            _secret,
-            "verify",
+    status = config_manager.transaction(
+        lambda config: config_ops.complete_verification(
+            config,
             email,
-            code.strip(),
-        ):
-            pending["attempts"] = int(pending.get("attempts", 0)) + 1
-            if pending["attempts"] >= _MAX_VERIFICATION_ATTEMPTS:
-                pending_registrations.pop(email, None)
-                status = "too_many"
-            else:
-                pending_registrations[email] = pending
-                status = "invalid"
-            config["pending_registrations"] = pending_registrations
-            return status
-        users = config.get("users") or {}
-        users[email] = pending["password_hash"]
-        pending_registrations.pop(email, None)
-        config["users"] = users
-        config["pending_registrations"] = pending_registrations
-        config["onboarding_dismissed"] = False
-        return "verified"
-
-    status = config_manager.transaction(complete_verification)
+            code,
+            _secret,
+            time.time(),
+            _MAX_VERIFICATION_ATTEMPTS,
+        )
+    )
     if status == "expired":
         return templates.TemplateResponse(request, "verify.html", _ctx(request, email=email, error=_t("verify.expired", _get_lang()), sent=False))
     if status != "verified":
@@ -362,28 +329,19 @@ async def verify_resend(request: Request, email: str = Form(...)):
     code = "".join(str(_secrets_module.randbelow(10)) for _ in range(6))
     code_digest = token_digest(_secret, "verify", email, code)
 
-    def reserve_resend(current_pending):
-        current_pending = dict(current_pending or {})
-        pending = current_pending.get(email)
-        if not pending or pending.get("expires_at", 0) < now:
-            current_pending.pop(email, None)
-            resend_status["value"] = "expired"
-            return current_pending
-        if now - pending.get("last_sent_at", 0) < _VERIFICATION_RESEND_SECONDS:
-            resend_status["value"] = "wait"
-            return current_pending
-        pending["code_digest"] = code_digest
-        pending["expires_at"] = now + 600
-        pending["attempts"] = 0
-        current_pending[email] = pending
-        resend_status["value"] = "reserved"
-        return current_pending
-
-    resend_status = {"value": ""}
-    config_manager.update("pending_registrations", reserve_resend)
-    if resend_status["value"] == "expired":
+    resend_status = config_manager.transaction(
+        lambda config: config_ops.reserve_verification_resend(
+            config,
+            email,
+            code_digest,
+            now,
+            now + 600,
+            _VERIFICATION_RESEND_SECONDS,
+        )
+    )
+    if resend_status == "expired":
         return templates.TemplateResponse(request, "verify.html", _ctx(request, email=email, error=_t("verify.expired", _get_lang()), sent=False))
-    if resend_status["value"] == "wait":
+    if resend_status == "wait":
         return templates.TemplateResponse(request, "verify.html", _ctx(request, email=email, error=_t("verify.wait", _get_lang()), sent=False))
     try:
         request.session["verify_email"] = email
@@ -391,14 +349,14 @@ async def verify_resend(request: Request, email: str = Form(...)):
         pass
     sent = send_verification_email(cfg, email, code)
     if sent:
-        def mark_resent(current_pending):
-            current_pending = dict(current_pending or {})
-            current = current_pending.get(email)
-            if current and current.get("code_digest") == code_digest:
-                current["last_sent_at"] = time.time()
-            return current_pending
-
-        config_manager.update("pending_registrations", mark_resent)
+        config_manager.transaction(
+            lambda config: config_ops.mark_pending_sent(
+                config,
+                email,
+                code_digest,
+                time.time(),
+            )
+        )
     return RedirectResponse(
         url=f"/verify?email={urllib.parse.quote(email)}&sent={'1' if sent else '0'}",
         status_code=302,
@@ -436,15 +394,14 @@ async def forgot_submit(request: Request, email: str = Form(...)):
     digest = token_digest(_secret, "reset", email, token)
     reset_record = {"email": email, "expires_at": time.time() + 1800}
 
-    def add_reset_token(current_tokens):
-        current_tokens = prune_expired(
-            dict(current_tokens or {}),
+    config_manager.transaction(
+        lambda config: config_ops.add_reset_token(
+            config,
+            digest,
+            reset_record,
             time.time(),
         )
-        current_tokens[digest] = reset_record
-        return current_tokens
-
-    config_manager.update("reset_tokens", add_reset_token)
+    )
     try:
         public_base_url = external_base_url(
             str(request.base_url),
@@ -452,13 +409,8 @@ async def forgot_submit(request: Request, email: str = Form(...)):
             production=os.getenv("PM_OS_ENV") == "production",
         )
     except ValueError:
-        config_manager.update(
-            "reset_tokens",
-            lambda tokens: {
-                key: value
-                for key, value in (tokens or {}).items()
-                if key != digest
-            },
+        config_manager.transaction(
+            lambda config: config_ops.remove_reset_token(config, digest)
         )
         _logger.error("Password reset public URL is invalid.")
         return await forgot_page(
@@ -469,13 +421,8 @@ async def forgot_submit(request: Request, email: str = Form(...)):
     sent = send_password_reset_email(cfg, email, reset_url)
     _logger.info("Password reset requested for %s", email)
     if not sent:
-        config_manager.update(
-            "reset_tokens",
-            lambda tokens: {
-                key: value
-                for key, value in (tokens or {}).items()
-                if key != digest
-            },
+        config_manager.transaction(
+            lambda config: config_ops.remove_reset_token(config, digest)
         )
         return await forgot_page(request, error=_t("forgot.send_failed", _get_lang()))
     return RedirectResponse(
@@ -502,13 +449,11 @@ async def reset_submit(request: Request, email: str = Form(...), token: str = Fo
     stored = reset_tokens.get(stored_key)
     if not stored or stored.get("email") != email or stored.get("expires_at", 0) < time.time():
         if stored and stored.get("expires_at", 0) < time.time():
-            config_manager.update(
-                "reset_tokens",
-                lambda tokens: {
-                    key: value
-                    for key, value in (tokens or {}).items()
-                    if key != stored_key
-                },
+            config_manager.transaction(
+                lambda config: config_ops.remove_reset_token(
+                    config,
+                    stored_key,
+                )
             )
         return await reset_page(request, email=email, token=token, error=_t("reset.invalid_token", _get_lang()))
     if password != confirm:
@@ -520,24 +465,15 @@ async def reset_submit(request: Request, email: str = Form(...), token: str = Fo
         return await reset_page(request, email=email, token=token, error=_t("forgot.not_found", _get_lang()))
     new_password_hash = hash_password(password)
 
-    def complete_reset(config):
-        current_tokens = config.get("reset_tokens") or {}
-        current_stored = current_tokens.get(stored_key)
-        current_users = config.get("users") or {}
-        if (
-            not current_stored
-            or current_stored.get("email") != email
-            or current_stored.get("expires_at", 0) < time.time()
-            or email not in current_users
-        ):
-            return False
-        current_users[email] = new_password_hash
-        current_tokens.pop(stored_key, None)
-        config["users"] = current_users
-        config["reset_tokens"] = current_tokens
-        return True
-
-    if not config_manager.transaction(complete_reset):
+    if not config_manager.transaction(
+        lambda config: config_ops.complete_password_reset(
+            config,
+            email,
+            stored_key,
+            new_password_hash,
+            time.time(),
+        )
+    ):
         return await reset_page(
             request,
             email=email,
@@ -1700,17 +1636,13 @@ async def add_mcp_server(
             "config.html",
             _ctx(request, saved=False, error=str(e)),
         )
-    added = {"value": False}
-
-    def add_server(servers):
-        servers = list(servers or [])
-        if not any(s["url"] == validated_url for s in servers):
-            servers.append({"name": name.strip(), "url": validated_url, "enabled": True})
-            added["value"] = True
-        return servers
-
-    config_manager.update("mcp_servers", add_server)
-    if added["value"]:
+    added = config_manager.transaction(
+        lambda config: config_ops.add_mcp_server(
+            config,
+            {"name": name.strip(), "url": validated_url, "enabled": True},
+        )
+    )
+    if added:
         _logger.info("MCP server added: %s", name.strip())
     return templates.TemplateResponse(
         request,
@@ -1724,23 +1656,11 @@ async def toggle_mcp_server(
     request: Request,
     url: str = Form(...),
 ):
-    toggled = {}
-
-    def toggle_server(servers):
-        servers = list(servers or [])
-        for server in servers:
-            if server["url"] == url:
-                server["enabled"] = not server["enabled"]
-                toggled.update(
-                    name=server["name"],
-                    state="enabled" if server["enabled"] else "disabled",
-                )
-                break
-        return servers
-
-    config_manager.update("mcp_servers", toggle_server)
+    toggled = config_manager.transaction(
+        lambda config: config_ops.toggle_mcp_server(config, url)
+    )
     if toggled:
-        _logger.info("MCP server toggled: %s → %s", toggled["name"], toggled["state"])
+        _logger.info("MCP server toggled: %s → %s", toggled[0], toggled[1])
     return templates.TemplateResponse(
         request,
         "config.html",
@@ -1753,16 +1673,11 @@ async def delete_mcp_server(
     request: Request,
     url: str = Form(...),
 ):
-    removed = []
-
-    def remove_server(servers):
-        servers = list(servers or [])
-        removed.extend(s["name"] for s in servers if s["url"] == url)
-        return [s for s in servers if s["url"] != url]
-
-    config_manager.update("mcp_servers", remove_server)
+    removed = config_manager.transaction(
+        lambda config: config_ops.remove_mcp_server(config, url)
+    )
     if removed:
-        _logger.info("MCP server removed: %s", removed[0])
+        _logger.info("MCP server removed: %s", removed)
     return templates.TemplateResponse(
         request,
         "config.html",
@@ -1798,21 +1713,17 @@ async def add_custom_provider(
     api_key: str = Form(""),
     base_url: str = Form(...),
 ):
-    def add_provider(providers):
-        providers = [
-            provider
-            for provider in (providers or [])
-            if provider["name"] != name
-        ]
-        providers.append({
-            "name": name,
-            "model": model,
-            "api_key": api_key,
-            "base_url": base_url,
-        })
-        return providers
-
-    config_manager.update("custom_providers", add_provider)
+    config_manager.transaction(
+        lambda config: config_ops.upsert_custom_provider(
+            config,
+            {
+                "name": name,
+                "model": model,
+                "api_key": api_key,
+                "base_url": base_url,
+            },
+        )
+    )
     return templates.TemplateResponse(
         request,
         "config.html",
@@ -1825,16 +1736,9 @@ async def delete_custom_provider(
     request: Request,
     name: str = Form(...),
 ):
-    def remove_provider(config):
-        config["custom_providers"] = [
-            provider
-            for provider in (config.get("custom_providers") or [])
-            if provider["name"] != name
-        ]
-        if config.get("ai_provider") == name:
-            config["ai_provider"] = "ollama"
-
-    config_manager.transaction(remove_provider)
+    config_manager.transaction(
+        lambda config: config_ops.remove_custom_provider(config, name)
+    )
     return templates.TemplateResponse(
         request,
         "config.html",
@@ -1853,12 +1757,9 @@ async def delete_account(request: Request, email: str = Form(...)):
     if email not in (config_manager.get("users") or {}):
         return await login_page(request, error=_t("auth.invalid_credentials", _get_lang()))
 
-    def remove_account(users):
-        users = dict(users or {})
-        users.pop(email, None)
-        return users
-
-    config_manager.update("users", remove_account)
+    config_manager.transaction(
+        lambda config: config_ops.delete_user(config, email)
+    )
     try:
         request.session.pop("authenticated", None)
         request.session.pop("user_email", None)
@@ -2202,16 +2103,13 @@ async def squad_create(request: Request, name: str = Form(...), display_name: st
         "created_at": str(date.today()),
     }
 
-    def create_squad(config):
-        squads = config.get("squads") or {}
-        retired = config.get("retired_squad_names") or []
-        if squad_key in squads or squad_key in retired:
-            return False
-        squads[squad_key] = new_squad
-        config["squads"] = squads
-        return True
-
-    if not config_manager.transaction(create_squad):
+    if not config_manager.transaction(
+        lambda config: config_ops.create_squad(
+            config,
+            squad_key,
+            new_squad,
+        )
+    ):
         return await squad_page(request, error=_t("squad.exists", _get_lang()))
     try:
         request.session["current_squad"] = squad_key
@@ -2240,28 +2138,18 @@ async def squad_join(request: Request, name: str = Form(...), password: str = Fo
         return RedirectResponse(url="/login", status_code=302)
     replacement_hash = hash_password(password) if needs_rehash else stored_hash
 
-    def join_squad(current_squads):
-        current_squads = dict(current_squads or {})
-        current = current_squads.get(squad_key)
-        if not current or current.get("password_hash") != stored_hash:
-            return current_squads, "changed"
-        if user_email in current.get("members", []):
-            return current_squads, "member"
-        current["password_hash"] = replacement_hash
-        current["members"] = [*current.get("members", []), user_email]
-        return current_squads, "joined"
-
-    join_result = {"status": ""}
-
-    def apply_join(current_squads):
-        updated_squads, status = join_squad(current_squads)
-        join_result["status"] = status
-        return updated_squads
-
-    config_manager.update("squads", apply_join)
-    if join_result["status"] == "member":
+    join_result = config_manager.transaction(
+        lambda config: config_ops.join_squad(
+            config,
+            squad_key,
+            user_email,
+            stored_hash,
+            replacement_hash,
+        )
+    )
+    if join_result == "member":
         return await squad_page(request, error=_t("squad.already_member", _get_lang()))
-    if join_result["status"] != "joined":
+    if join_result != "joined":
         return await squad_page(request, error=_t("squad.not_found", _get_lang()))
     try:
         request.session["current_squad"] = squad_key
@@ -2312,25 +2200,14 @@ async def squad_leave(request: Request):
         current_squad = ""
     if not user_email or not current_squad:
         return RedirectResponse(url="/", status_code=302)
-    leave_result = {"status": "missing"}
-
-    def leave_squad(squads):
-        squads = dict(squads or {})
-        squad = squads.get(current_squad)
-        if squad and user_email in squad.get("members", []):
-            if squad.get("created_by") == user_email:
-                leave_result["status"] = "owner"
-                return squads
-            squad["members"] = [
-                member
-                for member in squad["members"]
-                if member != user_email
-            ]
-            leave_result["status"] = "left"
-        return squads
-
-    config_manager.update("squads", leave_squad)
-    if leave_result["status"] == "owner":
+    leave_result = config_manager.transaction(
+        lambda config: config_ops.leave_squad(
+            config,
+            current_squad,
+            user_email,
+        )
+    )
+    if leave_result == "owner":
         return await squad_page(
             request,
             error=_t("squad.owner_cannot_leave", _get_lang()),
@@ -2397,18 +2274,14 @@ async def squad_remove_member(request: Request, squad_name: str, member_email: s
         return RedirectResponse(url="/", status_code=302)
     if member_email == sq.get("created_by"):
         return RedirectResponse(url=f"/squad/admin/{squad_name}", status_code=302)
-    def remove_member(current_squads):
-        current_squads = dict(current_squads or {})
-        current = current_squads.get(squad_name)
-        if current and current.get("created_by") == user_email:
-            current["members"] = [
-                member
-                for member in current.get("members", [])
-                if member != member_email
-            ]
-        return current_squads
-
-    config_manager.update("squads", remove_member)
+    config_manager.transaction(
+        lambda config: config_ops.remove_squad_member(
+            config,
+            squad_name,
+            user_email,
+            member_email,
+        )
+    )
     return RedirectResponse(url=f"/squad/admin/{squad_name}", status_code=302)
 
 
@@ -2426,14 +2299,14 @@ async def squad_rename(request: Request, squad_name: str, display_name: str = Fo
         return RedirectResponse(url="/", status_code=302)
     display_name = display_name.strip()
     if display_name:
-        def rename_squad(current_squads):
-            current_squads = dict(current_squads or {})
-            current = current_squads.get(squad_name)
-            if current and current.get("created_by") == user_email:
-                current["display_name"] = display_name
-            return current_squads
-
-        config_manager.update("squads", rename_squad)
+        config_manager.transaction(
+            lambda config: config_ops.rename_squad(
+                config,
+                squad_name,
+                user_email,
+                display_name,
+            )
+        )
     return RedirectResponse(url=f"/squad/admin/{squad_name}", status_code=302)
 
 
@@ -2450,20 +2323,13 @@ async def squad_disband(request: Request, squad_name: str):
     sq = squads.get(squad_name)
     if not sq or sq.get("created_by") != user_email:
         return RedirectResponse(url="/", status_code=302)
-    def disband_squad(config):
-        current_squads = config.get("squads") or {}
-        current = current_squads.get(squad_name)
-        if not current or current.get("created_by") != user_email:
-            return False
-        del current_squads[squad_name]
-        retired = config.get("retired_squad_names") or []
-        if squad_name not in retired:
-            retired.append(squad_name)
-        config["squads"] = current_squads
-        config["retired_squad_names"] = retired
-        return True
-
-    if not config_manager.transaction(disband_squad):
+    if not config_manager.transaction(
+        lambda config: config_ops.disband_squad(
+            config,
+            squad_name,
+            user_email,
+        )
+    ):
         return RedirectResponse(url="/", status_code=302)
     try:
         if request.session.get("current_squad") == squad_name:
