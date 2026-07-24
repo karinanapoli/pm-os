@@ -592,6 +592,16 @@ class TestAuth:
         assert resp.status_code == 200
         assert b"E-mail" in resp.content or b"Email" in resp.content
 
+    def test_untrusted_host_is_rejected(self, unauth_client, session_base):
+        self._enable_auth(session_base)
+
+        response = unauth_client.get(
+            "/login",
+            headers={"Host": "attacker.example.com"},
+        )
+
+        assert response.status_code == 400
+
     def test_login_success(self, unauth_client, session_base):
         self._enable_auth(session_base)
         resp = unauth_client.post("/login", data={
@@ -693,6 +703,32 @@ class TestAuth:
         from pm_os.infrastructure.security import verify_password
         assert verify_password(cfg["users"][self.USER_EMAIL], "newpassword1")[0]
         assert token not in cfg["reset_tokens"]
+
+    def test_password_reset_uses_configured_public_url(
+        self, unauth_client, session_base, monkeypatch
+    ):
+        self._enable_auth(session_base)
+        captured = {}
+        from pm_os.web import email_service
+
+        monkeypatch.setenv("PM_OS_PUBLIC_URL", "https://pm.example.com/studio/")
+        monkeypatch.setattr(email_service, "is_smtp_configured", lambda cfg: True)
+        monkeypatch.setattr(
+            email_service,
+            "send_password_reset_email",
+            lambda cfg, email, url: captured.update(url=url) or True,
+        )
+
+        response = unauth_client.post(
+            "/forgot",
+            data={"email": self.USER_EMAIL},
+            follow_redirects=False,
+        )
+
+        assert response.status_code == 302
+        assert captured["url"].startswith(
+            "https://pm.example.com/studio/reset?"
+        )
 
     def test_verify_resend_generates_a_new_code(
         self, unauth_client, session_base, monkeypatch
