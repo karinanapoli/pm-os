@@ -402,6 +402,11 @@ TRANSLATIONS = {
         "gateway.api_key_placeholder": "Token de acesso",
         "gateway.invalid_url": "Informe um endereço de gateway válido começando com http:// ou https://.",
         "gateway.required_fields": "Preencha provedor, Project ID e Identifier para usar o gateway.",
+        "gateway.test_connection": "Testar conexão",
+        "gateway.test_hint": "Faz uma solicitação mínima ao modelo e pode consumir uma pequena quantidade da sua cota.",
+        "gateway.test_pending": "Testando o gateway...",
+        "gateway.test_success": "Gateway conectado e resposta recebida.",
+        "gateway.test_network_error": "Não foi possível concluir o teste. Verifique a rede e tente novamente.",
 
         # MCP
         "mcp.title": "Servidores MCP",
@@ -989,6 +994,11 @@ TRANSLATIONS = {
         "gateway.api_key_placeholder": "Access token",
         "gateway.invalid_url": "Enter a valid gateway URL starting with http:// or https://.",
         "gateway.required_fields": "Fill in provider, Project ID, and Identifier to use the gateway.",
+        "gateway.test_connection": "Test connection",
+        "gateway.test_hint": "Sends a minimal request to the model and may consume a small amount of your quota.",
+        "gateway.test_pending": "Testing the gateway...",
+        "gateway.test_success": "Gateway connected and a response was received.",
+        "gateway.test_network_error": "The test could not be completed. Check the network and try again.",
 
         # MCP
         "mcp.title": "MCP Servers",

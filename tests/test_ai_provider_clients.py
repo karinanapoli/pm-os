@@ -166,6 +166,42 @@ def test_gateway_requires_complete_routing_configuration():
         )
 
 
+def test_gateway_explains_authentication_and_timeout_errors(monkeypatch):
+    request = httpx.Request(
+        "POST",
+        "https://gateway.example/v1/chat/completions",
+    )
+    response = httpx.Response(401, request=request)
+    status_error = httpx.HTTPStatusError(
+        "unauthorized",
+        request=request,
+        response=response,
+    )
+    monkeypatch.setattr(
+        "pm_os.infrastructure.ai.clients.gateway_client.httpx.post",
+        lambda *args, **kwargs: FakeHTTPResponse(
+            status_error=status_error
+        ),
+    )
+    client = GatewayClient(
+        base_url="https://gateway.example/v1",
+        provider="openai",
+        project_id="pm-studio",
+        identifier="gpt-prod",
+    )
+    with pytest.raises(AIProviderError, match="credentials were rejected"):
+        client.generate("prompt")
+
+    monkeypatch.setattr(
+        "pm_os.infrastructure.ai.clients.gateway_client.httpx.post",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            httpx.ReadTimeout("slow", request=request)
+        ),
+    )
+    with pytest.raises(AIProviderError, match="before the timeout"):
+        client.generate("prompt")
+
+
 class FakeOllamaResponse:
     def __init__(self, payload: bytes):
         self.payload = payload

@@ -210,6 +210,18 @@
                             <div class="form-hint">{{ "config.api_key_hint"|t }}</div>
                         </div>
                     </div>
+                    <div class="gateway-test-actions">
+                        <button type="button" class="btn btn-secondary btn-sm"
+                                id="gatewayTestButton"
+                                onclick="testGatewayConnection(this)">
+                            {{ "gateway.test_connection"|t }}
+                        </button>
+                        <span class="form-hint">{{ "gateway.test_hint"|t }}</span>
+                    </div>
+                    <div class="test-row" id="gatewayTestRow" style="display:none"
+                         role="status" aria-live="polite">
+                        <span class="test-status" id="gatewayTestStatus"></span>
+                    </div>
                 </div>
 
                 {% for cp in custom_providers %}
@@ -496,6 +508,51 @@ function testMcpConnection(btn) {
             testStatus.className = 'test-status fail';
             testStatus.innerHTML = '✕ {{ "mcp.test_fail"|t }}';
         });
+}
+
+async function testGatewayConnection(btn) {
+    var ids = [
+        'gateway_url',
+        'gateway_provider',
+        'gateway_project_id',
+        'gateway_identifier'
+    ];
+    var row = document.getElementById('gatewayTestRow');
+    var status = document.getElementById('gatewayTestStatus');
+    var missing = ids.some(function(id) {
+        return !document.getElementById(id).value.trim();
+    });
+    if (missing) {
+        row.style.display = 'flex';
+        status.className = 'test-status fail';
+        status.textContent = '{{ "gateway.required_fields"|t }}';
+        return;
+    }
+
+    var data = new FormData();
+    ids.concat(['gateway_api_key']).forEach(function(id) {
+        var field = document.getElementById(id);
+        data.append(field.name, field.value);
+    });
+    row.style.display = 'flex';
+    status.className = 'test-status pending';
+    status.innerHTML = '<span class="test-spinner"></span> {{ "gateway.test_pending"|t }}';
+    btn.disabled = true;
+
+    try {
+        var response = await fetch('/config/gateway/test', {
+            method: 'POST',
+            body: data
+        });
+        var result = await response.json();
+        status.className = 'test-status ' + (result.ok ? 'success' : 'fail');
+        status.textContent = (result.ok ? '✓ ' : '✗ ') + result.message;
+    } catch (error) {
+        status.className = 'test-status fail';
+        status.textContent = '✗ {{ "gateway.test_network_error"|t }}';
+    } finally {
+        btn.disabled = false;
+    }
 }
 </script>
 

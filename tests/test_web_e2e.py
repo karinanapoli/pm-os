@@ -904,6 +904,62 @@ class TestConfiguration:
         assert response.status_code == 422
         assert "gateway" in response.text.lower()
 
+    def test_gateway_connection_test_succeeds(
+        self,
+        client,
+        monkeypatch,
+    ):
+        monkeypatch.setattr(
+            "pm_os.web.app.GatewayClient.generate",
+            lambda self, prompt: "OK",
+        )
+        response = client.post("/config/gateway/test", data={
+            "gateway_url": "https://gateway.example/v1",
+            "gateway_provider": "openai",
+            "gateway_project_id": "pm-studio",
+            "gateway_identifier": "gpt-prod",
+        })
+
+        assert response.status_code == 200
+        assert response.json()["ok"] is True
+
+    def test_gateway_connection_test_returns_safe_diagnostic(
+        self,
+        client,
+        monkeypatch,
+    ):
+        def reject(_self, _prompt):
+            from pm_os.contracts.workflow_contracts import (
+                AIProviderError,
+            )
+            raise AIProviderError(
+                "Gateway credentials were rejected."
+            )
+
+        monkeypatch.setattr(
+            "pm_os.web.app.GatewayClient.generate",
+            reject,
+        )
+        response = client.post("/config/gateway/test", data={
+            "gateway_url": "https://gateway.example/v1",
+            "gateway_provider": "openai",
+            "gateway_project_id": "pm-studio",
+            "gateway_identifier": "gpt-prod",
+        })
+
+        assert response.status_code == 422
+        assert response.json() == {
+            "ok": False,
+            "message": "Gateway credentials were rejected.",
+        }
+
+    def test_base_page_exposes_favicon(self, client):
+        response = client.get("/")
+        favicon = client.get("/static/favicon.svg")
+
+        assert 'href="/static/favicon.svg"' in response.text
+        assert favicon.status_code == 200
+
     def test_toggle_mcp_server(self, client, session_base):
         client.post("/config/mcp/add", data={
             "name": "Toggle Me",

@@ -358,6 +358,14 @@ body {
 
 .file-picker span { color: var(--text-secondary); font-size: 13px; }
 
+.gateway-test-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+}
+
 .btn:disabled {
     cursor: not-allowed;
     opacity: 0.45;
