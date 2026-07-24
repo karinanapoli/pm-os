@@ -584,6 +584,44 @@ class TestAuth:
         assert sent["email"] == self.USER_EMAIL
         assert len(sent["code"]) == 6
 
+    def test_verify_resend_reports_delivery_failure(
+        self, unauth_client, session_base, monkeypatch
+    ):
+        self._enable_auth(session_base)
+        from pm_os.web import email_service
+
+        monkeypatch.setattr(email_service, "is_smtp_configured", lambda cfg: True)
+        monkeypatch.setattr(
+            email_service, "send_verification_email", lambda *_args: False
+        )
+
+        resp = unauth_client.post(
+            "/verify/resend",
+            data={"email": self.USER_EMAIL},
+            follow_redirects=False,
+        )
+
+        assert resp.status_code == 302
+        assert "sent=0" in resp.headers["location"]
+        page = unauth_client.get(resp.headers["location"])
+        assert "Não foi possível enviar" in page.text
+
+    def test_password_reset_reports_delivery_failure(
+        self, unauth_client, session_base, monkeypatch
+    ):
+        self._enable_auth(session_base)
+        from pm_os.web import email_service
+
+        monkeypatch.setattr(email_service, "is_smtp_configured", lambda cfg: True)
+        monkeypatch.setattr(
+            email_service, "send_password_reset_email", lambda *_args: False
+        )
+
+        resp = unauth_client.post("/forgot", data={"email": self.USER_EMAIL})
+
+        assert resp.status_code == 200
+        assert "Não foi possível enviar" in resp.text
+
     def test_auth_middleware_blocks_unauthenticated(self, unauth_client, session_base):
         self._enable_auth(session_base)
         resp = unauth_client.get("/generate", follow_redirects=False)

@@ -1,54 +1,87 @@
-import smtplib
 import logging
+import smtplib
+import ssl
+from email.utils import formataddr
 from email.mime.text import MIMEText
+from typing import Optional
 
 _logger = logging.getLogger("pm_os")
+_SMTP_TIMEOUT_SECONDS = 15
+
+
+def _smtp_port(cfg: dict) -> Optional[int]:
+    try:
+        port = int(cfg.get("smtp_port", "587"))
+    except (ValueError, TypeError):
+        return None
+    return port if 1 <= port <= 65535 else None
+
+
+def _safe_header(value: object) -> Optional[str]:
+    text = str(value or "").strip()
+    if not text or "\r" in text or "\n" in text:
+        return None
+    return text
+
+
+def _masked_recipient(email: str) -> str:
+    _, separator, domain = email.rpartition("@")
+    return f"***@{domain}" if separator and domain else "***"
 
 
 def is_smtp_configured(cfg: dict) -> bool:
-    host = cfg.get("smtp_host", "")
-    user = cfg.get("smtp_user", "")
-    return bool(host and user)
+    host = _safe_header(cfg.get("smtp_host", ""))
+    user = _safe_header(cfg.get("smtp_user", ""))
+    return bool(host and user and _smtp_port(cfg) is not None)
 
 
 def _send_email(cfg: dict, to_email: str, subject: str, body: str) -> bool:
-    host = cfg.get("smtp_host", "")
-    port_str = cfg.get("smtp_port", "587")
-    user = cfg.get("smtp_user", "")
+    host = _safe_header(cfg.get("smtp_host", ""))
+    port = _smtp_port(cfg)
+    user = _safe_header(cfg.get("smtp_user", ""))
     password = cfg.get("smtp_password", "")
-    from_email = cfg.get("smtp_from_email", user)
-    from_name = cfg.get("smtp_from_name", "PM Studio")
+    from_email = _safe_header(cfg.get("smtp_from_email", user))
+    from_name = _safe_header(cfg.get("smtp_from_name", "PM Studio"))
+    recipient = _safe_header(to_email)
+    safe_subject = _safe_header(subject)
+    masked_recipient = _masked_recipient(to_email)
 
-    if not host or not user:
-        _logger.warning("SMTP not configured, skipping email to %s", to_email)
+    if not host or port is None or not user:
+        _logger.warning("SMTP not configured, skipping account email")
+        return False
+    if not from_email or not from_name or not recipient or not safe_subject:
+        _logger.warning("Invalid account email headers for %s", masked_recipient)
         return False
 
-    try:
-        port = int(port_str)
-    except (ValueError, TypeError):
-        port = 587
-
     msg = MIMEText(body, "plain", "utf-8")
-    msg["Subject"] = subject
-    msg["From"] = f"{from_name} <{from_email}>"
-    msg["To"] = to_email
+    msg["Subject"] = safe_subject
+    msg["From"] = formataddr((from_name, from_email))
+    msg["To"] = recipient
+    tls_context = ssl.create_default_context()
 
     try:
         if port == 465:
-            with smtplib.SMTP_SSL(host, port, timeout=15) as server:
-                if user:
-                    server.login(user, password)
+            with smtplib.SMTP_SSL(
+                host,
+                port,
+                timeout=_SMTP_TIMEOUT_SECONDS,
+                context=tls_context,
+            ) as server:
+                server.login(user, password)
                 server.send_message(msg)
         else:
-            with smtplib.SMTP(host, port, timeout=15) as server:
-                server.starttls()
-                if user:
-                    server.login(user, password)
+            with smtplib.SMTP(
+                host,
+                port,
+                timeout=_SMTP_TIMEOUT_SECONDS,
+            ) as server:
+                server.starttls(context=tls_context)
+                server.login(user, password)
                 server.send_message(msg)
-        _logger.info("Account email sent to %s", to_email)
+        _logger.info("Account email sent to %s", masked_recipient)
         return True
     except Exception:
-        _logger.exception("Failed to send account email to %s", to_email)
+        _logger.exception("Failed to send account email to %s", masked_recipient)
         return False
 
 
