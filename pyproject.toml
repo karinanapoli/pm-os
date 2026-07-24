@@ -39,6 +39,11 @@ filterwarnings = [
     "error:The `name` is not the first parameter anymore.*:DeprecationWarning",
 ]
 
+[tool.coverage.report]
+precision = 1
+show_missing = true
+skip_covered = true
+
 [tool.ruff]
 target-version = "py39"
 line-length = 120
