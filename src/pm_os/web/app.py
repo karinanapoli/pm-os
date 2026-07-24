@@ -682,19 +682,13 @@ def _get_initiative_by_name(name: str, request_or_squad: Optional[Request] = Non
     else:
         squad_name = request_or_squad
     repo = InitiativeRepository(squad_name=squad_name)
-    for i in repo.list_initiatives():
-        if i.name == name:
-            return i
-    return None
+    return repo.get(name)
 
 
 def _get_initiative_by_name_sync(name: str, squad_name: Optional[str] = None) -> Optional[Initiative]:
     """Sync variant for background threads (no Request object)."""
     repo = InitiativeRepository(squad_name=squad_name)
-    for i in repo.list_initiatives():
-        if i.name == name:
-            return i
-    return None
+    return repo.get(name)
 
 
 # ─── Dashboard ───
@@ -719,7 +713,7 @@ async def show_onboarding(request: Request):
 async def _dashboard(request: Request, force_onboarding: bool = False, squad_name: Optional[str] = None) -> HTMLResponse:
     """Shared dashboard logic. force_onboarding ignores has_completed check."""
     repo = InitiativeRepository(squad_name=squad_name)
-    initiatives = repo.list_initiatives()
+    initiatives = repo.list_initiatives(load_content=False)
 
     total_docs = 0
     has_prd = 0
@@ -744,10 +738,7 @@ async def _dashboard(request: Request, force_onboarding: bool = False, squad_nam
         if (init.path / "artifacts" / "prd-validation.md").exists():
             has_validation += 1
 
-        ctx_dir = init.path / "context"
-        doc_count = 0
-        if ctx_dir.exists():
-            doc_count = sum(1 for f in ctx_dir.iterdir() if f.is_file())
+        doc_count = init.document_count
         total_docs += doc_count
 
         if score is not None:
@@ -1152,7 +1143,7 @@ async def create_initiative(
 @app.get("/generate", response_class=HTMLResponse)
 async def generate_page(request: Request):
     repo = _repo(_get_session_squad(request))
-    initiatives = repo.list_initiatives()
+    initiatives = repo.list_initiatives(load_content=False)
     pd_service = _product_docs_service(request)
     product_docs_count = pd_service.count_docs()
     selected_initiative = request.query_params.get("initiative", "")
@@ -1176,13 +1167,8 @@ async def generate_prd(
     use_mcp: bool = Form(False),
 ):
     repo = _repo(_get_session_squad(request))
-    initiatives = repo.list_initiatives()
-
-    selected = None
-    for i in initiatives:
-        if i.name == initiative_name:
-            selected = i
-            break
+    initiatives = repo.list_initiatives(load_content=False)
+    selected = repo.get(initiative_name)
 
     if not selected:
         return templates.TemplateResponse(
@@ -1401,7 +1387,7 @@ async def generate_result(request: Request, task_id: str):
         )
 
     repo = _repo(_get_session_squad(request))
-    initiatives = repo.list_initiatives()
+    initiatives = repo.list_initiatives(load_content=False)
     return templates.TemplateResponse(
         "generate.html",
         _ctx(request, initiatives=initiatives,
@@ -1417,13 +1403,7 @@ async def generate_result(request: Request, task_id: str):
 @app.get("/validate/{initiative_name}", response_class=HTMLResponse)
 async def validate_page(request: Request, initiative_name: str):
     repo = _repo(_get_session_squad(request))
-    initiatives = repo.list_initiatives()
-
-    selected = None
-    for i in initiatives:
-        if i.name == initiative_name:
-            selected = i
-            break
+    selected = repo.get(initiative_name, load_content=False)
 
     if not selected:
         return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
@@ -1452,11 +1432,7 @@ async def validate_page(request: Request, initiative_name: str):
 async def validate_prd(request: Request, initiative_name: str):
     repo = _repo(_get_session_squad(request))
 
-    selected = None
-    for i in repo.list_initiatives():
-        if i.name == initiative_name:
-            selected = i
-            break
+    selected = repo.get(initiative_name, load_content=False)
 
     if not selected:
         return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
@@ -1526,11 +1502,7 @@ async def validate_prd(request: Request, initiative_name: str):
 async def revalidate_prd(request: Request, initiative_name: str):
     """Re-validate a PRD and redirect back to initiative detail page."""
     repo = _repo(_get_session_squad(request))
-    selected = None
-    for i in repo.list_initiatives():
-        if i.name == initiative_name:
-            selected = i
-            break
+    selected = repo.get(initiative_name, load_content=False)
     if not selected:
         return RedirectResponse(url="/", status_code=302)
     prd_path = selected.path / "artifacts" / "prd.md"
@@ -1780,11 +1752,7 @@ async def delete_account(request: Request, email: str = Form(...)):
 @app.post("/initiative/{initiative_name}/delete", response_class=HTMLResponse)
 async def delete_initiative(request: Request, initiative_name: str):
     repo = _repo(_get_session_squad(request))
-    selected = None
-    for i in repo.list_initiatives():
-        if i.name == initiative_name:
-            selected = i
-            break
+    selected = repo.get(initiative_name, load_content=False)
 
     if not selected:
         return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
@@ -1858,12 +1826,12 @@ async def consult_docs(
         repo = _repo(_get_session_squad(request))
 
         context_parts = []
-        all_inits = repo.list_initiatives()
-        for init in all_inits:
-            if init.name in initiatives:
-                if init.documents:
-                    docs_text = ContextBuilder().build(init)
-                    context_parts.append(f"--- Iniciativa: {init.name} ---\n\n{docs_text}")
+        all_names = repo.list_names()
+        for initiative_name in initiatives:
+            init = repo.get(initiative_name)
+            if init and init.documents:
+                docs_text = ContextBuilder().build(init)
+                context_parts.append(f"--- Iniciativa: {init.name} ---\n\n{docs_text}")
 
         if use_product_docs:
             pd_context = _product_docs_service(request).build_context()
@@ -1900,7 +1868,7 @@ async def consult_docs(
 
         return templates.TemplateResponse(
             "consult.html",
-            _ctx(request, initiative_names=[i.name for i in all_inits],
+            _ctx(request, initiative_names=all_names,
                  selected_initiatives=initiatives,
                  question=question,
                  result={

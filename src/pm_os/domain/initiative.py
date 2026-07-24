@@ -25,7 +25,10 @@ class Initiative:
     @property
     def context_char_count(self) -> int:
         if self.sources:
-            return sum(len(source.content) for source in self.sources)
+            return sum(
+                len(source.content) if source.content else source.size_bytes
+                for source in self.sources
+            )
         return sum(len(document) for document in self.documents)
 
     @property
