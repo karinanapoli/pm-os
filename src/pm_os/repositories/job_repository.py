@@ -2,7 +2,7 @@ import json
 import os
 import sqlite3
 import threading
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -10,10 +10,15 @@ from typing import Optional
 class JobRepository:
     """Persistent, scope-aware storage for background generation jobs."""
 
-    def __init__(self, database_path: Optional[Path] = None):
+    def __init__(
+        self,
+        database_path: Optional[Path] = None,
+        retention_days: int = 7,
+    ):
         config_dir = Path(os.getenv("PM_OS_CONFIG_DIR", str(Path.home() / ".pm_os")))
         self.database_path = database_path or config_dir / "jobs.db"
         self.database_path.parent.mkdir(parents=True, exist_ok=True)
+        self.retention_days = max(1, retention_days)
         self._lock = threading.RLock()
         self._initialize()
 
@@ -42,6 +47,7 @@ class JobRepository:
             )
 
     def create(self, job_id: str, owner_email: str, squad_name: str, payload: dict) -> None:
+        self.prune_completed()
         now = datetime.now(timezone.utc).isoformat()
         serialized = json.dumps(payload, ensure_ascii=False)
         with self._lock, self._connect() as connection:
@@ -53,6 +59,33 @@ class JobRepository:
                 """,
                 (job_id, owner_email, squad_name, serialized, now, now),
             )
+
+    def prune_completed(self, older_than_days: Optional[int] = None) -> int:
+        """Delete completed jobs that have been inactive beyond retention."""
+        days = max(1, older_than_days or self.retention_days)
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+        with self._lock, self._connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT id, payload FROM generation_jobs
+                WHERE updated_at < ?
+                """,
+                (cutoff,),
+            ).fetchall()
+            completed_ids = []
+            for job_id, serialized in rows:
+                try:
+                    if json.loads(serialized).get("done") is True:
+                        completed_ids.append(job_id)
+                except (json.JSONDecodeError, AttributeError):
+                    continue
+            if not completed_ids:
+                return 0
+            connection.executemany(
+                "DELETE FROM generation_jobs WHERE id = ?",
+                [(job_id,) for job_id in completed_ids],
+            )
+            return len(completed_ids)
 
     def save(self, job_id: str, owner_email: str, squad_name: str, payload: dict) -> bool:
         serialized = json.dumps(payload, ensure_ascii=False)
