@@ -59,6 +59,7 @@ from pm_os.web.squad_access import authorized_squad, normalize_squad_key
 from pm_os.web.markdown_renderer import render_safe_markdown
 from pm_os.web.middleware import AuthMiddleware, CSRFMiddleware, NoCacheMiddleware
 from pm_os.web.product_docs_service import ProductDocsService
+from pm_os.web.prd_validation_service import PRDValidationService
 from pm_os.web.public_urls import allowed_hosts_from_env, external_base_url
 from pm_os.web.request_limits import (
     MAX_UPLOAD_FILE_BYTES,
@@ -633,6 +634,11 @@ def _build_ai_client() -> AIClient:
         model=cfg.get("model", "llama3.2"),
         base_url=cfg.get("ollama_url", "http://localhost:11434"),
     )
+
+
+def _build_prd_validation_service(lang: str) -> PRDValidationService:
+    validator = PRDValidator(ai_client=_build_ai_client(), lang=lang)
+    return PRDValidationService(validator=validator, lang=lang)
 
 
 def _get_mcp_servers() -> list[dict]:
@@ -1492,36 +1498,26 @@ async def validate_prd(request: Request, initiative_name: str):
                  prd_content=""),
         )
 
-    previous_score = read_validation_score_from_file(selected.path / "artifacts" / "prd-validation.md")
-
     try:
-        ai_client = _build_ai_client()
-        validator = PRDValidator(ai_client=ai_client, lang=_get_lang())
-        prd_content = prd_path.read_text(encoding="utf-8")
-        report = validator.validate(prd_content)
+        result = _build_prd_validation_service(_get_lang()).validate(prd_path)
 
-        if not report.is_valid:
+        if not result.report.is_valid:
             return templates.TemplateResponse(
                 request,
                 "validate.html",
-                _ctx(request, initiative=selected, report=None, error=report.summary,
-                     validation_history=read_validation_history(selected.path / "artifacts"),
-                     prd_content=prd_content),
+                _ctx(request, initiative=selected, report=None, error=result.report.summary,
+                     validation_history=result.history,
+                     prd_content=result.prd_content),
                 status_code=502,
             )
-
-        artifacts_dir = selected.path / "artifacts"
-        version_file(artifacts_dir / "prd-validation.md")
-        report_path = str(artifacts_dir / "prd-validation.md")
-        MarkdownWriter().write(content=report.to_markdown(lang=_get_lang()), output_path=report_path)
 
         return templates.TemplateResponse(
             request,
             "validate.html",
-            _ctx(request, initiative=selected, report=report, error=None,
-                 previous_score=previous_score,
-                 validation_history=read_validation_history(artifacts_dir),
-                 prd_content=prd_content),
+            _ctx(request, initiative=selected, report=result.report, error=None,
+                 previous_score=result.previous_score,
+                 validation_history=result.history,
+                 prd_content=result.prd_content),
         )
 
     except OllamaConnectionError:
@@ -1530,7 +1526,7 @@ async def validate_prd(request: Request, initiative_name: str):
             "validate.html",
             _ctx(request, initiative=selected, report=None, error=_t("error.ollama", _get_lang()),
                  validation_history=read_validation_history(selected.path / "artifacts"),
-                 prd_content=prd_content),
+                 prd_content=prd_path.read_text(encoding="utf-8")),
         )
 
 
@@ -1545,16 +1541,7 @@ async def revalidate_prd(request: Request, initiative_name: str):
     if not prd_path.exists():
         return RedirectResponse(url=f"/initiative/{initiative_name}", status_code=302)
     try:
-        ai_client = _build_ai_client()
-        validator = PRDValidator(ai_client=ai_client, lang=_get_lang())
-        prd_content = prd_path.read_text(encoding="utf-8")
-        report = validator.validate(prd_content)
-        if not report.is_valid:
-            return RedirectResponse(url=f"/initiative/{initiative_name}", status_code=302)
-        artifacts_dir = selected.path / "artifacts"
-        version_file(artifacts_dir / "prd-validation.md")
-        report_path = str(artifacts_dir / "prd-validation.md")
-        MarkdownWriter().write(content=report.to_markdown(lang=_get_lang()), output_path=report_path)
+        _build_prd_validation_service(_get_lang()).validate(prd_path)
     except OllamaConnectionError:
         pass
     return RedirectResponse(url=f"/initiative/{initiative_name}", status_code=302)
