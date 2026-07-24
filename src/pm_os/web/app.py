@@ -33,7 +33,7 @@ from pm_os.infrastructure.ai.clients.anthropic_client import AnthropicClient
 from pm_os.infrastructure.ai.clients.fake_ai_client import FakeAIClient
 from pm_os.infrastructure.ai.clients.gateway_client import GatewayClient
 from pm_os.infrastructure.security import hash_password, password_is_strong, verify_password
-from pm_os.contracts.workflow_contracts import AIClient
+from pm_os.contracts.workflow_contracts import AIClient, AIProviderError
 from pm_os.domain.initiative import Initiative
 from pm_os.infrastructure.validators.prd_validator import PRDValidator
 from pm_os.infrastructure.utils import (
@@ -1511,6 +1511,44 @@ async def save_config(
 
 
 # ─── MCP Server Management ───
+
+@app.post("/config/gateway/test", response_class=JSONResponse)
+async def test_gateway_connection(
+    request: Request,
+    gateway_url: str = Form(...),
+    gateway_provider: str = Form(...),
+    gateway_project_id: str = Form(...),
+    gateway_identifier: str = Form(...),
+    gateway_api_key: str = Form(""),
+):
+    try:
+        _validate_gateway_config(
+            gateway_url,
+            gateway_provider,
+            gateway_project_id,
+            gateway_identifier,
+        )
+        client = GatewayClient(
+            base_url=gateway_url.strip(),
+            provider=gateway_provider.strip(),
+            project_id=gateway_project_id.strip(),
+            identifier=gateway_identifier.strip(),
+            api_key=(
+                gateway_api_key
+                or config_manager.get("gateway_api_key", "")
+            ),
+            timeout=15,
+        )
+        client.generate("Reply only with OK.")
+        return JSONResponse({
+            "ok": True,
+            "message": _t("gateway.test_success", _get_lang()),
+        })
+    except (ValueError, AIProviderError) as exc:
+        return JSONResponse(
+            {"ok": False, "message": str(exc)},
+            status_code=422,
+        )
 
 
 @app.post("/config/mcp/add", response_class=HTMLResponse)

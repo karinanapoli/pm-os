@@ -15,6 +15,7 @@ class GatewayClient:
         project_id: str = "",
         identifier: str = "",
         api_key: str = "",
+        timeout: float = 600,
     ):
         self.base_url = (
             base_url or os.getenv("PM_OS_GATEWAY_URL", "")
@@ -27,6 +28,7 @@ class GatewayClient:
             "PM_OS_GATEWAY_IDENTIFIER", ""
         )
         self.api_key = api_key or os.getenv("PM_OS_GATEWAY_API_KEY", "")
+        self.timeout = timeout
 
     def generate(self, prompt: str) -> str:
         missing = [
@@ -68,7 +70,7 @@ class GatewayClient:
                     "messages": [{"role": "user", "content": prompt}],
                     "temperature": 0.7,
                 },
-                timeout=600,
+                timeout=self.timeout,
             )
             response.raise_for_status()
             data = response.json()
@@ -93,12 +95,43 @@ class GatewayClient:
                 )
             return content
         except httpx.HTTPStatusError as exc:
+            status = exc.response.status_code
+            messages = {
+                401: "Gateway credentials were rejected. Check the token.",
+                403: (
+                    "Gateway access was denied. Check the project and "
+                    "identifier permissions."
+                ),
+                404: (
+                    "Gateway endpoint or identifier was not found. "
+                    "Check the URL and routing fields."
+                ),
+                429: (
+                    "Gateway request limit or quota was reached. "
+                    "Try again later or review the quota."
+                ),
+            }
+            if status >= 500:
+                message = (
+                    "Gateway is temporarily unavailable. Try again later."
+                )
+            else:
+                message = messages.get(
+                    status,
+                    f"Gateway rejected the request with status {status}.",
+                )
+            raise AIProviderError(message) from exc
+        except httpx.TimeoutException as exc:
             raise AIProviderError(
-                f"Gateway API error: {exc.response.status_code}"
+                "Gateway did not respond before the timeout."
+            ) from exc
+        except httpx.ConnectError as exc:
+            raise AIProviderError(
+                "Could not reach the gateway. Check the URL and network."
             ) from exc
         except httpx.RequestError as exc:
             raise AIProviderError(
-                f"Gateway request failed: {exc}"
+                "Gateway request failed before receiving a response."
             ) from exc
         except (TypeError, ValueError) as exc:
             raise AIProviderError(
