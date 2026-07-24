@@ -37,6 +37,10 @@ PM Studio evolution happens through incremental capabilities, reusing a common a
 | Traceable Context Sources | ✅ Completed | Sprint 008 |
 | Privacy Preview | ✅ Completed | Sprint 008 |
 | Evidence-aware Prompts | ✅ Completed | Sprint 008 |
+| Persistent Scoped Jobs | ✅ Completed | Sprint 009 |
+| Source-level Context Controls | ✅ Completed | Sprint 009 |
+| Citation Verification | ✅ Completed | Sprint 009 |
+| Architecture & Performance Hardening | ✅ Completed | Sprint 009 |
 | Create Backlog | 🟡 Planned | Sprint 005 |
 | OKRs | 🟡 Planned | Sprint 005 |
 | AI Prototyping | 🟡 Planned | Sprint 006 |
@@ -52,7 +56,7 @@ PM Studio evolution happens through incremental capabilities, reusing a common a
 
 # Current Focus
 
-## Sprint 008 — Trustworthy Context
+## Sprint 009 — Architecture & Performance Hardening
 
 ### Delivered
 
@@ -67,12 +71,19 @@ PM Studio evolution happens through incremental capabilities, reusing a common a
 - Evidence citations and separation of facts, inferences, and recommendations.
 - Privacy, confidentiality, and size preview before generation.
 - Learning module for Product Managers beginning with context engineering.
+- Persistent generation jobs scoped to user and squad, with retention.
+- Source-level controls and citation verification.
+- Transactional configuration updates and protected public integrations.
+- Focused services for PRD generation, validation, consultation, initiatives,
+  Product Docs and MCP context collection.
+- Bounded parallel MCP fetching.
+- CI coverage floor raised to 80%.
 
 ### Next
 
-- Persistent jobs scoped to user and squad.
-- Source-level controls to include or exclude individual documents.
-- Citation verification in generated artifacts.
+- Create Backlog as the next complete PM capability.
+- Structured latency and reliability telemetry.
+- Route-module extraction as the web composition root evolves.
 
 ---
 

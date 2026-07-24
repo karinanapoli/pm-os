@@ -28,7 +28,7 @@ Each block has well-defined responsibilities.
                         User
                            │
                            ▼
-        Continue • CLI • MCP • Web (future)
+               CLI • MCP • Web
                            │
                            ▼
 ──────────────────────────────────────────────────
@@ -87,9 +87,8 @@ AI models are external services.
 
 The PM Studio domain never depends directly on a specific implementation.
 
-Today we use Ollama.
-
-Tomorrow we may use OpenAI, Azure OpenAI, Claude, or any other provider.
+Today the platform supports Ollama, OpenAI-compatible providers, Anthropic,
+and a local demo provider behind the same contract.
 
 ---
 
@@ -139,6 +138,7 @@ src/
     ├── infrastructure/
     ├── repositories/
     ├── workflows/
+    ├── web/
     ├── writers/
     ├── templates/
     ├── bootstrap.py
@@ -154,6 +154,7 @@ Each directory has a specific responsibility.
 | `repositories/` | Retrieves information from the Workspace. |
 | `workflows/` | Orchestrates the execution of platform capabilities. |
 | `infrastructure/` | Concrete implementations of external services (Ollama, Logging, etc.). |
+| `web/` | HTTP composition root, middleware, and application services used by the web interface. |
 | `writers/` | Responsible for persisting generated artifacts. |
 | `templates/` | Templates used by workflows. |
 
@@ -326,19 +327,22 @@ The architecture was designed to provide:
 
 ---
 
-# Next Steps
+# Current Boundaries and Next Steps
 
 The architecture will continue evolving as new capabilities are added.
 
-Upcoming topics include:
+The current architecture intentionally targets a single PM Studio installation.
+Background jobs use a bounded in-process executor and persist progress in SQLite.
+This keeps local and self-hosted operation simple, but a multi-instance deployment
+would require a shared queue and database.
 
-- centralized configuration layer;
-- integration tests;
-- Template Engine;
-- multiple AI providers;
-- Vector Store;
-- advanced observability;
-- official PM Studio CLI.
+The next architectural topics are:
+
+- split the remaining HTTP composition root into route modules;
+- add structured telemetry and latency budgets;
+- introduce a shared job queue only when multi-instance deployment is required;
+- continue source and citation quality measurement;
+- evaluate a Vector Store from a demonstrated retrieval need.
 
 ---
 
