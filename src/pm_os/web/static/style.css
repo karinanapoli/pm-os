@@ -893,6 +893,12 @@ body {
     border-color: rgba(16, 185, 129, 0.2);
 }
 
+.alert-warning {
+    background: var(--amber-dim);
+    color: var(--amber);
+    border-color: var(--amber-border);
+}
+
 .alert-info {
     background: rgba(110, 86, 217, 0.1);
     color: var(--primary-light);
