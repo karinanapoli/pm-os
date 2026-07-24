@@ -52,3 +52,31 @@ def test_migrates_legacy_single_user_library_without_deleting_original(tmp_path)
     assert (scoped.context_dir / "guide.md").read_text(encoding="utf-8") == "Legacy guide"
     assert scoped.load_links()[0]["title"] == "Legacy"
     assert (legacy_context / "guide.md").exists()
+
+
+def test_document_operations_validate_name_extension_and_size(tmp_path):
+    service = ProductDocsService(owner_email="pm@example.com", root_dir=tmp_path)
+
+    assert service.save_document("brief.md", b"Product brief", max_bytes=100)
+    assert not service.save_document("../escape.md", b"bad", max_bytes=100)
+    assert not service.save_document("script.exe", b"bad", max_bytes=100)
+    assert not service.save_document("large.md", b"x" * 101, max_bytes=100)
+    assert service.list_doc_metadata() == [{"name": "brief.md", "size": "13 B"}]
+    assert service.delete_document("brief.md")
+    assert not service.delete_document("brief.md")
+
+
+def test_link_operations_deduplicate_and_handle_corrupted_storage(tmp_path):
+    service = ProductDocsService(owner_email="pm@example.com", root_dir=tmp_path)
+
+    assert service.add_link("Strategy", "https://example.com/strategy")
+    assert not service.add_link("Duplicate", "https://example.com/strategy")
+    assert not service.add_link("", "")
+    assert service.load_links() == [
+        {"title": "Strategy", "url": "https://example.com/strategy"}
+    ]
+    assert service.delete_link("https://example.com/strategy")
+    assert not service.delete_link("https://example.com/missing")
+
+    (service.base_dir / "links.json").write_text("{broken", encoding="utf-8")
+    assert service.load_links() == []
