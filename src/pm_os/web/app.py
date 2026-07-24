@@ -17,7 +17,6 @@ from fastapi import FastAPI, File, Form, Request, UploadFile, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import FileResponse
 from jinja2 import pass_context
@@ -53,6 +52,7 @@ from pm_os.prompt_builder import PromptBuilder
 from pm_os.web.config_manager import ConfigManager
 from pm_os.web.i18n import t as _t, LANGS
 from pm_os.web.markdown_renderer import render_safe_markdown
+from pm_os.web.middleware import AuthMiddleware, CSRFMiddleware, NoCacheMiddleware
 from pm_os.web.product_docs_service import ProductDocsService
 from pm_os.web.request_limits import (
     MAX_UPLOAD_FILE_BYTES,
@@ -68,100 +68,7 @@ _gen_executor = ThreadPoolExecutor(max_workers=2)
 app = FastAPI(title="PM Studio")
 
 
-# ─── Auth middleware (must be added before SessionMiddleware so it runs inside session scope) ───
-
-
-# ─── CSRF (ASGI-level — buffers body so route handlers can still read it) ───
-
 import secrets as _secrets_module
-
-_CSRF_SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
-_CSRF_EXCLUDED_PATHS = frozenset()
-
-class _CSRFMiddleware:
-    """ASGI middleware: buffers POST body, validates CSRF token, then passes body through."""
-
-    def __init__(self, app):
-        self.app = app
-
-    async def __call__(self, scope, receive, send):
-        if scope["type"] != "http":
-            await self.app(scope, receive, send)
-            return
-
-        path = scope.get("path", "")
-        method = scope.get("method", "GET")
-
-        if "session" in scope and "csrf_token" not in scope["session"]:
-            scope["session"]["csrf_token"] = _secrets_module.token_hex(32)
-
-        if path.startswith("/static") or path in _CSRF_EXCLUDED_PATHS or method in _CSRF_SAFE_METHODS:
-            await self.app(scope, receive, send)
-            return
-
-        if os.environ.get("PM_OS_ENV") == "test":
-            await self.app(scope, receive, send)
-            return
-
-        # Buffer the entire body
-        chunks = []
-        more_body = True
-        while more_body:
-            message = await receive()
-            if message["type"] == "http.request":
-                chunks.append(message.get("body", b""))
-                more_body = message.get("more_body", False)
-        body_bytes = b"".join(chunks)
-
-        # Validate CSRF token for all state-changing requests
-        token = scope.get("session", {}).get("csrf_token", "")
-        headers = dict(scope.get("headers", []))
-        header_token = headers.get(b"x-csrf-token", b"").decode("utf-8", errors="replace")
-
-        provided_token = header_token or _get_form_field(body_bytes, headers, "csrf_token")
-        if not provided_token or not _secrets_module.compare_digest(token, provided_token):
-            response_body = _t("csrf.invalid", _get_lang()).encode("utf-8")
-            await send({
-                "type": "http.response.start",
-                "status": 403,
-                "headers": [
-                    (b"content-type", b"text/html; charset=utf-8"),
-                    (b"content-length", str(len(response_body)).encode()),
-                ],
-            })
-            await send({"type": "http.response.body", "body": response_body})
-            return
-
-        # Pass body through to inner app
-        async def receive_wrapper():
-            return {"type": "http.request", "body": body_bytes, "more_body": False}
-
-        await self.app(scope, receive_wrapper, send)
-
-
-def _get_form_field(body_bytes: bytes, headers: dict, field: str) -> str:
-    """Extract a single field from URL-encoded form data without consuming the body."""
-    from urllib.parse import parse_qs
-    ct = headers.get(b"content-type", b"").decode("utf-8", errors="replace")
-    ct_lower = ct.lower()
-    try:
-        if "application/x-www-form-urlencoded" in ct_lower:
-            params = parse_qs(body_bytes.decode("utf-8", errors="replace"))
-            return params.get(field, [""])[0]
-        if "multipart/form-data" in ct_lower:
-            boundary_match = re.search(r'boundary="?([^";]+)', ct, re.IGNORECASE)
-            if not boundary_match:
-                return ""
-            boundary = boundary_match.group(1).encode()
-            marker = b'name="' + field.encode() + b'"'
-            for part in body_bytes.split(b"--" + boundary):
-                if marker in part:
-                    _, _, value = part.partition(b"\r\n\r\n")
-                    return value.rsplit(b"\r\n", 1)[0].decode("utf-8", errors="replace")
-        return ""
-    except Exception:
-        return ""
-
 
 # Persistent session key — survives server restarts
 _session_key_path = Path(os.getenv("PM_OS_CONFIG_DIR", str(Path.home() / ".pm_os"))) / ".session_key"
@@ -182,67 +89,15 @@ if not _secret:
         except OSError:
             _logger.warning("Could not enforce permissions on the session key file.")
 
-class _NoCacheMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request, call_next):
-        response = await call_next(request)
-        ct = response.headers.get("content-type", "")
-        if ct.startswith("text/html"):
-            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-            response.headers["Pragma"] = "no-cache"
-            response.headers["Expires"] = "Thu, 01 Jan 1970 00:00:00 GMT"
-            response.headers["X-Content-Type-Options"] = "nosniff"
-            response.headers["X-Frame-Options"] = "DENY"
-            response.headers["Content-Security-Policy"] = (
-                "default-src 'self'; "
-                "script-src 'self' 'unsafe-inline'; "
-                "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-                "font-src https://fonts.gstatic.com; "
-                "img-src 'self' data:; "
-                "connect-src 'self'; "
-                "frame-ancestors 'none';"
-            )
-        return response
-
-
-app.add_middleware(_NoCacheMiddleware)
-app.add_middleware(_CSRFMiddleware)
-
-
-class _AuthMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        if request.url.path.startswith("/static"):
-            return await call_next(request)
-        if request.url.path in ("/login", "/register", "/verify", "/verify/resend", "/forgot", "/reset"):
-            return await call_next(request)
-        if config_manager.get("auth_bypass_localhost", False):
-            host = request.client.host if request.client else ""
-            if host in ("127.0.0.1", "::1", "localhost"):
-                # Auto-populate session so user_email is available for squads
-                users = config_manager.get("users") or {}
-                if not request.session.get("user_email"):
-                    if users:
-                        first_user = next(iter(users))
-                        request.session["user_email"] = first_user
-                        request.session["authenticated"] = True
-                    else:
-                        request.session["user_email"] = "local@localhost"
-                        request.session["authenticated"] = True
-                return await call_next(request)
-        try:
-            authenticated = request.session.get("authenticated")
-            user_email = request.session.get("user_email")
-        except (AssertionError, KeyError, RuntimeError):
-            authenticated = False
-            user_email = None
-        users = config_manager.get("users") or {}
-        if authenticated and user_email and user_email in users:
-            return await call_next(request)
-        if not users:
-            return RedirectResponse(url="/register", status_code=302)
-        return RedirectResponse(url="/login", status_code=302)
-
-
-app.add_middleware(_AuthMiddleware)
+app.add_middleware(NoCacheMiddleware)
+app.add_middleware(
+    CSRFMiddleware,
+    error_message=lambda: _t("csrf.invalid", _get_lang()),
+)
+app.add_middleware(
+    AuthMiddleware,
+    config_get=lambda key, default=None: config_manager.get(key, default),
+)
 app.add_middleware(
     SessionMiddleware,
     secret_key=_secret,
