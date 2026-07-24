@@ -61,6 +61,21 @@
         <h3>{{ "consult.result_for"|t }} {{ result.initiatives | join(", ") }}</h3>
     </div>
     <div class="card-body">
+        {% if result.citation_report and result.citation_report.status != "not_applicable" %}
+        <div class="alert {{ 'alert-success' if result.citation_report.status == 'verified' else 'alert-warning' }}" role="status">
+            <strong>
+                {{ "citations.verified"|t if result.citation_report.status == "verified" else "citations.needs_review"|t }}
+            </strong>
+            {% if result.citation_report.status == "verified" %}
+                {{ "citations.verified_count"|t }}: {{ result.citation_report.valid_ids|length }}.
+            {% elif result.citation_report.missing_citations %}
+                {{ "citations.missing"|t }}
+            {% endif %}
+            {% if result.citation_report.invalid_ids %}
+                {{ "citations.invalid"|t }}: {{ result.citation_report.invalid_ids|join(", ") }}.
+            {% endif %}
+        </div>
+        {% endif %}
         <pre class="answer-content" style="white-space: pre-wrap; font-family: inherit; line-height: 1.7;">{{ result.answer }}</pre>
         {% if result.references %}
         <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border);">

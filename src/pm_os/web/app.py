@@ -26,6 +26,7 @@ from pm_os.bootstrap import (
     create_change_tracker,
     create_prd_validator,
 )
+from pm_os.citation_verifier import extract_source_ids, verify_citations
 from pm_os.infrastructure.ai.clients.ollama_client import (
     OllamaClient,
     OllamaConnectionError,
@@ -1259,6 +1260,7 @@ async def generate_prd(
             _set_step(1, "done")
             _set_step(2, "active", detail="")
             prd_content = ai_client.generate(prompt)
+            citation_report = verify_citations(prd_content, extract_source_ids(context))
 
             artifacts_dir = selected.path / "artifacts"
             artifacts_dir.mkdir(parents=True, exist_ok=True)
@@ -1288,7 +1290,8 @@ async def generate_prd(
                 "additional": used_additional,
                 "product_docs_used": used_product_docs,
                 "mcp_used": used_mcp_servers,
-                "source_ids": sorted(selected_source_set),
+                "source_ids": citation_report.available_ids,
+                "citation_report": asdict(citation_report),
             }
             task["done"] = True
             task["steps"][3]["status"] = "done"
@@ -1882,6 +1885,7 @@ async def consult_docs(
         prompt = PromptBuilder().build("consult", docs_context, question)
 
         answer = ai_client.generate(prompt)
+        citation_report = verify_citations(answer, extract_source_ids(docs_context))
 
         # Extract references: initiative names + product docs mentioned
         references = []
@@ -1904,6 +1908,7 @@ async def consult_docs(
                      "initiatives": initiatives + (["Documentação complementar"] if use_product_docs else []) + (used_mcp_servers if use_mcp else []),
                      "references": references,
                      "mcp_used": used_mcp_servers,
+                     "citation_report": asdict(citation_report),
                  },
                  error=None,
                  mcp_count=len(_get_mcp_servers())),

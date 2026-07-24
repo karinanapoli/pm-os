@@ -28,6 +28,22 @@
             </div>
         </div>
 
+        {% if result.citation_report and result.citation_report.status != "not_applicable" %}
+        <div class="alert {{ 'alert-success' if result.citation_report.status == 'verified' else 'alert-warning' }}" role="status">
+            <strong>
+                {{ "citations.verified"|t if result.citation_report.status == "verified" else "citations.needs_review"|t }}
+            </strong>
+            {% if result.citation_report.status == "verified" %}
+                {{ "citations.verified_count"|t }}: {{ result.citation_report.valid_ids|length }}.
+            {% elif result.citation_report.missing_citations %}
+                {{ "citations.missing"|t }}
+            {% endif %}
+            {% if result.citation_report.invalid_ids %}
+                {{ "citations.invalid"|t }}: {{ result.citation_report.invalid_ids|join(", ") }}.
+            {% endif %}
+        </div>
+        {% endif %}
+
         {% if result.additional or result.product_docs_used or result.mcp_used %}
         <div style="margin-bottom: 16px; margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap;">
             {% if result.additional %}
