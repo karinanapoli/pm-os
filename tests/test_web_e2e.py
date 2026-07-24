@@ -434,6 +434,22 @@ class TestAuth:
         for k, v in cfg.items():
             _web_app.config_manager.set(k, v)
 
+    def _add_pending_registration(self) -> None:
+        import pm_os.web.app as web_app
+
+        web_app.config_manager.set(
+            "pending_registrations",
+            {
+                self.USER_EMAIL: {
+                    "password_hash": "pending-password-hash",
+                    "code_digest": "pending-code-digest",
+                    "expires_at": time.time() + 600,
+                    "attempts": 0,
+                    "last_sent_at": 0,
+                }
+            },
+        )
+
     def test_register_page_renders(self, unauth_client, session_base):
         self._enable_auth(session_base)
         resp = unauth_client.get("/register")
@@ -496,6 +512,79 @@ class TestAuth:
         assert resp.status_code == 200
         content = resp.content.decode("utf-8")
         assert "e-mail válido" in content or "informe um e-mail válido" in content or "Enter a valid email" in content
+
+    def test_smtp_registration_activates_account_only_after_verification(
+        self, unauth_client, session_base, monkeypatch
+    ):
+        self._enable_auth(session_base)
+        captured = {}
+        from pm_os.web import email_service
+
+        monkeypatch.setattr(email_service, "is_smtp_configured", lambda cfg: True)
+        monkeypatch.setattr(
+            email_service,
+            "send_verification_email",
+            lambda cfg, email, code: captured.update(email=email, code=code) or True,
+        )
+        email = "pending@example.com"
+
+        response = unauth_client.post(
+            "/register",
+            data={"email": email, "password": "newpassword1"},
+            follow_redirects=False,
+        )
+
+        assert response.status_code == 302
+        cfg = json.loads((session_base / ".pm_os" / "config.json").read_text())
+        assert email not in cfg["users"]
+        assert email in cfg["pending_registrations"]
+        assert captured["code"] not in json.dumps(cfg)
+
+        invalid_login = unauth_client.post(
+            "/login",
+            data={"email": email, "password": "newpassword1"},
+        )
+        assert invalid_login.status_code == 200
+
+        verified = unauth_client.post(
+            "/verify",
+            data={"email": email, "code": captured["code"]},
+        )
+
+        assert verified.status_code == 200
+        cfg = json.loads((session_base / ".pm_os" / "config.json").read_text())
+        assert email in cfg["users"]
+        assert email not in cfg["pending_registrations"]
+
+    def test_verification_invalid_attempts_cancel_pending_registration(
+        self, unauth_client, session_base, monkeypatch
+    ):
+        self._enable_auth(session_base)
+        from pm_os.web import email_service
+
+        captured = {}
+        monkeypatch.setattr(email_service, "is_smtp_configured", lambda cfg: True)
+        monkeypatch.setattr(
+            email_service,
+            "send_verification_email",
+            lambda cfg, email, code: captured.update(code=code) or True,
+        )
+        email = "attempts@example.com"
+        unauth_client.post(
+            "/register",
+            data={"email": email, "password": "newpassword1"},
+        )
+        wrong_code = "000000" if captured["code"] != "000000" else "111111"
+
+        for _ in range(5):
+            response = unauth_client.post(
+                "/verify",
+                data={"email": email, "code": wrong_code},
+            )
+
+        assert "Muitas tentativas" in response.text
+        cfg = json.loads((session_base / ".pm_os" / "config.json").read_text())
+        assert email not in cfg["pending_registrations"]
 
     def test_login_page_renders(self, unauth_client, session_base):
         self._enable_auth(session_base)
@@ -588,6 +677,8 @@ class TestAuth:
         from urllib.parse import parse_qs, urlparse
         params = parse_qs(urlparse(captured["url"]).query)
         token = params["token"][0]
+        raw_config = (session_base / ".pm_os" / "config.json").read_text()
+        assert token not in raw_config
         resp = unauth_client.post(
             "/reset",
             data={
@@ -607,6 +698,7 @@ class TestAuth:
         self, unauth_client, session_base, monkeypatch
     ):
         self._enable_auth(session_base)
+        self._add_pending_registration()
         sent = {}
         from pm_os.web import email_service
 
@@ -629,6 +721,7 @@ class TestAuth:
         self, unauth_client, session_base, monkeypatch
     ):
         self._enable_auth(session_base)
+        self._add_pending_registration()
         from pm_os.web import email_service
 
         monkeypatch.setattr(email_service, "is_smtp_configured", lambda cfg: True)
