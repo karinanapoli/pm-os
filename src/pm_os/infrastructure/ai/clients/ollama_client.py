@@ -9,8 +9,13 @@ class OllamaConnectionError(RuntimeError):
     Raised when PM OS cannot connect to the local Ollama server.
     """
 
+    def __init__(self, message: str = "Could not connect to the Ollama server."):
+        super().__init__(message)
+
+
+class OllamaResponseError(OllamaConnectionError):
     def __init__(self):
-        super().__init__("Could not connect to the Ollama server.")
+        super().__init__("Ollama returned an invalid or empty response.")
 
 
 class OllamaClient:
@@ -23,10 +28,10 @@ class OllamaClient:
     def __init__(
         self,
         model: str = "",
-        base_url: str = "http://localhost:11434",
+        base_url: str = "",
     ):
         self.model = model or os.getenv("PM_OS_MODEL", "llama3.2")
-        self.base_url = base_url or os.getenv("PM_OS_OLLAMA_URL", "http://localhost:11434")
+        self.base_url = (base_url or os.getenv("PM_OS_OLLAMA_URL", "http://localhost:11434")).rstrip("/")
 
     def generate(self, prompt: str) -> str:
         url = f"{self.base_url}/api/generate"
@@ -50,9 +55,15 @@ class OllamaClient:
                 timeout=600,
             ) as response:
                 response_body = response.read().decode("utf-8")
-                data = json.loads(response_body)
 
-        except urllib.error.URLError as error:
+        except (urllib.error.URLError, TimeoutError) as error:
             raise OllamaConnectionError() from error
 
-        return data.get("response", "")
+        try:
+            data = json.loads(response_body)
+            content = data.get("response") if isinstance(data, dict) else None
+        except (json.JSONDecodeError, TypeError, ValueError) as error:
+            raise OllamaResponseError() from error
+        if not isinstance(content, str) or not content.strip():
+            raise OllamaResponseError()
+        return content
