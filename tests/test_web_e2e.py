@@ -1295,3 +1295,76 @@ class TestSquadCRUD:
         """Switching to personal workspace should work."""
         resp = client.get("/workspace/personal", follow_redirects=False)
         assert resp.status_code in (302, 303)
+
+    def test_removed_member_loses_workspace_access_immediately(self, client):
+        client.get("/workspace/default")
+        client.post(
+            "/product-docs/upload",
+            files={"docs": ("squad-secret.md", b"# Squad secret")},
+        )
+        import pm_os.web.app as web_app
+
+        squads = dict(web_app.config_manager.get("squads") or {})
+        squads["default"]["members"] = ["other@example.com"]
+        web_app.config_manager.set("squads", squads)
+
+        response = client.get("/product-docs")
+
+        assert "squad-secret.md" not in response.text
+
+    def test_squad_identifier_rejects_path_syntax(self, client):
+        response = client.post(
+            "/squad/create",
+            data={
+                "name": "../../finance",
+                "display_name": "Finance",
+                "password": "squadpass",
+            },
+        )
+
+        assert response.status_code == 200
+        assert "letras minúsculas" in response.text
+        import pm_os.web.app as web_app
+
+        assert "../../finance" not in (web_app.config_manager.get("squads") or {})
+
+    def test_creator_cannot_leave_or_remove_self(self, client):
+        client.get("/workspace/default")
+        leave_response = client.post("/squad/leave")
+        assert leave_response.status_code == 200
+        assert "criador não pode sair" in leave_response.text
+
+        remove_response = client.post(
+            "/squad/admin/default/remove-member",
+            data={"member_email": "test@pmstudio.app"},
+            follow_redirects=False,
+        )
+
+        assert remove_response.status_code == 302
+        import pm_os.web.app as web_app
+
+        assert "test@pmstudio.app" in (
+            web_app.config_manager.get("squads")["default"]["members"]
+        )
+
+    def test_disbanded_squad_identifier_cannot_be_reused(self, client):
+        response = client.post(
+            "/squad/admin/default/disband",
+            follow_redirects=False,
+        )
+        assert response.status_code == 302
+
+        create_response = client.post(
+            "/squad/create",
+            data={
+                "name": "default",
+                "display_name": "Replacement",
+                "password": "squadpass",
+            },
+        )
+
+        assert create_response.status_code == 200
+        import pm_os.web.app as web_app
+
+        assert "default" not in (web_app.config_manager.get("squads") or {})
+        assert "default" in web_app.config_manager.get("retired_squad_names")
