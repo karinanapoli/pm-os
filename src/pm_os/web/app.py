@@ -3,7 +3,6 @@ import os
 import re
 import json
 import shutil
-import uuid
 import urllib.parse
 import time
 import yaml
@@ -60,6 +59,7 @@ from pm_os.web.markdown_renderer import render_safe_markdown
 from pm_os.web.middleware import AuthMiddleware, CSRFMiddleware, NoCacheMiddleware
 from pm_os.web.product_docs_service import ProductDocsService
 from pm_os.web.prd_validation_service import PRDValidationService
+from pm_os.web.generation_job_service import GenerationJobService
 from pm_os.web.public_urls import allowed_hosts_from_env, external_base_url
 from pm_os.web.request_limits import (
     MAX_UPLOAD_FILE_BYTES,
@@ -152,6 +152,7 @@ templates = Jinja2Templates(directory=str(HERE / "templates"))
 
 config_manager = ConfigManager()
 job_repository = JobRepository()
+generation_job_service = GenerationJobService(job_repository, _gen_executor)
 
 # ALLOWED_EXTENSIONS imported from pm_os.infrastructure.utils
 
@@ -1209,19 +1210,10 @@ async def generate_prd(
     # Kick off background generation task
     lang = _get_lang()
 
-    def _set_step(step_idx: int, status: str, detail: str = ""):
-        """Update step at index + keep task['step']/task['message'] for backward compat."""
-        if 0 <= step_idx < 4:
-            task["steps"][step_idx]["status"] = status
-            task["steps"][step_idx]["detail"] = detail
-            task["step"] = step_idx + 1
-            task["message"] = detail
-            job_repository.save(task_id, owner_email, squad_name, task)
-
-    def _run_gen():
+    def _run_gen(job):
         """Runs PRD generation + validation in background thread, updating progress in _gen_tasks."""
         try:
-            _set_step(0, "active", _t("generate.progress_context", lang))
+            job.set_step(0, "active", _t("generate.progress_context", lang))
             ai_client = _build_ai_client()
 
             context_parts = []
@@ -1260,12 +1252,12 @@ async def generate_prd(
 
             context = "\n\n".join(context_parts) if context_parts else ""
 
-            _set_step(0, "done")
-            _set_step(1, "active", _t("generate.progress_generating", lang))
+            job.set_step(0, "done")
+            job.set_step(1, "active", _t("generate.progress_generating", lang))
             prompt = PromptBuilder().build("create_prd", context, lang=lang)
 
-            _set_step(1, "done")
-            _set_step(2, "active", detail="")
+            job.set_step(1, "done")
+            job.set_step(2, "active", detail="")
             prd_content = ai_client.generate(prompt)
             citation_report = verify_citations(prd_content, extract_source_ids(context))
 
@@ -1277,8 +1269,8 @@ async def generate_prd(
 
             MarkdownWriter().write(content=prd_content, output_path=str(artifacts_dir / "prd.md"))
 
-            _set_step(2, "done")
-            _set_step(3, "active", _t("generate.progress_validating", lang))
+            job.set_step(2, "done")
+            job.set_step(3, "active", _t("generate.progress_validating", lang))
 
             validator = PRDValidator(ai_client=ai_client, lang=lang)
             report = validator.validate(prd_content)
@@ -1289,7 +1281,7 @@ async def generate_prd(
             tracker = create_change_tracker()
             tracker.update_manifest(str(selected.path))
 
-            task["result"] = {
+            job.complete({
                 "prd": prd_content,
                 "score": report.overall_score,
                 "sections": [asdict(section) for section in report.sections],
@@ -1299,39 +1291,20 @@ async def generate_prd(
                 "mcp_used": used_mcp_servers,
                 "source_ids": citation_report.available_ids,
                 "citation_report": asdict(citation_report),
-            }
-            task["done"] = True
-            task["steps"][3]["status"] = "done"
-            task["step"] = 4
-            job_repository.save(task_id, owner_email, squad_name, task)
+            })
 
         except OllamaConnectionError:
-            task["error"] = _t("error.ollama", lang)
-            task["done"] = True
-            job_repository.save(task_id, owner_email, squad_name, task)
+            job.fail(_t("error.ollama", lang))
         except Exception as exc:
             _logger.exception("Background PRD generation failed")
-            task["error"] = str(exc)
-            task["done"] = True
-            job_repository.save(task_id, owner_email, squad_name, task)
+            job.fail(str(exc))
 
-    task_id = uuid.uuid4().hex
-    task = {
-        "steps": [
-            {"status": "pending", "detail": ""},
-            {"status": "pending", "detail": ""},
-            {"status": "pending", "detail": ""},
-            {"status": "pending", "detail": ""},
-        ],
-        "step": 0,
-        "message": _t("generate.progress_starting", lang),
-        "done": False,
-        "error": None,
-        "result": None,
-    }
-    job_repository.create(task_id, owner_email, squad_name, task)
-
-    _gen_executor.submit(_run_gen)
+    task_id = generation_job_service.start(
+        owner_email,
+        squad_name,
+        _t("generate.progress_starting", lang),
+        _run_gen,
+    )
 
     # If called via fetch (JS stepper), return JSON; otherwise render fallback page
     if request.headers.get("x-requested-with") == "fetch":
