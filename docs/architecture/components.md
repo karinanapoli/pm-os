@@ -270,16 +270,16 @@ infrastructure/
 ├── ai/
 │   └── clients/
 │       ├── FakeAIClient
-│       └── OllamaClient
+│       ├── OllamaClient
+│       ├── OpenAIClient
+│       └── AnthropicClient
 └── logging/
     └── ConsoleLogger
 ```
 
 In the future there may be integrations for:
 
-- OpenAI;
 - Azure OpenAI;
-- Anthropic;
 - Gemini;
 - Vector Stores;
 - Observability.
@@ -431,6 +431,24 @@ Each component remains independent.
 
 ---
 
+# Web Application Services
+
+The web interface delegates application behavior to focused services rather
+than implementing it in HTTP routes:
+
+- `PRDGenerationOperation` assembles context, generates and validates PRDs;
+- `GenerationJobService` persists scoped progress and results;
+- `PRDValidationService` versions and persists trustworthy validation reports;
+- `ProductConsultationService` answers questions with source traceability;
+- `MCPContextService` fetches external contexts with bounded concurrency;
+- `InitiativeLifecycleService` creates, archives and restores initiatives;
+- `ProductDocsService` owns scoped document and link operations.
+
+The `app.py` module remains the HTTP composition root. New business rules should
+be added to a service or workflow, not directly to a route.
+
+---
+
 # Architectural Principles
 
 All components follow these principles:
@@ -472,8 +490,6 @@ The architecture will continue evolving as new capabilities are added.
 
 Upcoming components include:
 
-- Configuration Manager;
-- Template Engine;
 - Vector Store;
 - Embedding Service;
 - Metrics;
