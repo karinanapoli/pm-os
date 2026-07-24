@@ -21,11 +21,11 @@ document.addEventListener('DOMContentLoaded', function() {
     <div class="card-body" style="padding: 12px 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
         <span style="font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.3px;">{{ "nav.workspace"|t }}:</span>
 
-        <a href="/workspace/personal" class="btn btn-sm {% if not current_squad %}btn-ai{% else %}btn-secondary{% endif %}">👤 {{ "squad.personal"|t }}</a>
+        <a href="/workspace/personal" class="btn btn-sm {% if not current_squad %}btn-selected{% else %}btn-secondary{% endif %}">👤 {{ "squad.personal"|t }}</a>
 
         {% for sq in user_squads %}
         <div style="display: flex; align-items: center; gap: 0;">
-            <a href="/workspace/{{ sq.name }}" class="btn btn-sm {% if current_squad == sq.name %}btn-ai{% else %}btn-secondary{% endif %}" style="border-radius: 6px 0 0 6px;">▸ {{ sq.display_name }} <span style="font-size: 10px; opacity: 0.6; margin-left: 4px;">{{ sq.member_count }}</span></a>
+            <a href="/workspace/{{ sq.name }}" class="btn btn-sm {% if current_squad == sq.name %}btn-selected{% else %}btn-secondary{% endif %}" style="border-radius: 6px 0 0 6px;">▸ {{ sq.display_name }} <span style="font-size: 10px; opacity: 0.6; margin-left: 4px;">{{ sq.member_count }}</span></a>
             {% if sq.is_admin %}
             <a href="/squad/admin/{{ sq.name }}" class="btn btn-sm btn-secondary" style="border-left: 1px solid var(--border); border-radius: 0 6px 6px 0; padding: 6px 8px; font-size: 12px; line-height: 1;" title="{{ 'squad.admin'|t }}">⚙</a>
             {% endif %}

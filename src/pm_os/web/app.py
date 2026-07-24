@@ -1506,7 +1506,7 @@ async def save_config(
     return templates.TemplateResponse(
         request,
         "config.html",
-        _ctx(request, saved=True),
+        _ctx(request, saved=False, notice="config.saved"),
     )
 
 
@@ -1576,7 +1576,7 @@ async def add_mcp_server(
     return templates.TemplateResponse(
         request,
         "config.html",
-        _ctx(request, saved=True),
+        _ctx(request, saved=False, notice="config.mcp_added"),
     )
 
 
@@ -1593,7 +1593,7 @@ async def toggle_mcp_server(
     return templates.TemplateResponse(
         request,
         "config.html",
-        _ctx(request, saved=True),
+        _ctx(request, saved=False, notice="config.mcp_updated"),
     )
 
 
@@ -1610,7 +1610,7 @@ async def delete_mcp_server(
     return templates.TemplateResponse(
         request,
         "config.html",
-        _ctx(request, saved=True),
+        _ctx(request, saved=False, notice="config.mcp_removed"),
     )
 
 
@@ -1656,7 +1656,7 @@ async def add_custom_provider(
     return templates.TemplateResponse(
         request,
         "config.html",
-        _ctx(request, saved=True),
+        _ctx(request, saved=False, notice="config.provider_added"),
     )
 
 
@@ -1671,7 +1671,7 @@ async def delete_custom_provider(
     return templates.TemplateResponse(
         request,
         "config.html",
-        _ctx(request, saved=True),
+        _ctx(request, saved=False, notice="config.provider_removed"),
     )
 
 
@@ -1805,8 +1805,10 @@ async def consult_docs(
 
 # ─── Product Docs Routes ───
 
-@app.get("/product-docs", response_class=HTMLResponse)
-async def product_docs_page(request: Request):
+def _render_product_docs(
+    request: Request,
+    notice: Optional[str] = None,
+):
     pd_service = _product_docs_service(request)
     return templates.TemplateResponse(
         request,
@@ -1815,8 +1817,14 @@ async def product_docs_page(request: Request):
             request,
             docs=pd_service.list_doc_metadata(),
             links=pd_service.load_links(),
+            notice=notice,
         ),
     )
+
+
+@app.get("/product-docs", response_class=HTMLResponse)
+async def product_docs_page(request: Request):
+    return _render_product_docs(request)
 
 
 @app.post("/product-docs/upload", response_class=HTMLResponse)
@@ -1833,7 +1841,7 @@ async def upload_product_docs(
                 content,
                 MAX_UPLOAD_FILE_BYTES,
             )
-    return await product_docs_page(request)
+    return _render_product_docs(request, "product_docs.uploaded")
 
 
 @app.post("/product-docs/add-link", response_class=HTMLResponse)
@@ -1844,14 +1852,17 @@ async def add_product_link(
 ):
     pd_service = _product_docs_service(request)
     pd_service.add_link(title, url)
-    return await product_docs_page(request)
+    return _render_product_docs(request, "product_docs.link_added")
 
 
 @app.post("/product-docs/delete-doc/{filename}", response_class=HTMLResponse)
 async def delete_product_doc(request: Request, filename: str):
     pd_service = _product_docs_service(request)
     pd_service.delete_document(filename)
-    return await product_docs_page(request)
+    return _render_product_docs(
+        request,
+        "product_docs.document_deleted",
+    )
 
 
 @app.post("/product-docs/delete-link", response_class=HTMLResponse)
@@ -1861,7 +1872,7 @@ async def delete_product_link(
 ):
     pd_service = _product_docs_service(request)
     pd_service.delete_link(url)
-    return await product_docs_page(request)
+    return _render_product_docs(request, "product_docs.link_deleted")
 
 
 # ─── Timeline / Roadmap ───
