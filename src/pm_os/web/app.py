@@ -8,7 +8,7 @@ import urllib.parse
 import time
 import yaml
 from dataclasses import asdict
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from pathlib import Path
 from typing import Optional
 from concurrent.futures import ThreadPoolExecutor
@@ -51,6 +51,7 @@ from pm_os.context_builder import ContextBuilder
 from pm_os.prompt_builder import PromptBuilder
 from pm_os.web.config_manager import ConfigManager
 from pm_os.web.i18n import t as _t, LANGS
+from pm_os.web.login_security import LoginRateLimiter, resolve_client_ip
 from pm_os.web.markdown_renderer import render_safe_markdown
 from pm_os.web.middleware import AuthMiddleware, CSRFMiddleware, NoCacheMiddleware
 from pm_os.web.product_docs_service import ProductDocsService
@@ -108,31 +109,29 @@ app.add_middleware(
 app.add_middleware(RequestBodyLimitMiddleware)
 
 
-_LOGIN_ATTEMPTS: dict[str, list[datetime]] = {}
-_MAX_LOGIN_ATTEMPTS = 10
-_LOGIN_WINDOW_SECONDS = 300
-_LOGIN_ATTEMPTS_MAX_IPS = 1000
+_login_rate_limiter = LoginRateLimiter()
 
 
 def _get_client_ip(request: Request) -> str:
-    forwarded = request.headers.get("X-Forwarded-For")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
+    remote_address = request.client.host if request.client else "unknown"
+    try:
+        trusted_proxy_count = max(
+            0,
+            min(10, int(os.getenv("PM_OS_TRUSTED_PROXY_COUNT", "0"))),
+        )
+    except ValueError:
+        trusted_proxy_count = 0
+    return resolve_client_ip(
+        remote_address,
+        request.headers.get("X-Forwarded-For", ""),
+        trusted_proxy_count,
+    )
 
 
 def _check_login_rate_limit(ip: str) -> None:
-    now = datetime.now()
-    if len(_LOGIN_ATTEMPTS) > _LOGIN_ATTEMPTS_MAX_IPS:
-        cutoff = now - timedelta(seconds=_LOGIN_WINDOW_SECONDS)
-        _LOGIN_ATTEMPTS.clear()
-    attempts = _LOGIN_ATTEMPTS.get(ip, [])
-    attempts = [t for t in attempts if (now - t).total_seconds() < _LOGIN_WINDOW_SECONDS]
-    if len(attempts) >= _MAX_LOGIN_ATTEMPTS:
+    if _login_rate_limiter.is_blocked(ip):
         _logger.warning("Rate limit hit for IP %s", ip)
         raise HTTPException(status_code=429, detail=_t("auth.rate_limit", _get_lang()))
-    attempts.append(now)
-    _LOGIN_ATTEMPTS[ip] = attempts
 
 HERE = Path(__file__).parent
 app.mount("/static", StaticFiles(directory=str(HERE / "static")), name="static")
@@ -160,6 +159,7 @@ async def login_submit(request: Request, email: str = Form(...), password: str =
     users = cfg.get("users") or {}
     valid, needs_rehash = verify_password(users.get(email, ""), password)
     if valid:
+        _login_rate_limiter.reset(ip)
         if needs_rehash:
             users[email] = hash_password(password)
             config_manager.set("users", users)
@@ -170,6 +170,7 @@ async def login_submit(request: Request, email: str = Form(...), password: str =
             pass
         _logger.info("Login success for '%s' from %s", email, ip)
         return RedirectResponse(url="/", status_code=302)
+    _login_rate_limiter.record_failure(ip)
     _logger.warning("Login failed for '%s' from %s", email, ip)
     return await login_page(request, error=_t("auth.invalid_credentials", _get_lang()))
 

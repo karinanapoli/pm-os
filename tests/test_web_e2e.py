@@ -521,6 +521,47 @@ class TestAuth:
         assert resp.status_code == 200  # re-renders login page with error
         assert b"Invalid" in resp.content or b"inv" in resp.content
 
+    def test_successful_logins_do_not_trigger_rate_limit(
+        self, unauth_client, session_base
+    ):
+        self._enable_auth(session_base)
+        for _ in range(11):
+            resp = unauth_client.post(
+                "/login",
+                data={"email": self.USER_EMAIL, "password": self.USER_PASS},
+                follow_redirects=False,
+            )
+            assert resp.status_code == 302
+
+    def test_forwarded_ip_is_ignored_without_trusted_proxy(
+        self, unauth_client, session_base, monkeypatch
+    ):
+        self._enable_auth(session_base)
+        monkeypatch.delenv("PM_OS_TRUSTED_PROXY_COUNT", raising=False)
+        import pm_os.web.app as web_app
+
+        captured = []
+
+        class CapturingLimiter:
+            def is_blocked(self, client_key):
+                captured.append(client_key)
+                return False
+
+            def record_failure(self, _client_key):
+                pass
+
+            def reset(self, _client_key):
+                pass
+
+        monkeypatch.setattr(web_app, "_login_rate_limiter", CapturingLimiter())
+        unauth_client.post(
+            "/login",
+            data={"email": self.USER_EMAIL, "password": self.USER_PASS},
+            headers={"X-Forwarded-For": "198.51.100.5"},
+        )
+
+        assert captured == ["unknown"]
+
     def test_password_reset_sends_expiring_link_and_updates_password(
         self, unauth_client, session_base, monkeypatch
     ):
