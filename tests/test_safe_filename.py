@@ -31,3 +31,7 @@ def test_special_chars():
     assert _safe_filename("file with spaces.md") == "file with spaces.md"
     assert _safe_filename("document (1).txt") == "document (1).txt"
     assert _safe_filename("some_file-v2.md") == "some_file-v2.md"
+
+
+def test_preserves_accented_filename():
+    assert _safe_filename("Pesquisa de usuários.pdf") == "Pesquisa de usuários.pdf"

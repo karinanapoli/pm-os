@@ -227,12 +227,30 @@ class TestInitiativeCRUD:
         init_name = _create_initiative(client)
         resp = client.post(
             f"/initiative/{init_name}/upload",
-            files={"docs": ("test.txt", b"Test content 123")},
+            files={"docs": ("Pesquisa de usuários.txt", b"Test content 123")},
         )
         assert resp.status_code == 200
-        doc_path = session_base / "workspace" / "initiatives" / init_name / "context" / "test.txt"
+        doc_path = (
+            session_base
+            / "workspace"
+            / "initiatives"
+            / init_name
+            / "context"
+            / "Pesquisa de usuários.txt"
+        )
         assert doc_path.exists()
         assert doc_path.read_text() == "Test content 123"
+        assert "Pesquisa de usuários.txt" in resp.text
+        assert "Arquivo adicionado à iniciativa." in resp.text
+
+    def test_upload_context_doc_shows_failure(self, client):
+        init_name = _create_initiative(client)
+        resp = client.post(
+            f"/initiative/{init_name}/upload",
+            files={"docs": ("arquivo.exe", b"not supported")},
+        )
+        assert resp.status_code == 200
+        assert "Nenhum arquivo foi adicionado." in resp.text
 
     def test_upload_context_doc_md(self, client, session_base):
         init_name = _create_initiative(client)
@@ -358,12 +376,25 @@ class TestProductDocs:
     def test_upload_product_doc(self, client, session_base):
         resp = client.post(
             "/product-docs/upload",
-            files={"docs": ("guide.md", b"# Guide\n\nContent")},
+            files={"docs": ("Visão do produto.md", b"# Guide\n\nContent")},
         )
         assert resp.status_code == 200
-        doc_path = _personal_product_docs_base(session_base) / "context" / "guide.md"
+        doc_path = (
+            _personal_product_docs_base(session_base)
+            / "context"
+            / "Visão do produto.md"
+        )
         assert doc_path.exists()
         assert doc_path.read_text() == "# Guide\n\nContent"
+        assert "Visão do produto.md" in resp.text
+
+    def test_upload_product_doc_shows_failure(self, client):
+        resp = client.post(
+            "/product-docs/upload",
+            files={"docs": ("arquivo.exe", b"not supported")},
+        )
+        assert resp.status_code == 200
+        assert "Nenhum arquivo foi adicionado." in resp.text
 
     def test_add_link(self, client, session_base):
         resp = client.post("/product-docs/add-link", data={
@@ -1021,6 +1052,15 @@ class TestOnboarding:
         config_file = session_base / ".pm_os" / "config.json"
         cfg = json.loads(config_file.read_text())
         assert cfg["onboarding_dismissed"] is False
+
+    def test_tour_dismiss_includes_csrf_token(self, client):
+        dashboard = client.get("/")
+        assert '<meta name="csrf-token"' in dashboard.text
+
+        tour = client.get("/static/tour.js")
+        assert tour.status_code == 200
+        assert 'meta[name="csrf-token"]' in tour.text
+        assert "csrfInput.name = 'csrf_token'" in tour.text
 
 
 # ═══════════════════════════════════════════

@@ -3,7 +3,7 @@
 
 {% block content %}
 {% if notice %}
-<div class="alert alert-success" role="status" aria-live="polite">{{ notice|t }}</div>
+<div class="alert alert-{{ notice_kind or 'success' }}" role="status" aria-live="polite">{{ notice|t }}</div>
 {% endif %}
 <div class="card">
     <div class="card-body">
@@ -13,6 +13,7 @@
 
         <h4 style="margin-bottom: 12px;">{{ "product_docs.upload"|t }}</h4>
         <form method="POST" action="/product-docs/upload" enctype="multipart/form-data" class="form" style="margin-bottom: 32px;" data-loading="saving">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <div class="form-group">
                 <label for="product-doc-files">{{ "product_docs.choose_files"|t }}</label>
                 <div class="file-picker">

@@ -2,13 +2,16 @@ import hashlib
 import json
 import re
 import shutil
-import unicodedata
 from pathlib import Path
 from typing import Optional
 
 from pm_os.context_builder import ContextBuilder
 from pm_os.domain.context_source import ContextSource
-from pm_os.infrastructure.utils import ALLOWED_EXTENSIONS, extract_pdf_text
+from pm_os.infrastructure.utils import (
+    ALLOWED_EXTENSIONS,
+    extract_pdf_text,
+    safe_upload_filename,
+)
 
 PRODUCT_DOCS_DIR = Path("workspace/product-docs")
 
@@ -183,14 +186,4 @@ class ProductDocsService:
 
     @staticmethod
     def _safe_filename(name: str) -> str:
-        normalized = unicodedata.normalize("NFKC", name or "")
-        if "/" in normalized or "\\" in normalized or ".." in normalized:
-            return ""
-        clean = Path(normalized).name
-        if (
-            not clean
-            or clean in {".", ".."}
-            or not re.match(r"^[a-zA-Z0-9 _.\-()\[\]]+$", clean)
-        ):
-            return ""
-        return clean
+        return safe_upload_filename(name)

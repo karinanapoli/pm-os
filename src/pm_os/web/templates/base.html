@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
     <title>{{ "app.title"|t }}</title>
     <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -228,11 +229,13 @@
             var csrfToken = '{{ csrf_token }}';
             document.querySelectorAll('form').forEach(function(form) {
                 // Add hidden input for server-side validation
-                var input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = 'csrf_token';
-                input.value = csrfToken;
-                form.appendChild(input);
+                if (!form.querySelector('input[name="csrf_token"]')) {
+                    var input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'csrf_token';
+                    input.value = csrfToken;
+                    form.appendChild(input);
+                }
                 // Intercept submit to add X-CSRF-Token header
                 form.addEventListener('submit', function(e) {
                     // For fetch/XHR forms, the header approach works.

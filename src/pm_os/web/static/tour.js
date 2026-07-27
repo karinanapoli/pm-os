@@ -255,6 +255,14 @@ var PMOSTour = (function() {
             form.method = 'POST';
             form.action = '/onboarding/dismiss';
             form.style.display = 'none';
+            var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+            if (csrfMeta) {
+                var csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = 'csrf_token';
+                csrfInput.value = csrfMeta.content;
+                form.appendChild(csrfInput);
+            }
             document.body.appendChild(form);
             form.submit();
         },
