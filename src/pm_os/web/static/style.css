@@ -1452,6 +1452,315 @@ body {
 .step.active { background: var(--primary); }
 .step.done { background: var(--success); }
 
+/* ── Requirement document generation progress ── */
+#genStepper {
+    width: min(100%, 760px);
+    margin: 0 auto;
+}
+
+.prd-card {
+    width: 100%;
+    min-width: 0;
+    padding: clamp(24px, 4vw, 40px);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    background:
+        radial-gradient(circle at 100% 0, rgba(34, 184, 217, 0.08), transparent 32%),
+        var(--bg-card);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+.prd-title {
+    margin: 0;
+    color: var(--text);
+    font-size: clamp(20px, 3vw, 26px);
+    line-height: 1.2;
+}
+
+.prd-subtitle {
+    margin: 8px 0 0;
+    color: var(--text-secondary);
+    font-size: 13.5px;
+    line-height: 1.6;
+}
+
+.prd-progress-bar {
+    margin: 28px 0 32px;
+}
+
+.prd-progress-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 10px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 650;
+}
+
+.prd-progress-pct {
+    flex-shrink: 0;
+    color: var(--ai-light);
+    font-family: var(--font-mono);
+    font-size: 12px;
+}
+
+.prd-progress-track {
+    width: 100%;
+    height: 8px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.07);
+}
+
+.prd-progress-fill {
+    width: 0;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--primary), var(--ai));
+    box-shadow: 0 0 18px rgba(34, 184, 217, 0.25);
+    transition: width 0.35s ease;
+}
+
+.prd-steps {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.prd-step {
+    position: relative;
+    min-width: 0;
+    text-align: center;
+}
+
+.prd-marker {
+    position: relative;
+    display: flex;
+    align-items: center;
+    margin-bottom: 14px;
+}
+
+.prd-circle {
+    position: relative;
+    z-index: 2;
+    display: inline-flex;
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    border: 1px solid var(--border-light);
+    border-radius: 50%;
+    background: var(--bg-elevated);
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 700;
+    transition: all 0.25s ease;
+}
+
+.prd-line {
+    position: absolute;
+    top: 50%;
+    left: calc(50% + 17px);
+    width: calc(100% - 34px);
+    height: 2px;
+    background: var(--border);
+    transform: translateY(-50%);
+}
+
+.prd-num,
+.prd-check,
+.prd-error-icon,
+.prd-spinner {
+    position: absolute;
+}
+
+.prd-check,
+.prd-error-icon,
+.prd-spinner {
+    display: none;
+}
+
+.prd-body {
+    min-width: 0;
+    padding: 0 8px;
+}
+
+.prd-label {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 12.5px;
+    font-weight: 650;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+
+.prd-detail {
+    min-height: 34px;
+    margin: 6px 0 0;
+    color: var(--text-muted);
+    font-size: 11.5px;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+
+.prd-step.is-active .prd-circle {
+    border-color: var(--ai);
+    background: var(--ai-glow);
+    color: var(--ai-light);
+    box-shadow: 0 0 0 5px rgba(34, 184, 217, 0.08);
+}
+
+.prd-step.is-active .prd-num { display: none; }
+.prd-step.is-active .prd-spinner {
+    display: block;
+    color: var(--ai-light);
+    animation: spin 0.8s linear infinite;
+}
+.prd-step.is-active .prd-label { color: var(--text); }
+
+.prd-step.is-done .prd-circle {
+    border-color: var(--success);
+    background: var(--success);
+    color: white;
+}
+
+.prd-step.is-done .prd-num { display: none; }
+.prd-step.is-done .prd-check { display: block; }
+.prd-step.is-done .prd-line {
+    background: linear-gradient(90deg, var(--success), var(--border));
+}
+
+.prd-step.is-error .prd-circle {
+    border-color: var(--coral);
+    background: var(--coral);
+    color: white;
+}
+
+.prd-step.is-error .prd-num { display: none; }
+.prd-step.is-error .prd-error-icon { display: block; }
+.prd-step.is-error .prd-label { color: var(--coral); }
+
+.prd-retry {
+    margin-top: 8px;
+}
+
+.prd-retry-btn,
+.prd-cancel {
+    border: 0;
+    background: none;
+    color: var(--text-muted);
+    font-family: var(--font);
+    font-size: 12px;
+    font-weight: 650;
+    cursor: pointer;
+}
+
+.prd-retry-btn {
+    color: var(--coral);
+}
+
+.prd-cancel {
+    display: block;
+    margin: 28px auto 0;
+    padding: 8px 12px;
+}
+
+.prd-retry-btn:hover,
+.prd-cancel:hover {
+    color: var(--text);
+    text-decoration: underline;
+}
+
+.prd-error-card {
+    margin-top: 16px;
+    border-color: rgba(236, 108, 91, 0.3);
+    background: rgba(236, 108, 91, 0.05);
+}
+
+.prd-error-body {
+    text-align: center;
+}
+
+.prd-error-circle {
+    display: inline-flex;
+    width: 42px;
+    height: 42px;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 12px;
+    border-radius: 50%;
+    background: var(--coral);
+    color: white;
+    font-weight: 800;
+}
+
+.prd-error-body h4 {
+    margin: 0 0 8px;
+}
+
+.prd-error-body p {
+    margin: 0 0 18px;
+    color: var(--text-secondary);
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+    .prd-card {
+        padding: 22px 18px;
+    }
+
+    .prd-progress-bar {
+        margin: 22px 0 26px;
+    }
+
+    .prd-steps {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+
+    .prd-step {
+        display: grid;
+        grid-template-columns: 36px minmax(0, 1fr);
+        gap: 12px;
+        min-height: 78px;
+        text-align: left;
+    }
+
+    .prd-marker {
+        align-items: flex-start;
+        margin: 0;
+    }
+
+    .prd-circle {
+        margin: 0;
+    }
+
+    .prd-line {
+        top: 34px;
+        left: 16px;
+        width: 2px;
+        height: calc(100% - 2px);
+        transform: none;
+    }
+
+    .prd-body {
+        padding: 3px 0 16px;
+    }
+
+    .prd-detail {
+        min-height: 0;
+    }
+}
+
 /* ── File Upload ── */
 .file-upload {
     border: 2px dashed var(--border-light);

@@ -196,6 +196,19 @@
             document.getElementById('toast').classList.remove('show');
         }
 
+        function validateUploadFiles(input) {
+            var safePunctuation = ' _.-()[]';
+            var invalidFilenameMessage = {{ "upload.invalid_filename"|t|tojson }};
+            var invalid = Array.from(input.files || []).some(function(file) {
+                return Array.from(file.name).some(function(char) {
+                    return !(/[\p{L}\p{N}]/u.test(char) || safePunctuation.indexOf(char) !== -1);
+                });
+            });
+            input.setCustomValidity(invalid ? invalidFilenameMessage : '');
+            if (invalid) input.reportValidity();
+            return !invalid;
+        }
+
         // Close modals on backdrop click
         document.addEventListener('DOMContentLoaded', function() {
             var sidebar = document.getElementById('appSidebar');
@@ -301,7 +314,13 @@
             }, 60000);
         });
 
-        return { openModal: openModal, closeModal: closeModal, toast: toast, hideToast: hideToast };
+        return {
+            openModal: openModal,
+            closeModal: closeModal,
+            toast: toast,
+            hideToast: hideToast,
+            validateUploadFiles: validateUploadFiles
+        };
     })();
     </script>
 </body>
