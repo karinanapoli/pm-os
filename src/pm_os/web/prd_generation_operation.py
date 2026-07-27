@@ -103,7 +103,11 @@ class PRDGenerationOperation:
         job.set_step(1, "active", self.translate("generate.progress_generating", request.lang))
         prompt = PromptBuilder().build("create_prd", context, lang=request.lang)
         job.set_step(1, "done")
-        job.set_step(2, "active")
+        job.set_step(
+            2,
+            "active",
+            self.translate("generate.progress_document", request.lang),
+        )
         prd_content = ai_client.generate(prompt)
         citations = verify_citations(prd_content, extract_source_ids(context))
 

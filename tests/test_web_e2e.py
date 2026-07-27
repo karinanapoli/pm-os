@@ -1068,6 +1068,32 @@ class TestOnboarding:
 # ═══════════════════════════════════════════
 
 class TestTemplateContent:
+    def test_generate_progress_has_complete_responsive_component(self, client):
+        _create_initiative(client)
+        response = client.get("/generate")
+        assert response.status_code == 200
+        assert "Organizando as fontes" in response.text
+        assert "Gerando o documento" in response.text
+        assert "generate.stepper_" not in response.text
+
+        stylesheet = client.get("/static/style.css")
+        assert stylesheet.status_code == 200
+        assert ".prd-progress-track" in stylesheet.text
+        assert ".prd-step.is-active" in stylesheet.text
+        assert "@media (max-width: 640px)" in stylesheet.text
+
+    def test_upload_fields_explain_and_validate_filename_rules(self, client):
+        product_docs = client.get("/product-docs")
+        assert product_docs.status_code == 200
+        assert "Acentos são aceitos" in product_docs.text
+        assert "PMOS.validateUploadFiles(this)" in product_docs.text
+
+        init_name = _create_initiative(client)
+        initiative = client.get(f"/initiative/{init_name}")
+        assert initiative.status_code == 200
+        assert "Acentos são aceitos" in initiative.text
+        assert "PMOS.validateUploadFiles(this)" in initiative.text
+
     def test_dashboard_shows_initiative_names(self, client):
         _create_initiative(client, name="Alpha Initiative")
         _create_initiative(client, name="Beta Initiative")

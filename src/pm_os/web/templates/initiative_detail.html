@@ -86,7 +86,8 @@
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <div class="form-group">
                     <label for="doc">{{ "initiative.detail.upload"|t }}</label>
-                    <input type="file" name="docs" id="doc" accept=".md,.txt,.pdf" multiple required style="padding: 8px;">
+                    <input type="file" name="docs" id="doc" accept=".md,.txt,.pdf" multiple required
+                           onchange="PMOS.validateUploadFiles(this)" style="padding: 8px;">
                     <div class="form-hint">{{ "initiative.detail.upload_hint"|t }}</div>
                 </div>
                 <button type="submit" class="btn btn-secondary btn-sm">{{ "initiative.detail.upload_cta"|t }}</button>

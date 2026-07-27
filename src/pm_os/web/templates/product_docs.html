@@ -19,7 +19,7 @@
                 <div class="file-picker">
                     <input type="file" name="docs" id="product-doc-files" multiple
                            accept=".md,.txt,.pdf"
-                           onchange="document.getElementById('selected-files').textContent = this.files.length ? this.files.length + ' {{ 'product_docs.files_selected'|t }}' : '{{ 'product_docs.no_file_selected'|t }}'">
+                           onchange="PMOS.validateUploadFiles(this); document.getElementById('selected-files').textContent = this.files.length ? this.files.length + ' {{ 'product_docs.files_selected'|t }}' : '{{ 'product_docs.no_file_selected'|t }}'">
                     <label for="product-doc-files" class="btn btn-secondary btn-sm">{{ "product_docs.browse"|t }}</label>
                     <span id="selected-files">{{ "product_docs.no_file_selected"|t }}</span>
                 </div>
