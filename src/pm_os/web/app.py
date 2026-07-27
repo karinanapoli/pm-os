@@ -40,6 +40,7 @@ from pm_os.infrastructure.utils import (
     ALLOWED_EXTENSIONS,
     read_validation_history,
     read_validation_score_from_file,
+    safe_upload_filename,
 )
 from pm_os.repositories.initiative_repository import InitiativeRepository
 from pm_os.repositories.job_repository import JobRepository
@@ -911,7 +912,12 @@ async def quickstart(request: Request) -> HTMLResponse:
 # ─── Initiative Detail ───
 
 @app.get("/initiative/{initiative_name}", response_class=HTMLResponse)
-async def initiative_detail(request: Request, initiative_name: str):
+async def initiative_detail(
+    request: Request,
+    initiative_name: str,
+    notice: str = "",
+    notice_kind: str = "success",
+):
     selected = _get_initiative_by_name(initiative_name, request)
     if not selected:
         return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
@@ -973,6 +979,8 @@ async def initiative_detail(request: Request, initiative_name: str):
             prd_versions=prd_versions,
             is_quickstart=is_quickstart,
             validation_history=read_validation_history(selected.path / "artifacts"),
+            notice=notice,
+            notice_kind=notice_kind,
         ),
     )
 
@@ -1006,24 +1014,47 @@ async def upload_context_doc(
     ctx_dir.mkdir(parents=True, exist_ok=True)
 
     uploaded = 0
+    rejected = 0
     for doc in docs:
         if doc.filename:
             ext = Path(doc.filename).suffix.lower()
             if ext not in ALLOWED_EXTENSIONS:
+                rejected += 1
                 continue
             safe_name = _safe_filename(doc.filename)
             if safe_name:
                 content = await doc.read(MAX_UPLOAD_FILE_BYTES + 1)
                 if len(content) > MAX_UPLOAD_FILE_BYTES:
+                    rejected += 1
                     continue
                 (ctx_dir / safe_name).write_bytes(content)
                 uploaded += 1
+            else:
+                rejected += 1
 
     if uploaded > 0:
         tracker = create_change_tracker()
         tracker.update_manifest(str(selected.path))
 
-    return await initiative_detail(request, initiative_name)
+    if uploaded and rejected:
+        return await initiative_detail(
+            request,
+            initiative_name,
+            "initiative.detail.upload_partial",
+            "warning",
+        )
+    if uploaded:
+        return await initiative_detail(
+            request,
+            initiative_name,
+            "initiative.detail.uploaded",
+        )
+    return await initiative_detail(
+        request,
+        initiative_name,
+        "initiative.detail.upload_failed",
+        "error",
+    )
 
 
 @app.post("/initiative/{initiative_name}/delete-doc", response_class=HTMLResponse)
@@ -1808,6 +1839,7 @@ async def consult_docs(
 def _render_product_docs(
     request: Request,
     notice: Optional[str] = None,
+    notice_kind: str = "success",
 ):
     pd_service = _product_docs_service(request)
     return templates.TemplateResponse(
@@ -1818,6 +1850,7 @@ def _render_product_docs(
             docs=pd_service.list_doc_metadata(),
             links=pd_service.load_links(),
             notice=notice,
+            notice_kind=notice_kind,
         ),
     )
 
@@ -1833,15 +1866,32 @@ async def upload_product_docs(
     docs: list[UploadFile] = File(...),
 ):
     pd_service = _product_docs_service(request)
+    uploaded = 0
+    rejected = 0
     for doc in docs:
         if doc.filename:
             content = await doc.read(MAX_UPLOAD_FILE_BYTES + 1)
-            pd_service.save_document(
+            if pd_service.save_document(
                 doc.filename,
                 content,
                 MAX_UPLOAD_FILE_BYTES,
-            )
-    return _render_product_docs(request, "product_docs.uploaded")
+            ):
+                uploaded += 1
+            else:
+                rejected += 1
+    if uploaded and rejected:
+        return _render_product_docs(
+            request,
+            "product_docs.upload_partial",
+            "warning",
+        )
+    if uploaded:
+        return _render_product_docs(request, "product_docs.uploaded")
+    return _render_product_docs(
+        request,
+        "product_docs.upload_failed",
+        "error",
+    )
 
 
 @app.post("/product-docs/add-link", response_class=HTMLResponse)
@@ -2192,15 +2242,4 @@ async def squad_disband(request: Request, squad_name: str):
 # ─── Helpers ───
 
 def _safe_filename(name: str) -> str:
-    if not name:
-        return ""
-    import unicodedata
-    normalized = unicodedata.normalize("NFKC", name)
-    if "/" in normalized or "\\" in normalized or ".." in normalized:
-        return ""
-    clean = Path(normalized).name
-    if not clean or clean in (".", ".."):
-        return ""
-    if not re.match(r'^[a-zA-Z0-9 _.\-()\[\]]+$', clean):
-        return ""
-    return clean
+    return safe_upload_filename(name)

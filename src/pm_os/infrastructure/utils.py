@@ -1,5 +1,6 @@
 import json
 import re
+import unicodedata
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
@@ -8,6 +9,20 @@ ALLOWED_EXTENSIONS = frozenset({
     ".md", ".txt", ".csv", ".json", ".yaml", ".yml",
     ".rst", ".toml", ".pdf",
 })
+
+
+def safe_upload_filename(name: str) -> str:
+    """Return a traversal-safe filename while preserving human-readable Unicode."""
+    normalized = unicodedata.normalize("NFKC", name or "")
+    if not normalized or "/" in normalized or "\\" in normalized or ".." in normalized:
+        return ""
+    clean = Path(normalized).name
+    if clean in {".", ".."}:
+        return ""
+    allowed_punctuation = frozenset(" _.-()[]")
+    if not all(char.isalnum() or char in allowed_punctuation for char in clean):
+        return ""
+    return clean
 
 
 def parse_validation_score(content: str) -> Optional[float]:
