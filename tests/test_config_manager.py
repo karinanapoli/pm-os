@@ -53,6 +53,19 @@ def test_persists_to_file(fresh_config):
     assert data["lang"] == "pt-BR"
 
 
+def test_encrypts_nested_mcp_credentials(fresh_config):
+    cm = ConfigManager()
+    cm.set("mcp_servers", [{
+        "name": "Private",
+        "url": "https://mcp.example/mcp",
+        "auth": {"type": "bearer", "secret": "mcp-secret"},
+    }])
+    config_file = Path(os.environ["PM_OS_CONFIG_DIR"]) / "config.json"
+    raw = json.loads(config_file.read_text(encoding="utf-8"))
+    assert raw["mcp_servers"][0]["auth"]["secret"] != "mcp-secret"
+    assert ConfigManager().get("mcp_servers")[0]["auth"]["secret"] == "mcp-secret"
+
+
 def test_loads_from_existing_file(tmp_path):
     config_dir = tmp_path / ".pm_os"
     config_dir.mkdir()

@@ -901,6 +901,57 @@ class TestConfiguration:
         cfg = json.loads(config_file.read_text())
         assert len(cfg["mcp_servers"]) == 1
         assert cfg["mcp_servers"][0]["name"] == "Test Server"
+        assert cfg["mcp_servers"][0]["type"] == "legacy_http"
+
+    def test_add_businessmap_preset(self, client, session_base):
+        response = client.post("/config/mcp/add", data={
+            "name": "Businessmap",
+            "preset": "businessmap",
+            "businessmap_subdomain": "acme",
+        })
+        assert response.status_code == 200
+        cfg = json.loads((session_base / ".pm_os" / "config.json").read_text())
+        server = cfg["mcp_servers"][0]
+        assert server["url"] == "https://acme.businessmap.io/baiApi/v1/mcp"
+        assert server["auth"]["type"] == "oauth"
+        assert server["policy"]["mode"] == "read_only"
+        assert server["status"]["state"] == "authorization_required"
+
+    def test_mcp_secret_is_encrypted_and_not_rendered(self, client, session_base):
+        response = client.post("/config/mcp/add", data={
+            "name": "Private MCP",
+            "url": "https://mcp.example/mcp",
+            "preset": "custom",
+            "auth_type": "bearer",
+            "auth_secret": "very-secret-token",
+        })
+        raw = (session_base / ".pm_os" / "config.json").read_text()
+        assert "very-secret-token" not in raw
+        assert "very-secret-token" not in response.text
+
+    def test_persists_sanitized_mcp_discovery(self, client, session_base):
+        discovery = {
+            "protocol_version": "2025-06-18",
+            "server_name": "Example",
+            "server_version": "1.0",
+            "tools": [{"name": "search", "description": "Search docs"}],
+            "resources_supported": True,
+            "prompts_supported": False,
+            "ignored": "not persisted",
+        }
+        response = client.post("/config/mcp/add", data={
+            "name": "Discovered MCP",
+            "url": "https://mcp.example/mcp",
+            "connection_type": "mcp",
+            "preset": "custom",
+            "discovery_json": json.dumps(discovery),
+        })
+        assert response.status_code == 200
+        cfg = json.loads((session_base / ".pm_os" / "config.json").read_text())
+        server = cfg["mcp_servers"][0]
+        assert server["status"]["state"] == "connected"
+        assert server["capabilities"]["tools"][0]["name"] == "search"
+        assert "ignored" not in server["capabilities"]
 
     def test_save_gateway_config(self, client, session_base):
         response = client.post("/config", data={

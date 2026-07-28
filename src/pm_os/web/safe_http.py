@@ -7,7 +7,8 @@ import socket
 import urllib.error
 import urllib.parse
 import urllib.request
-from typing import Callable, Optional
+from dataclasses import dataclass
+from typing import Callable, Mapping, Optional
 
 MAX_REDIRECTS = 3
 MAX_RESPONSE_BYTES = 1_000_000
@@ -16,6 +17,14 @@ ALLOWED_SCHEMES = frozenset({"http", "https"})
 
 class UnsafeURL(ValueError):
     """Raised when a URL could reach a non-public network destination."""
+
+
+@dataclass(frozen=True)
+class PublicHTTPResponse:
+    body: bytes
+    url: str
+    status: int
+    headers: dict[str, str]
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -118,3 +127,70 @@ def fetch_public_url(
             return body, current
 
     raise UnsafeURL("The server exceeded the redirect limit.")
+
+
+def request_public_url(
+    url: str,
+    *,
+    method: str = "GET",
+    headers: Optional[Mapping[str, str]] = None,
+    body: Optional[bytes] = None,
+    timeout: float = 5,
+    max_redirects: int = MAX_REDIRECTS,
+    max_bytes: int = MAX_RESPONSE_BYTES,
+) -> PublicHTTPResponse:
+    """Make a bounded request while validating every redirect destination."""
+    safe_method = method.upper()
+    if safe_method not in {"GET", "POST"}:
+        raise ValueError("Only GET and POST requests are supported.")
+    opener = urllib.request.build_opener(_NoRedirect)
+    current = url
+    original_origin = _url_origin(validate_public_url(url, resolve_dns=False))
+
+    for redirect_count in range(max_redirects + 1):
+        current = validate_public_url(current, resolve_dns=True)
+        request = urllib.request.Request(
+            current,
+            data=body,
+            method=safe_method,
+            headers=dict(headers or {}),
+        )
+        try:
+            response = opener.open(request, timeout=timeout)
+        except urllib.error.HTTPError as exc:
+            if exc.code not in {301, 302, 303, 307, 308}:
+                raise
+            location = exc.headers.get("Location")
+            if not location:
+                raise UnsafeURL("The server returned a redirect without a destination.") from exc
+            if redirect_count == max_redirects:
+                raise UnsafeURL("The server exceeded the redirect limit.") from exc
+            redirected = urllib.parse.urljoin(current, location)
+            if _url_origin(validate_public_url(redirected, resolve_dns=False)) != original_origin:
+                raise UnsafeURL("Cross-origin redirects are not allowed for authenticated integrations.") from exc
+            current = redirected
+            continue
+
+        with response:
+            response_body = response.read(max_bytes + 1)
+            if len(response_body) > max_bytes:
+                raise UnsafeURL("The server response is too large.")
+            response_headers = {
+                str(key).lower(): str(value)
+                for key, value in response.headers.items()
+            }
+            return PublicHTTPResponse(
+                body=response_body,
+                url=current,
+                status=getattr(response, "status", 200),
+                headers=response_headers,
+            )
+
+    raise UnsafeURL("The server exceeded the redirect limit.")
+
+
+def _url_origin(url: str) -> tuple[str, str, int]:
+    parsed = urllib.parse.urlsplit(url)
+    scheme = parsed.scheme.lower()
+    default_port = 443 if scheme == "https" else 80
+    return scheme, (parsed.hostname or "").lower(), parsed.port or default_port
