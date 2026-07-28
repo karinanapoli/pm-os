@@ -133,11 +133,10 @@ class PRDGenerationOperation:
         job.set_step(2, "done")
         job.set_step(3, "active", self.translate("generate.progress_validating", request.lang))
         report = PRDValidator(ai_client, request.lang).validate(prd_content)
-        if report.is_valid:
-            writer.write(
-                report.to_markdown(request.lang),
-                str(artifacts / "prd-validation.md"),
-            )
+        writer.write(
+            report.to_markdown(request.lang),
+            str(artifacts / "prd-validation.md"),
+        )
         self.change_tracker_factory().update_manifest(str(request.selected.path))
         specification_service = ProductSpecificationService()
         specification_service.bootstrap_from_prd(

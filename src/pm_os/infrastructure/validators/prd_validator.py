@@ -27,7 +27,12 @@ class PRDValidator:
             if callable(limited_generate)
             else self.ai_client.generate(prompt)
         )
-        return self._parse_response(response)
+        report = self._parse_response(response)
+        if callable(limited_generate) and (
+            not report.is_valid or len(report.sections) < 6
+        ):
+            return self._fallback_report(prd_content)
+        return report
 
     def _build_prompt(self, prd_content: str) -> str:
         if self.lang == "pt-BR":
@@ -155,6 +160,84 @@ Conteúdo do PRD:
             summary=summary,
             sections=[],
             is_valid=False,
+        )
+
+    def _fallback_report(self, prd_content: str) -> ValidationReport:
+        """Produce a conservative structural score if local AI JSON is incomplete."""
+        text = prd_content.casefold()
+        headings = re.findall(r"^#{1,3}\s+.+$", prd_content, re.MULTILINE)
+        checks = [
+            (
+                "Métricas" if self.lang == "pt-BR" else "Metrics",
+                any(term in text for term in ("métrica", "metric", "kpi", "p95")),
+                bool(re.search(r"\b\d+(?:[.,]\d+)?\s*(?:%|s|min|dias?|days?)\b", text)),
+            ),
+            (
+                "Riscos" if self.lang == "pt-BR" else "Risks",
+                any(term in text for term in ("risco", "risk")),
+                any(term in text for term in ("mitiga", "conting", "reduzir", "monitor")),
+            ),
+            (
+                "Escopo" if self.lang == "pt-BR" else "Scope",
+                any(term in text for term in ("escopo", "scope", "mvp")),
+                any(term in text for term in ("fora do escopo", "out of scope")),
+            ),
+            (
+                "Requisitos" if self.lang == "pt-BR" else "Requirements",
+                any(term in text for term in ("requisito", "requirement", "aceitação", "acceptance")),
+                bool(re.search(r"(?m)^\s*(?:[-*]|\d+[.)])\s+", prd_content)),
+            ),
+            (
+                "Estrutura" if self.lang == "pt-BR" else "Structure",
+                len(headings) >= 4,
+                len(headings) >= 7,
+            ),
+            (
+                "Coerência" if self.lang == "pt-BR" else "Coherence",
+                len(prd_content.strip()) >= 500,
+                all(term in text for term in ("problema", "objetiv")),
+            ),
+        ]
+        sections = []
+        for name, present, strong in checks:
+            score = 6.0 if strong else 4.0 if present else 2.0
+            rationale = (
+                "Avaliação estrutural de recuperação; revise o conteúdo e valide novamente."
+                if self.lang == "pt-BR"
+                else "Structural fallback assessment; review the content and validate again."
+            )
+            issue = (
+                []
+                if strong
+                else [
+                    "O critério precisa de mais evidências ou detalhamento."
+                    if self.lang == "pt-BR"
+                    else "This criterion needs more evidence or detail."
+                ]
+            )
+            sections.append(
+                SectionEvaluation(
+                    name=name,
+                    score=score,
+                    rationale=rationale,
+                    issues=issue,
+                    action_items=[],
+                    suggestions=[],
+                )
+            )
+        overall = round(sum(section.score for section in sections) / len(sections), 1)
+        summary = (
+            "O Ollama retornou uma resposta incompleta. Esta nota conservadora foi "
+            "calculada pela estrutura do PRD e deve ser revisada pela pessoa responsável."
+            if self.lang == "pt-BR"
+            else "Ollama returned an incomplete response. This conservative score was "
+            "calculated from the PRD structure and should be reviewed by its owner."
+        )
+        return ValidationReport(
+            overall_score=overall,
+            summary=summary,
+            sections=sections,
+            is_valid=True,
         )
 
     @staticmethod

@@ -256,6 +256,69 @@ class TestGuidedSpecification:
         assert specification["status"] == "draft"
 
 
+@pytest.mark.skipif(
+    os.getenv("PM_OS_RUN_OLLAMA_E2E") != "1",
+    reason="requires a running local Ollama model",
+)
+def test_real_ollama_upload_generation_and_nonzero_validation(
+    client, session_base
+):
+    from pm_os.infrastructure.utils import read_validation_score_from_file
+    from pm_os.web.app import config_manager, job_repository
+
+    config_manager.set("ai_provider", "ollama")
+    init_id = _create_initiative(
+        client,
+        "E2E Real Ollama Validation",
+        "INT-E2E-REAL-OLLAMA",
+    )
+    context = (
+        "# Pesquisa com usuários\n\n"
+        "8 de 10 analistas de operações descobrem rupturas de estoque tarde demais. "
+        "O objetivo é reduzir em 30% o tempo médio entre a previsão de ruptura e a ação. "
+        "O MVP deve enviar alertas, mostrar estoque projetado e registrar a decisão tomada. "
+        "Ficam fora do escopo compras automáticas e previsão de demanda por machine learning. "
+        "Riscos: alertas falsos, atraso na integração e fadiga de notificações. "
+        "A aceitação exige alertas em até 5 minutos e trilha de auditoria."
+    )
+    uploaded = client.post(
+        f"/initiative/{init_id}/upload",
+        files={"docs": ("pesquisa-usuarios.md", context.encode("utf-8"), "text/markdown")},
+    )
+    assert uploaded.status_code == 200
+    assert "pesquisa-usuarios.md" in uploaded.text
+
+    started = client.post(
+        "/generate",
+        data={"initiative_name": init_id},
+        headers={"x-requested-with": "fetch"},
+    )
+    assert started.status_code == 200
+    task_id = started.json()["job_id"]
+
+    deadline = time.monotonic() + 360
+    status = {}
+    while time.monotonic() < deadline:
+        status = job_repository.get_for_scope(task_id, "test@pmstudio.app", "") or {}
+        if status.get("done"):
+            break
+        time.sleep(1)
+
+    assert status.get("done") is True, "Ollama generation exceeded six minutes"
+    assert not status.get("error"), status.get("error")
+
+    artifacts = (
+        session_base / "workspace" / "initiatives" / init_id / "artifacts"
+    )
+    prd = (artifacts / "prd.md").read_text(encoding="utf-8")
+    report_path = artifacts / "prd-validation.md"
+    score = read_validation_score_from_file(report_path)
+
+    assert len(prd) > 500
+    assert score is not None
+    assert score > 0
+
+
 def _personal_product_docs_base(session_base: Path) -> Path:
     from pm_os.web.product_docs_service import ProductDocsService
 
