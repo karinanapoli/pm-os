@@ -30,9 +30,12 @@ class OllamaClient:
         self,
         model: str = "",
         base_url: str = "",
+        max_tokens: int = 0,
     ):
         self.model = model or os.getenv("PM_OS_MODEL", "llama3.2")
         self.base_url = (base_url or os.getenv("PM_OS_OLLAMA_URL", "http://localhost:11434")).rstrip("/")
+        configured_max = max_tokens or int(os.getenv("PM_OS_OLLAMA_MAX_TOKENS", "1024"))
+        self.max_tokens = max(128, configured_max)
 
     def generate(self, prompt: str) -> str:
         url = f"{self.base_url}/api/generate"
@@ -41,6 +44,7 @@ class OllamaClient:
             "model": self.model,
             "prompt": prompt,
             "stream": False,
+            "options": {"num_predict": self.max_tokens},
         }
 
         request = urllib.request.Request(

@@ -234,6 +234,24 @@ def test_ollama_uses_environment_and_returns_content(monkeypatch):
     assert result == "Local PRD"
     assert captured["url"] == "http://ollama.example/api/generate"
     assert captured["payload"]["model"] == "local-model"
+    assert captured["payload"]["options"]["num_predict"] == 1024
+
+
+def test_ollama_output_limit_can_be_configured(monkeypatch):
+    captured = {}
+
+    def fake_urlopen(request, timeout):
+        captured["payload"] = json.loads(request.data.decode("utf-8"))
+        return FakeOllamaResponse(b'{"response": "Local PRD"}')
+
+    monkeypatch.setattr(
+        "pm_os.infrastructure.ai.clients.ollama_client.urllib.request.urlopen",
+        fake_urlopen,
+    )
+
+    OllamaClient(max_tokens=640).generate("Product context")
+
+    assert captured["payload"]["options"]["num_predict"] == 640
 
 
 @pytest.mark.parametrize(
