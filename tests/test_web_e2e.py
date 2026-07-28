@@ -198,6 +198,14 @@ class TestGuidedSpecification:
         assert page.status_code == 200
         assert "Especificação da iniciativa" in page.text
         assert "Atualizado" in page.text
+        assert f'/initiative/{init_id}/deliverables' in page.text
+
+        deliverables = client.get(f"/initiative/{init_id}/deliverables")
+        assert deliverables.status_code == 200
+        assert "Entregáveis" in deliverables.text
+        assert "Backlog de implementação" in deliverables.text
+        assert f'/initiative/{init_id}/prd/download' not in deliverables.text
+        assert f'/initiative/{init_id}/backlog/download' in deliverables.text
 
     def test_records_decision_and_rejects_backlog_before_approval(self, client):
         init_id = _create_initiative(client, "Decision Flow", "INT-DECISION")

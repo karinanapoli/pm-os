@@ -1,3 +1,4 @@
+import http.client
 import json
 import os
 import urllib.error
@@ -56,7 +57,12 @@ class OllamaClient:
             ) as response:
                 response_body = response.read().decode("utf-8")
 
-        except (urllib.error.URLError, TimeoutError) as error:
+        except (
+            urllib.error.URLError,
+            TimeoutError,
+            ConnectionError,
+            http.client.RemoteDisconnected,
+        ) as error:
             raise OllamaConnectionError() from error
 
         try:

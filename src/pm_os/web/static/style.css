@@ -490,6 +490,33 @@ body {
 .spec-deliverables strong { color: var(--success); font-size: 11px; }
 .spec-deliverables strong.stale { color: var(--warning); }
 
+.deliverables-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+}
+
+.deliverable-card { margin: 0; }
+
+.deliverable-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 12px;
+}
+
+.deliverable-heading h3 { margin: 4px 0 0; }
+.deliverable-heading strong { color: var(--success); font-size: 12px; }
+.deliverable-heading strong.stale { color: var(--warning); }
+
+.deliverable-type {
+    color: var(--accent);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .08em;
+}
+
 .spec-stack-actions {
     display: flex;
     flex-direction: column;

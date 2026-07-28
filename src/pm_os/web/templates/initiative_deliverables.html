@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block page_title %}{{ "spec.deliverables_title"|t }} · {{ initiative.name }}{% endblock %}
+
+{% block content %}
+{% if notice %}
+<div class="alert alert-{{ notice_kind or 'success' }}" role="status">{{ notice|t }}</div>
+{% endif %}
+
+<nav class="initiative-tabs" aria-label="{{ 'spec.navigation'|t }}">
+    <a href="/initiative/{{ initiative.name }}">{{ "spec.tab_overview"|t }}</a>
+    <a href="/initiative/{{ initiative.name }}#context">{{ "spec.tab_evidence"|t }}</a>
+    <a href="/initiative/{{ initiative.name }}/specification">{{ "spec.tab_specification"|t }} <span class="spec-beta">Beta</span></a>
+    <a href="/initiative/{{ initiative.name }}/deliverables" class="active" aria-current="page">{{ "spec.tab_deliverables"|t }}</a>
+    <a href="/initiative/{{ initiative.name }}/specification#decisions">{{ "spec.tab_decisions"|t }}</a>
+    <a href="/initiative/{{ initiative.name }}/specification#history">{{ "spec.tab_history"|t }}</a>
+</nav>
+
+<section class="page-header">
+    <div>
+        <p class="eyebrow">{{ initiative.name }}</p>
+        <h2>{{ "spec.deliverables_title"|t }}</h2>
+        <p>{{ "spec.deliverables_desc"|t }}</p>
+    </div>
+</section>
+
+<div class="deliverables-grid">
+    <article class="card deliverable-card">
+        <div class="card-body">
+            <div class="deliverable-heading">
+                <div>
+                    <span class="deliverable-type">SPEC</span>
+                    <h3>{{ "spec.editor_title"|t }}</h3>
+                </div>
+                <strong>{{ ("spec.status_" ~ specification.status)|t }}</strong>
+            </div>
+            <p class="spec-caption">{{ "spec.version"|t }} {{ specification.version or "—" }} · {{ completion }}% {{ "spec.complete"|t }}</p>
+            <div class="spec-actions">
+                <a href="/initiative/{{ initiative.name }}/specification" class="btn btn-primary btn-sm">{{ "spec.open_specification"|t }}</a>
+                {% if specification.version %}
+                <a href="/initiative/{{ initiative.name }}/specification/download" class="btn btn-ghost btn-sm">{{ "spec.download_specification"|t }}</a>
+                {% endif %}
+            </div>
+        </div>
+    </article>
+
+    {% set prd_artifact = artifacts.get("prd", {}) %}
+    <article class="card deliverable-card">
+        <div class="card-body">
+            <div class="deliverable-heading">
+                <div><span class="deliverable-type">PRD</span><h3>Product Requirements Document</h3></div>
+                <strong class="{{ 'stale' if prd_artifact.status == 'stale' else '' }}">{{ ("spec.artifact_" ~ (prd_artifact.status or ("current" if prd_exists else "missing")))|t }}</strong>
+            </div>
+            <p class="spec-caption">{{ "spec.prd_deliverable_desc"|t }}</p>
+            <div class="spec-actions">
+                <a href="/generate?initiative={{ initiative.name }}" class="btn btn-secondary btn-sm">{{ "spec.create_prd"|t }}</a>
+                {% if prd_exists %}
+                <a href="/initiative/{{ initiative.name }}/prd/download" class="btn btn-ghost btn-sm">{{ "generate.download_prd"|t }}</a>
+                {% endif %}
+            </div>
+        </div>
+    </article>
+
+    {% set backlog_artifact = artifacts.get("backlog", {}) %}
+    <article class="card deliverable-card">
+        <div class="card-body">
+            <div class="deliverable-heading">
+                <div><span class="deliverable-type">BACKLOG</span><h3>{{ "spec.backlog_title"|t }}</h3></div>
+                <strong class="{{ 'stale' if backlog_artifact.status == 'stale' else '' }}">{{ ("spec.artifact_" ~ (backlog_artifact.status or ("current" if backlog_exists else "missing")))|t }}</strong>
+            </div>
+            <p class="spec-caption">{{ "spec.backlog_deliverable_desc"|t }}</p>
+            <div class="spec-actions">
+                <form method="POST" action="/initiative/{{ initiative.name }}/backlog/generate">
+                    <button class="btn btn-secondary btn-sm" {% if specification.status != "approved" %}disabled title="{{ 'spec.backlog_requires_approval'|t }}"{% endif %}>{{ "spec.create_backlog"|t }}</button>
+                </form>
+                {% if backlog_exists %}
+                <a href="/initiative/{{ initiative.name }}/backlog/download" class="btn btn-ghost btn-sm">{{ "spec.download_backlog"|t }}</a>
+                {% endif %}
+            </div>
+        </div>
+    </article>
+</div>
+{% endblock %}

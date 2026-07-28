@@ -1,3 +1,4 @@
+import http.client
 import json
 import urllib.error
 
@@ -252,6 +253,17 @@ def test_ollama_normalizes_network_errors(monkeypatch):
     monkeypatch.setattr(
         "pm_os.infrastructure.ai.clients.ollama_client.urllib.request.urlopen",
         lambda *args, **kwargs: (_ for _ in ()).throw(urllib.error.URLError("offline")),
+    )
+    with pytest.raises(OllamaConnectionError, match="Could not connect"):
+        OllamaClient().generate("prompt")
+
+
+def test_ollama_normalizes_dropped_connections(monkeypatch):
+    monkeypatch.setattr(
+        "pm_os.infrastructure.ai.clients.ollama_client.urllib.request.urlopen",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            http.client.RemoteDisconnected("connection closed")
+        ),
     )
     with pytest.raises(OllamaConnectionError, match="Could not connect"):
         OllamaClient().generate("prompt")

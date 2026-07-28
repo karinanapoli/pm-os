@@ -1091,6 +1091,34 @@ async def specification_page(
     )
 
 
+@app.get("/initiative/{initiative_name}/deliverables", response_class=HTMLResponse)
+async def initiative_deliverables(
+    request: Request,
+    initiative_name: str,
+    notice: str = "",
+    notice_kind: str = "success",
+):
+    selected = _get_initiative_by_name(initiative_name, request)
+    if not selected:
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    specification = product_specification_service.load(selected.path)
+    return templates.TemplateResponse(
+        request,
+        "initiative_deliverables.html",
+        _ctx(
+            request,
+            initiative=selected,
+            specification=specification,
+            completion=product_specification_service.completion(specification),
+            backlog_exists=(selected.path / "artifacts" / "backlog.md").exists(),
+            prd_exists=(selected.path / "artifacts" / "prd.md").exists(),
+            artifacts=specification.get("artifacts") or {},
+            notice=notice,
+            notice_kind=notice_kind,
+        ),
+    )
+
+
 @app.post("/initiative/{initiative_name}/specification/prepare")
 async def prepare_specification_from_context(
     request: Request,
