@@ -1,4 +1,5 @@
 import os
+import json
 import re
 import shutil
 import urllib.parse
@@ -64,6 +65,14 @@ from pm_os.web.prd_generation_operation import (
 )
 from pm_os.web.product_consultation_service import ProductConsultationService
 from pm_os.web.mcp_context_service import MCPContextService
+from pm_os.web.mcp_client import MCPAuthorizationRequired, MCPClient, MCPError
+from pm_os.web.mcp_connections import (
+    build_connection,
+    businessmap_endpoint,
+    normalize_connection,
+    public_connection,
+    sanitize_capabilities,
+)
 from pm_os.web.initiative_lifecycle_service import (
     InitiativeLifecycleService,
     InvalidInitiativeId,
@@ -585,6 +594,10 @@ def _ctx(request: Request, **extra: object) -> dict:
     cfg.pop("reset_tokens", None)
     cfg.pop("retired_squad_names", None)
     cfg.pop("squads", None)
+    cfg["mcp_servers"] = [
+        public_connection(server)
+        for server in (cfg.get("mcp_servers") or [])
+    ]
     lang = cfg.get("lang", "en")
     try:
         user_email = request.session.get("user_email", "")
@@ -677,7 +690,10 @@ def _build_prd_validation_service(lang: str) -> PRDValidationService:
 
 
 def _get_mcp_servers() -> list[dict]:
-    return config_manager.get("mcp_servers") or []
+    return [
+        normalize_connection(server)
+        for server in (config_manager.get("mcp_servers") or [])
+    ]
 
 
 def _validate_mcp_url(url: str) -> str:
@@ -685,8 +701,18 @@ def _validate_mcp_url(url: str) -> str:
     return validate_public_url(url, resolve_dns=False)
 
 
+def _get_mcp_context_servers() -> list[dict]:
+    return [
+        server
+        for server in _get_mcp_servers()
+        if server.get("type") == "legacy_http"
+    ]
+
+
 def _fetch_mcp_context() -> list[dict]:
-    return MCPContextService(fetcher=fetch_public_url).fetch(_get_mcp_servers())
+    return MCPContextService(fetcher=fetch_public_url).fetch(
+        _get_mcp_context_servers()
+    )
 
 
 def _get_initiative_by_name(name: str, request_or_squad: Optional[Request] = None) -> Optional[Initiative]:
@@ -1165,7 +1191,7 @@ async def generate_page(request: Request):
         "generate.html",
         _ctx(request, initiatives=initiatives, result=None, error=None,
              product_docs_count=product_docs_count,
-             mcp_count=len(_get_mcp_servers()),
+             mcp_count=len(_get_mcp_context_servers()),
              selected_initiative=selected_initiative),
     )
 
@@ -1191,7 +1217,7 @@ async def generate_prd(
             _ctx(request, initiatives=initiatives, result=None,
                  error=f"Initiative '{initiative_name}' {_t('error.not_found', _get_lang())}",
                  product_docs_count=0,
-                 mcp_count=len(_get_mcp_servers())),
+                 mcp_count=len(_get_mcp_context_servers())),
         )
 
     pd_service = _product_docs_service(request)
@@ -1282,7 +1308,7 @@ async def generate_result(request: Request, task_id: str):
             _ctx(request, initiatives=[], result=None,
                  error=_t("generate.error_not_ready", _get_lang()),
                  product_docs_count=pd_service.count_docs(),
-                 mcp_count=len(_get_mcp_servers())),
+                 mcp_count=len(_get_mcp_context_servers())),
         )
 
     if task.get("error"):
@@ -1298,7 +1324,7 @@ async def generate_result(request: Request, task_id: str):
             _ctx(request, initiatives=[], result=None,
                  error=task["error"],
                  product_docs_count=pd_service.count_docs(),
-                 mcp_count=len(_get_mcp_servers())),
+                 mcp_count=len(_get_mcp_context_servers())),
         )
 
     result = task["result"]
@@ -1318,7 +1344,7 @@ async def generate_result(request: Request, task_id: str):
              result=result,
              error=None,
              product_docs_count=pd_service.count_docs(),
-             mcp_count=len(_get_mcp_servers())),
+             mcp_count=len(_get_mcp_context_servers())),
     )
 
 
@@ -1586,11 +1612,41 @@ async def test_gateway_connection(
 async def add_mcp_server(
     request: Request,
     name: str = Form(...),
-    url: str = Form(...),
+    url: str = Form(""),
+    connection_type: str = Form("legacy_http"),
+    preset: str = Form("custom"),
+    businessmap_subdomain: str = Form(""),
+    auth_type: str = Form("none"),
+    auth_secret: str = Form(""),
+    auth_header: str = Form(""),
+    policy_mode: str = Form("read_only"),
+    discovery_json: str = Form(""),
 ):
     try:
+        if preset == "businessmap":
+            url = businessmap_endpoint(businessmap_subdomain)
+            auth_type = "oauth"
+            connection_type = "mcp"
         validated_url = _validate_mcp_url(url)
-    except ValueError as e:
+        connection = build_connection(
+            name=name,
+            url=validated_url,
+            connection_type=connection_type,
+            preset=preset,
+            auth_type=auth_type,
+            auth_secret=auth_secret,
+            auth_header=auth_header,
+            policy_mode=policy_mode,
+        )
+        if discovery_json:
+            connection["capabilities"] = sanitize_capabilities(
+                json.loads(discovery_json)
+            )
+            connection["status"] = {
+                "state": "connected",
+                "message": "",
+            }
+    except (ValueError, json.JSONDecodeError) as e:
         return templates.TemplateResponse(
             request,
             "config.html",
@@ -1599,7 +1655,7 @@ async def add_mcp_server(
     added = config_manager.transaction(
         lambda config: config_ops.add_mcp_server(
             config,
-            {"name": name.strip(), "url": validated_url, "enabled": True},
+            connection,
         )
     )
     if added:
@@ -1645,21 +1701,58 @@ async def delete_mcp_server(
     )
 
 
-@app.post("/config/mcp/test", response_class=HTMLResponse)
-async def test_mcp_connection(request: Request, url: str = Form(...)):
+@app.post("/config/mcp/test", response_class=JSONResponse)
+async def test_mcp_connection(
+    request: Request,
+    name: str = Form("MCP"),
+    url: str = Form(""),
+    connection_type: str = Form("mcp"),
+    preset: str = Form("custom"),
+    businessmap_subdomain: str = Form(""),
+    auth_type: str = Form("none"),
+    auth_secret: str = Form(""),
+    auth_header: str = Form(""),
+    policy_mode: str = Form("read_only"),
+):
     try:
-        fetch_public_url(url, timeout=5)
-        return HTMLResponse(
-            f'<span style="color:var(--success);">✓ {_t("mcp.test_success", _get_lang())}</span>'
+        if preset == "businessmap":
+            url = businessmap_endpoint(businessmap_subdomain)
+            auth_type = "oauth"
+            connection_type = "mcp"
+        validated_url = _validate_mcp_url(url)
+        connection = build_connection(
+            name=name,
+            url=validated_url,
+            connection_type=connection_type,
+            preset=preset,
+            auth_type=auth_type,
+            auth_secret=auth_secret,
+            auth_header=auth_header,
+            policy_mode=policy_mode,
         )
-    except ValueError as e:
-        return HTMLResponse(
-            f'<span style="color:var(--danger);">✗ {str(e)}</span>'
-        )
-    except Exception as e:
-        return HTMLResponse(
-            f'<span style="color:var(--danger);">✗ {_t("mcp.test_fail", _get_lang())}: {str(e)[:80]}</span>'
-        )
+        if connection_type == "legacy_http":
+            fetch_public_url(validated_url, timeout=5)
+            return JSONResponse({"ok": True, "message": _t("mcp.test_success", _get_lang())})
+        discovery = MCPClient().discover(connection).as_dict()
+        return JSONResponse({
+            "ok": True,
+            "message": _t("mcp.test_success", _get_lang()),
+            "discovery": discovery,
+        })
+    except MCPAuthorizationRequired as exc:
+        return JSONResponse({
+            "ok": False,
+            "authorization_required": True,
+            "message": str(exc),
+        }, status_code=401)
+    except (ValueError, MCPError) as exc:
+        return JSONResponse({"ok": False, "message": str(exc)}, status_code=422)
+    except Exception:
+        _logger.exception("MCP connection test failed")
+        return JSONResponse({
+            "ok": False,
+            "message": _t("mcp.test_fail", _get_lang()),
+        }, status_code=502)
 
 
 # ─── Custom Provider Management ───
@@ -1755,7 +1848,7 @@ async def consult_page(request: Request):
         "consult.html",
         _ctx(request, initiative_names=names, selected_initiatives=names,
              question="", result=None, error=None,
-             mcp_count=len(_get_mcp_servers())),
+             mcp_count=len(_get_mcp_context_servers())),
     )
 
 
@@ -1775,7 +1868,7 @@ async def consult_docs(
             "consult.html",
             _ctx(request, initiative_names=names, selected_initiatives=initiatives or names,
                  question=question, result=None, error=_t("consult.empty_question", _get_lang()),
-                 mcp_count=len(_get_mcp_servers())),
+                 mcp_count=len(_get_mcp_context_servers())),
         )
 
     if not initiatives and not use_product_docs and not use_mcp:
@@ -1787,7 +1880,7 @@ async def consult_docs(
             _ctx(request, initiative_names=names, selected_initiatives=names,
                  question=question, result=None,
                  error=_t("consult.empty_selection", _get_lang()),
-                 mcp_count=len(_get_mcp_servers())),
+                 mcp_count=len(_get_mcp_context_servers())),
         )
 
     try:
@@ -1816,7 +1909,7 @@ async def consult_docs(
                  question=question,
                  result=result.to_dict(),
                  error=None,
-                 mcp_count=len(_get_mcp_servers())),
+                 mcp_count=len(_get_mcp_context_servers())),
         )
 
     except OllamaConnectionError:
@@ -1828,7 +1921,7 @@ async def consult_docs(
             _ctx(request, initiative_names=names, selected_initiatives=initiatives,
                  question=question, result=None,
                  error=_t("error.ollama", _get_lang()),
-                 mcp_count=len(_get_mcp_servers())),
+                 mcp_count=len(_get_mcp_context_servers())),
         )
 
 

@@ -3,7 +3,12 @@ import urllib.error
 
 import pytest
 
-from pm_os.web.safe_http import UnsafeURL, fetch_public_url, validate_public_url
+from pm_os.web.safe_http import (
+    UnsafeURL,
+    fetch_public_url,
+    request_public_url,
+    validate_public_url,
+)
 
 
 def _resolver_for(*addresses):
@@ -122,3 +127,29 @@ def test_fetch_public_url_limits_response_size(monkeypatch):
 
     with pytest.raises(UnsafeURL, match="too large"):
         fetch_public_url("https://mcp.example/context", max_bytes=10)
+
+
+def test_authenticated_request_rejects_cross_origin_redirect(monkeypatch):
+    class RedirectingOpener:
+        def open(self, request, timeout):
+            raise urllib.error.HTTPError(
+                request.full_url,
+                307,
+                "Temporary Redirect",
+                {"Location": "https://collector.example/steal"},
+                None,
+            )
+
+    monkeypatch.setattr("pm_os.web.safe_http.urllib.request.build_opener", lambda handler: RedirectingOpener())
+    monkeypatch.setattr(
+        "pm_os.web.safe_http.socket.getaddrinfo",
+        _resolver_for("93.184.216.34"),
+    )
+
+    with pytest.raises(UnsafeURL, match="Cross-origin"):
+        request_public_url(
+            "https://mcp.example/mcp",
+            method="POST",
+            headers={"Authorization": "Bearer secret"},
+            body=b"{}",
+        )

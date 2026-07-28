@@ -60,6 +60,7 @@
 
 /* ── Reset & Base ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+[hidden] { display: none !important; }
 
 html { font-size: 15px; }
 
@@ -1983,6 +1984,86 @@ body {
 .gen-result-icon { font-size: 20px; }
 
 /* ── MCP Connection Test ── */
+.mcp-wizard {
+    margin-bottom: 22px;
+    padding-bottom: 22px;
+    border-bottom: 1px solid var(--border);
+}
+
+.mcp-choice-grid,
+.mcp-form-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.mcp-choice {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 4px 9px;
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    background: var(--bg-card);
+}
+
+.mcp-choice:has(input:checked) {
+    border-color: var(--primary-light);
+    background: var(--primary-glow);
+}
+
+.mcp-choice input { grid-row: 1 / 3; }
+.mcp-choice span { color: var(--text-muted); font-size: 12px; line-height: 1.4; }
+.mcp-form-grid .form-group { margin-bottom: 0; }
+
+.mcp-url-builder {
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    background: var(--bg-card);
+}
+
+.mcp-url-builder span { padding: 0 9px; color: var(--text-muted); font-size: 12px; }
+.mcp-url-builder input { border: 0; border-radius: 0; min-width: 100px; }
+
+.mcp-policy {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+}
+
+.mcp-policy span { color: var(--text-muted); font-size: 12px; }
+.mcp-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.mcp-kind-badge {
+    margin-left: 6px;
+    padding: 2px 6px;
+    border-radius: 999px;
+    background: var(--primary-glow);
+    color: var(--primary-light);
+    font-size: 10px;
+    text-transform: uppercase;
+}
+.mcp-capabilities { color: var(--success); font-size: 11px; }
+.mcp-auth-badge,
+.mcp-connected-badge {
+    margin-left: 6px;
+    font-size: 10px;
+    font-weight: 600;
+}
+.mcp-auth-badge { color: var(--warning); }
+.mcp-connected-badge { color: var(--success); }
+
+@media (max-width: 760px) {
+    .mcp-choice-grid,
+    .mcp-form-grid { grid-template-columns: 1fr; }
+}
+
 .test-row {
     display: flex;
     align-items: center;

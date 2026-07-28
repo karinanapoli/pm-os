@@ -53,3 +53,21 @@ def test_returns_immediately_when_no_server_is_enabled():
 
     assert results == []
     assert called is False
+
+
+def test_protocol_servers_are_not_mistaken_for_plain_http_context():
+    called = False
+
+    def fetcher(url, timeout):
+        nonlocal called
+        called = True
+
+    results = MCPContextService(fetcher=fetcher).fetch([{
+        "name": "Real MCP",
+        "url": "https://mcp.example/mcp",
+        "type": "mcp",
+        "enabled": True,
+    }])
+
+    assert results == []
+    assert called is False

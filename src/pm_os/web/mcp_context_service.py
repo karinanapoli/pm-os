@@ -28,7 +28,11 @@ class MCPContextService:
         enabled = [
             server
             for server in servers
-            if server.get("enabled") and server.get("url")
+            if (
+                server.get("enabled")
+                and server.get("url")
+                and server.get("type", "legacy_http") == "legacy_http"
+            )
         ]
         if not enabled:
             return []

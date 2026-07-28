@@ -171,6 +171,13 @@ class ConfigManager:
                             cp["api_key"] = decrypt(cp["api_key"])
                         except Exception:
                             pass
+                for server in raw.get("mcp_servers") or []:
+                    auth = server.get("auth") or {}
+                    if auth.get("secret"):
+                        try:
+                            auth["secret"] = decrypt(auth["secret"])
+                        except Exception:
+                            pass
                 merged = {**DEFAULT_CONFIG, **raw}
                 return {k: v for k, v in merged.items() if k in DEFAULT_CONFIG}
             except (json.JSONDecodeError, OSError):
@@ -188,6 +195,10 @@ class ConfigManager:
         for cp in to_save.get("custom_providers") or []:
             if cp.get("api_key"):
                 cp["api_key"] = encrypt(cp["api_key"])
+        for server in to_save.get("mcp_servers") or []:
+            auth = server.get("auth") or {}
+            if auth.get("secret"):
+                auth["secret"] = encrypt(auth["secret"])
         tmp = tempfile.NamedTemporaryFile(
             mode="w",
             dir=str(config_dir),
