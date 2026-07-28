@@ -217,6 +217,35 @@ class TestGuidedSpecification:
         )
         assert "notice=spec.backlog_error" in blocked.headers["location"]
 
+    def test_prepares_specification_from_overview_context(self, client, session_base, monkeypatch):
+        from pm_os.infrastructure.ai.clients.fake_ai_client import FakeAIClient
+
+        monkeypatch.setattr(
+            "pm_os.web.app._build_ai_client",
+            lambda: FakeAIClient(),
+        )
+        init_id = _create_initiative(
+            client,
+            "Context Based Specification",
+            "INT-CONTEXT-SPEC",
+        )
+
+        response = client.post(
+            f"/initiative/{init_id}/specification/prepare",
+            follow_redirects=False,
+        )
+
+        assert response.status_code == 303
+        assert "notice=spec.prepared" in response.headers["location"]
+        state_path = (
+            session_base / "workspace" / "initiatives" / init_id
+            / "artifacts" / "specification.json"
+        )
+        specification = json.loads(state_path.read_text(encoding="utf-8"))
+        assert specification["sections"]["problem"]
+        assert specification["sections"]["requirements"]
+        assert specification["status"] == "draft"
+
 
 def _personal_product_docs_base(session_base: Path) -> Path:
     from pm_os.web.product_docs_service import ProductDocsService

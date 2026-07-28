@@ -218,7 +218,69 @@ class ProductSpecificationService:
         current = self.load(initiative_path)
         if current.get("version"):
             return current
-        headings = self._markdown_sections(prd_content)
+        sections = self._sections_from_markdown(prd_content)
+        return self.save(
+            initiative_path,
+            sections,
+            source_ids=source_ids,
+            actor=actor,
+        )
+
+    def prepare_from_generated(
+        self,
+        initiative_path: Path,
+        generated_content: str,
+        *,
+        source_ids: Optional[Iterable[str]] = None,
+        actor: str = "",
+        replace_existing: bool = False,
+    ) -> dict:
+        """Merge an AI proposal into blank fields, preserving PM corrections."""
+        proposed = self._parse_generated_sections(generated_content)
+        current = self.load(initiative_path)
+        merged = {}
+        for field in SPECIFICATION_FIELDS:
+            existing = str(current["sections"].get(field, "")).strip()
+            candidate = str(proposed.get(field, "")).strip()
+            merged[field] = candidate if replace_existing or not existing else existing
+        result = self.save(
+            initiative_path,
+            merged,
+            source_ids=source_ids,
+            actor=actor,
+        )
+        result["prepared_fields"] = [
+            field for field in SPECIFICATION_FIELDS
+            if proposed.get(field) and (replace_existing or not current["sections"].get(field))
+        ]
+        return result
+
+    def _parse_generated_sections(self, content: str) -> dict:
+        candidate = content.strip()
+        fenced = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", candidate, re.DOTALL)
+        if fenced:
+            candidate = fenced.group(1)
+        try:
+            parsed = json.loads(candidate)
+        except json.JSONDecodeError:
+            return self._sections_from_markdown(content)
+        if not isinstance(parsed, dict):
+            return {field: "" for field in SPECIFICATION_FIELDS}
+        return {
+            field: self._string_value(parsed.get(field, ""))
+            for field in SPECIFICATION_FIELDS
+        }
+
+    @staticmethod
+    def _string_value(value: object) -> str:
+        if isinstance(value, list):
+            return "\n".join(f"- {item}" for item in value if str(item).strip())
+        if isinstance(value, (str, int, float, bool)):
+            return str(value).strip()
+        return ""
+
+    def _sections_from_markdown(self, content: str) -> dict:
+        headings = self._markdown_sections(content)
         aliases = {
             "problem": ("problema", "problem"),
             "users": ("personas / usuários", "personas", "usuários", "users"),
@@ -251,12 +313,7 @@ class ProductSpecificationService:
             ),
             "",
         )
-        return self.save(
-            initiative_path,
-            sections,
-            source_ids=source_ids,
-            actor=actor,
-        )
+        return sections
 
     def completion(self, specification: dict) -> int:
         sections = specification.get("sections") or {}

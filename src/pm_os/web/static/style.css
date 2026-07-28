@@ -331,6 +331,63 @@ body {
     font-weight: 600;
 }
 
+.spec-prepare {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 18px;
+    padding: 16px 18px;
+    border: 1px solid rgba(124, 92, 231, 0.28);
+    border-radius: var(--radius-lg);
+    background: rgba(124, 92, 231, 0.07);
+}
+
+.spec-prepare > div {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.spec-prepare h3 { margin: 0 0 4px; font-size: 14px; }
+.spec-prepare p { margin: 0; color: var(--text-secondary); font-size: 12px; }
+.spec-prepare-icon { color: var(--primary-light); font-size: 20px; }
+.spec-prepare form { display: flex; align-items: center; gap: 9px; }
+
+.spec-source-picker { position: relative; }
+.spec-source-picker summary {
+    padding: 8px 10px;
+    color: var(--text-secondary);
+    font-size: 11px;
+    cursor: pointer;
+}
+
+.spec-source-picker > div {
+    position: absolute;
+    z-index: 10;
+    right: 0;
+    width: 320px;
+    max-height: 260px;
+    overflow-y: auto;
+    padding: 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-card);
+    box-shadow: var(--shadow-lg);
+}
+
+.spec-source-picker label {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 2px 8px;
+    padding: 8px;
+    cursor: pointer;
+}
+
+.spec-source-picker input { grid-row: 1 / 3; accent-color: var(--primary); }
+.spec-source-picker span { color: var(--text); font-size: 12px; }
+.spec-source-picker small { color: var(--text-muted); font-size: 10px; }
+
 .spec-layout {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 260px;
@@ -551,6 +608,9 @@ body {
     .experience-choice { grid-template-columns: 1fr; }
     .spec-span-2 { grid-column: auto; }
     .spec-actions { flex-direction: column-reverse; }
+    .spec-prepare,
+    .spec-prepare form { align-items: stretch; flex-direction: column; }
+    .spec-source-picker > div { position: static; width: auto; }
 }
 
 .mobile-menu-toggle,

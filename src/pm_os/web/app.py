@@ -1052,9 +1052,66 @@ async def specification_page(
             backlog_exists=(selected.path / "artifacts" / "backlog.md").exists(),
             prd_exists=(selected.path / "artifacts" / "prd.md").exists(),
             artifacts=artifacts,
+            available_sources=selected.sources,
             notice=notice,
             notice_kind=notice_kind,
         ),
+    )
+
+
+@app.post("/initiative/{initiative_name}/specification/prepare")
+async def prepare_specification_from_context(
+    request: Request,
+    initiative_name: str,
+    selected_source_ids: list[str] = Form(default=[]),
+):
+    selected = _get_initiative_by_name(initiative_name, request)
+    if not selected:
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    selected_ids = set(selected_source_ids)
+    builder = ContextBuilder()
+    context = (
+        builder.build_selected(selected, selected_ids)
+        if selected_ids else builder.build(selected)
+    )
+    if not context.strip():
+        return RedirectResponse(
+            url=f"/initiative/{initiative_name}/specification?notice=spec.prepare_no_context&notice_kind=error",
+            status_code=303,
+        )
+    try:
+        prompt = PromptBuilder().build(
+            "create_specification",
+            context,
+            lang=_get_lang(),
+        )
+        generated = _build_ai_client().generate(prompt)
+        product_specification_service.prepare_from_generated(
+            selected.path,
+            generated,
+            source_ids=selected_ids or extract_source_ids(context),
+            actor=_get_session_user_email(request),
+        )
+    except OllamaConnectionError:
+        notice = "error.ollama"
+        notice_kind = "error"
+    except AIProviderError:
+        _logger.exception("AI provider failed while preparing specification")
+        notice = "spec.prepare_provider_error"
+        notice_kind = "error"
+    except Exception:
+        _logger.exception("Specification preparation failed")
+        notice = "spec.prepare_error"
+        notice_kind = "error"
+    else:
+        notice = "spec.prepared"
+        notice_kind = "success"
+    return RedirectResponse(
+        url=(
+            f"/initiative/{initiative_name}/specification"
+            f"?notice={notice}&notice_kind={notice_kind}"
+        ),
+        status_code=303,
     )
 
 

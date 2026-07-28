@@ -11,6 +11,12 @@ PM Studio supports two compatible initiative experiences:
 Quick mode remains the default for existing and newly created initiatives.
 Choosing guided mode does not remove or block direct PRD generation.
 
+In guided mode, **Prepare from context** lets the PM select initiative sources
+and ask the configured AI provider for a structured first proposal. The result
+fills blank fields only: content already corrected by the PM is preserved.
+Generated facts retain available source identifiers, unsupported conclusions
+become hypotheses or open questions, and approval always remains a human action.
+
 ## Product model
 
 The product specification is the living source for:

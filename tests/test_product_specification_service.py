@@ -176,3 +176,46 @@ def test_consistency_analysis_flags_traceability_acceptance_and_stale_artifacts(
     assert "critérios de aceite" in messages
     assert "mitigação" in messages
     assert "versão anterior" in messages
+
+
+def test_ai_proposal_fills_blank_fields_and_preserves_pm_corrections(tmp_path):
+    service = ProductSpecificationService()
+    service.save(
+        tmp_path,
+        _sections(problem="Problema corrigido pela PM.", metrics=""),
+    )
+    proposal = json.dumps({
+        "problem": "Problema sugerido pela IA.",
+        "metrics": ["Conversão", "Tempo de checkout"],
+        "open_questions": "Qual é a meta?",
+    })
+
+    result = service.prepare_from_generated(
+        tmp_path,
+        proposal,
+        source_ids=["SRC-12345678"],
+    )
+
+    assert result["sections"]["problem"] == "Problema corrigido pela PM."
+    assert result["sections"]["metrics"] == "- Conversão\n- Tempo de checkout"
+    assert "metrics" in result["prepared_fields"]
+    assert "problem" not in result["prepared_fields"]
+
+
+def test_ai_proposal_accepts_fenced_json_and_demo_markdown(tmp_path):
+    service = ProductSpecificationService()
+    fenced = """```json
+{"problem": "Problema da fonte.", "requirements": ["Um", "Dois"]}
+```"""
+    result = service.prepare_from_generated(tmp_path, fenced)
+    assert result["sections"]["requirements"] == "- Um\n- Dois"
+
+    other = tmp_path / "demo"
+    demo = """# PRD
+## Problema
+Informações dispersas.
+## Objetivos
+Organizar contexto.
+"""
+    result = service.prepare_from_generated(other, demo)
+    assert result["sections"]["problem"] == "Informações dispersas."

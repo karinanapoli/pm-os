@@ -30,6 +30,35 @@
     <li class="{{ 'done' if specification.artifacts else '' }}">{{ "spec.step_deliverables"|t }}</li>
 </ol>
 
+<section class="spec-prepare">
+    <div>
+        <span class="spec-prepare-icon">✦</span>
+        <div>
+            <h3>{{ "spec.prepare_title"|t }}</h3>
+            <p>{{ "spec.prepare_desc"|t }}</p>
+        </div>
+    </div>
+    <form method="POST" action="/initiative/{{ initiative.name }}/specification/prepare" data-loading="processing">
+        {% if available_sources %}
+        <details class="spec-source-picker">
+            <summary>{{ available_sources|length }} {{ "spec.available_sources"|t }}</summary>
+            <div>
+                {% for source in available_sources %}
+                <label>
+                    <input type="checkbox" name="selected_source_ids" value="{{ source.source_id }}" checked>
+                    <span>{{ source.name }}</span>
+                    <small>{{ source.source_id }} · {{ source.confidentiality }}</small>
+                </label>
+                {% endfor %}
+            </div>
+        </details>
+        {% endif %}
+        <button type="submit" class="btn btn-ai" {% if not available_sources %}disabled{% endif %}>
+            {{ "spec.prepare_cta"|t }}
+        </button>
+    </form>
+</section>
+
 <div class="spec-layout">
     <div>
         <form method="POST" action="/initiative/{{ initiative.name }}/specification" class="card spec-editor" data-loading="saving">
