@@ -222,7 +222,7 @@ class TestGuidedSpecification:
 
         monkeypatch.setattr(
             "pm_os.web.app._build_ai_client",
-            lambda: FakeAIClient(),
+            lambda provider_override="": FakeAIClient(),
         )
         init_id = _create_initiative(
             client,
@@ -232,6 +232,7 @@ class TestGuidedSpecification:
 
         response = client.post(
             f"/initiative/{init_id}/specification/prepare",
+            data={"ai_provider": "demo"},
             follow_redirects=False,
         )
 

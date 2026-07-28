@@ -636,9 +636,9 @@ def _ctx(request: Request, **extra: object) -> dict:
     return base
 
 
-def _build_ai_client() -> AIClient:
+def _build_ai_client(provider_override: str = "") -> AIClient:
     cfg = config_manager.get_all()
-    provider = cfg.get("ai_provider", "ollama")
+    provider = provider_override or cfg.get("ai_provider", "ollama")
     if provider == "demo":
         return FakeAIClient()
     if provider == "openai":
@@ -670,6 +670,36 @@ def _build_ai_client() -> AIClient:
         model=cfg.get("model", "llama3.2"),
         base_url=cfg.get("ollama_url", "http://localhost:11434"),
     )
+
+
+def _available_ai_providers() -> list[dict]:
+    cfg = config_manager.get_all()
+    providers = [
+        {"id": "ollama", "label": f"Ollama · {cfg.get('model', 'llama3.2')}"},
+        {"id": "demo", "label": "Demo · conteúdo ilustrativo"},
+    ]
+    if cfg.get("openai_api_key"):
+        providers.append({
+            "id": "openai",
+            "label": f"OpenAI · {cfg.get('openai_model', 'gpt-4o-mini')}",
+        })
+    if cfg.get("anthropic_api_key"):
+        providers.append({
+            "id": "anthropic",
+            "label": f"Anthropic · {cfg.get('anthropic_model', 'claude-3-haiku-20240307')}",
+        })
+    if cfg.get("gateway_url") and cfg.get("gateway_identifier"):
+        providers.append({
+            "id": "gateway",
+            "label": f"Gateway · {cfg.get('gateway_identifier')}",
+        })
+    for provider in cfg.get("custom_providers") or []:
+        if provider.get("name") and provider.get("api_key"):
+            providers.append({
+                "id": provider["name"],
+                "label": f"{provider['name']} · {provider.get('model', '')}",
+            })
+    return providers
 
 
 def _validate_gateway_config(
@@ -1053,6 +1083,8 @@ async def specification_page(
             prd_exists=(selected.path / "artifacts" / "prd.md").exists(),
             artifacts=artifacts,
             available_sources=selected.sources,
+            available_ai_providers=_available_ai_providers(),
+            active_ai_provider=config_manager.get("ai_provider", "ollama"),
             notice=notice,
             notice_kind=notice_kind,
         ),
@@ -1064,6 +1096,7 @@ async def prepare_specification_from_context(
     request: Request,
     initiative_name: str,
     selected_source_ids: list[str] = Form(default=[]),
+    ai_provider: str = Form(""),
 ):
     selected = _get_initiative_by_name(initiative_name, request)
     if not selected:
@@ -1079,13 +1112,22 @@ async def prepare_specification_from_context(
             url=f"/initiative/{initiative_name}/specification?notice=spec.prepare_no_context&notice_kind=error",
             status_code=303,
         )
+    allowed_providers = {
+        provider["id"] for provider in _available_ai_providers()
+    }
+    chosen_provider = ai_provider or config_manager.get("ai_provider", "ollama")
+    if chosen_provider not in allowed_providers:
+        return RedirectResponse(
+            url=f"/initiative/{initiative_name}/specification?notice=spec.prepare_provider_unavailable&notice_kind=error",
+            status_code=303,
+        )
     try:
         prompt = PromptBuilder().build(
             "create_specification",
             context,
             lang=_get_lang(),
         )
-        generated = _build_ai_client().generate(prompt)
+        generated = _build_ai_client(chosen_provider).generate(prompt)
         product_specification_service.prepare_from_generated(
             selected.path,
             generated,
@@ -1093,7 +1135,7 @@ async def prepare_specification_from_context(
             actor=_get_session_user_email(request),
         )
     except OllamaConnectionError:
-        notice = "error.ollama"
+        notice = "spec.prepare_ollama_error"
         notice_kind = "error"
     except AIProviderError:
         _logger.exception("AI provider failed while preparing specification")

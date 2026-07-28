@@ -354,6 +354,23 @@ body {
 .spec-prepare-icon { color: var(--primary-light); font-size: 20px; }
 .spec-prepare form { display: flex; align-items: center; gap: 9px; }
 
+.spec-provider {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.spec-provider span {
+    color: var(--text-muted);
+    font-size: 10px;
+}
+
+.spec-provider select {
+    min-width: 180px;
+    padding: 7px 9px;
+    font-size: 11px;
+}
+
 .spec-source-picker { position: relative; }
 .spec-source-picker summary {
     padding: 8px 10px;

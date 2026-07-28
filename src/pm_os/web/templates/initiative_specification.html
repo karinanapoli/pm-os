@@ -39,6 +39,14 @@
         </div>
     </div>
     <form method="POST" action="/initiative/{{ initiative.name }}/specification/prepare" data-loading="processing">
+        <label class="spec-provider">
+            <span>{{ "spec.provider_label"|t }}</span>
+            <select name="ai_provider">
+                {% for provider in available_ai_providers %}
+                <option value="{{ provider.id }}" {% if provider.id == active_ai_provider %}selected{% endif %}>{{ provider.label }}</option>
+                {% endfor %}
+            </select>
+        </label>
         {% if available_sources %}
         <details class="spec-source-picker">
             <summary>{{ available_sources|length }} {{ "spec.available_sources"|t }}</summary>
