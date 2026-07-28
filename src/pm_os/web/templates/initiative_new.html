@@ -55,6 +55,24 @@
                     <div class="form-hint" style="font-size: 11px; color: var(--text-muted); margin-top: 5px;">Contexto inicial da iniciativa — use Markdown para formatar.</div>
                 </div>
 
+                <fieldset class="experience-choice">
+                    <legend>{{ "spec.new_mode_title"|t }}</legend>
+                    <label>
+                        <input type="radio" name="experience_mode" value="quick" checked>
+                        <span>
+                            <strong>{{ "spec.mode_quick"|t }}</strong>
+                            <small>{{ "spec.new_mode_quick_desc"|t }}</small>
+                        </span>
+                    </label>
+                    <label>
+                        <input type="radio" name="experience_mode" value="guided">
+                        <span>
+                            <strong>{{ "spec.mode_guided"|t }} <span class="spec-beta">Beta</span></strong>
+                            <small>{{ "spec.new_mode_guided_desc"|t }}</small>
+                        </span>
+                    </label>
+                </fieldset>
+
                 <div style="display: flex; gap: 12px; align-items: center; padding-top: 20px; border-top: 1px solid var(--border);">
                     <button type="submit" class="btn btn-primary" style="padding: 10px 28px; font-size: 14px;">{{ "initiative.new.cta"|t }}</button>
                     <a href="/" style="font-size: 13px; color: var(--text-muted); text-decoration: none;">Cancelar</a>

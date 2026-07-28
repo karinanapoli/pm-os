@@ -25,6 +25,7 @@ class InitiativeLifecycleService:
         status: str = "discovery",
         context: str = "",
         squad_name: str = "",
+        experience_mode: str = "quick",
     ) -> str:
         initiative_id = self._normalize_id(name, initiative_id)
         path = self._available_path(
@@ -43,6 +44,7 @@ class InitiativeLifecycleService:
             "created_at": str(date.today()),
             "artifacts": ["prd"],
             "workflows": ["create_prd"],
+            "experience_mode": "guided" if experience_mode == "guided" else "quick",
         }
         (path / "metadata.yaml").write_text(
             yaml.dump(metadata, default_flow_style=False, allow_unicode=True),

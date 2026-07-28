@@ -11,6 +11,8 @@ mantendo a pessoa responsável pelo produto no controle.
 ## O que funciona hoje
 
 - Iniciativas com documentos de contexto e histórico de artefatos.
+- Especificação de produto guiada, versionada e opcional.
+- Decisões, aprovação e backlog rastreável sem remover o fluxo rápido de PRD.
 - Geração, validação de PRD e consulta a documentos.
 - Ollama local, OpenAI, Anthropic e provedores compatíveis com OpenAI.
 - **Modo Demo**, sem chave, custo ou envio de dados a uma IA externa.
@@ -74,6 +76,15 @@ workspace. Consulte as regras da sua organização e a política do provedor.
 ```text
 fontes → contexto → workflow → modelo → PRD + validação humana
 ```
+
+Cada iniciativa pode continuar no **modo rápido** ou usar o **modo guiado
+(Beta)**:
+
+```text
+evidências → especificação → esclarecimentos → aprovação → PRD/backlog
+```
+
+Veja [Especificação Guiada](docs/product/guided-specification.md).
 
 Comece por [Visão](docs/vision/vision.md),
 [Manifesto](docs/vision/manifesto.md),

@@ -2,11 +2,63 @@ class PromptBuilder:
     def build(self, workflow_name: str, context: str, question: str = "", lang: str = "en") -> str:
         if workflow_name == "create_prd":
             return self._build_create_prd_prompt(context, lang)
+        if workflow_name == "create_specification":
+            return self._build_create_specification_prompt(context, lang)
         if workflow_name == "consult":
             if lang == "en":
                 return self._build_consult_prompt_en(context, question)
             return self._build_consult_prompt(context, question)
         raise ValueError(f"Unsupported workflow: {workflow_name}")
+
+    def _build_create_specification_prompt(self, context: str, lang: str = "en") -> str:
+        fields = (
+            "problem, users, evidence, outcome, metrics, scope, out_of_scope, "
+            "requirements, constraints, risks, dependencies, hypotheses, "
+            "open_questions, acceptance_criteria"
+        )
+        if lang == "pt-BR":
+            return f"""
+Você é uma Product Manager experiente preparando uma especificação revisável.
+
+Analise SOMENTE o contexto fornecido e retorne um objeto JSON válido, sem texto
+antes ou depois. Use exatamente estas chaves:
+
+{fields}
+
+Regras:
+
+- Preserve identificadores de fonte no formato [SRC-XXXXXXXX].
+- Não invente fatos, métricas, requisitos ou fontes.
+- Coloque inferências em "hypotheses".
+- Coloque informações ausentes ou ambíguas em "open_questions".
+- Use strings Markdown; listas devem ter um item por linha.
+- Deixe o campo vazio quando o contexto não sustentar uma resposta.
+
+Contexto:
+
+{context}
+"""
+        return f"""
+You are an experienced Product Manager preparing a reviewable specification.
+
+Analyze ONLY the provided context and return a valid JSON object with no text
+before or after it. Use exactly these keys:
+
+{fields}
+
+Rules:
+
+- Preserve source identifiers in the [SRC-XXXXXXXX] format.
+- Do not invent facts, metrics, requirements, or sources.
+- Put inferences in "hypotheses".
+- Put missing or ambiguous information in "open_questions".
+- Use Markdown strings; lists must have one item per line.
+- Leave a field empty when context does not support an answer.
+
+Context:
+
+{context}
+"""
 
     def _build_create_prd_prompt(self, context: str, lang: str = "en") -> str:
         if lang == "pt-BR":

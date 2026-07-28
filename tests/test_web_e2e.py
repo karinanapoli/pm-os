@@ -128,6 +128,197 @@ def _create_initiative(client, name: str = "Test Initiative", init_id: str = "")
     return f"INT-{safe[:30]}"
 
 
+class TestGuidedSpecification:
+    def test_guided_initiative_opens_specification_without_breaking_quick_mode(
+        self, client, session_base
+    ):
+        response = client.post(
+            "/initiatives/new",
+            data={
+                "name": "Guided Checkout",
+                "id": "INT-GUIDED",
+                "status": "discovery",
+                "context": "Pesquisa inicial.",
+                "experience_mode": "guided",
+            },
+            follow_redirects=False,
+        )
+        assert response.status_code == 303
+        assert response.headers["location"] == "/initiative/INT-GUIDED/specification"
+
+        quick_id = _create_initiative(client, "Quick Checkout", "INT-QUICK")
+        metadata = (
+            session_base / "workspace" / "initiatives" / quick_id / "metadata.yaml"
+        ).read_text()
+        assert "experience_mode: quick" in metadata
+
+    def test_saves_approves_and_generates_traceable_backlog(self, client, session_base):
+        init_id = _create_initiative(client, "Guided Checkout", "INT-GUIDED")
+        sections = {
+            "problem": "Abandono no checkout.",
+            "users": "Clientes autenticados.",
+            "evidence": "Pesquisa com clientes.",
+            "outcome": "Reduzir esforço.",
+            "metrics": "Conversão.",
+            "scope": "Checkout autenticado.",
+            "out_of_scope": "Visitantes.",
+            "requirements": "- Reutilizar endereço\n- Confirmar pagamento",
+            "constraints": "Consentimento.",
+            "risks": "Dispositivo compartilhado.",
+            "dependencies": "Identidade.",
+            "hypotheses": "Menos campos melhora conversão.",
+            "open_questions": "Qual a meta?",
+            "acceptance_criteria": "- Exigir consentimento\n- Exigir confirmação",
+        }
+        saved = client.post(
+            f"/initiative/{init_id}/specification",
+            data=sections,
+            follow_redirects=False,
+        )
+        assert saved.status_code == 303
+
+        approved = client.post(
+            f"/initiative/{init_id}/specification/approve",
+            follow_redirects=False,
+        )
+        assert approved.status_code == 303
+
+        backlog = client.post(
+            f"/initiative/{init_id}/backlog/generate",
+            follow_redirects=False,
+        )
+        assert backlog.status_code == 303
+        path = (
+            session_base / "workspace" / "initiatives" / init_id
+            / "artifacts" / "backlog.md"
+        )
+        assert "SPEC-v1" in path.read_text(encoding="utf-8")
+
+        page = client.get(f"/initiative/{init_id}/specification")
+        assert page.status_code == 200
+        assert "Especificação da iniciativa" in page.text
+        assert "Atualizado" in page.text
+        assert f'/initiative/{init_id}/deliverables' in page.text
+
+        deliverables = client.get(f"/initiative/{init_id}/deliverables")
+        assert deliverables.status_code == 200
+        assert "Entregáveis" in deliverables.text
+        assert "Backlog de implementação" in deliverables.text
+        assert f'/initiative/{init_id}/prd/download' not in deliverables.text
+        assert f'/initiative/{init_id}/backlog/download' in deliverables.text
+
+    def test_records_decision_and_rejects_backlog_before_approval(self, client):
+        init_id = _create_initiative(client, "Decision Flow", "INT-DECISION")
+        response = client.post(
+            f"/initiative/{init_id}/decisions",
+            data={
+                "title": "Pedir consentimento",
+                "rationale": "Protege pessoas em dispositivos compartilhados.",
+            },
+            follow_redirects=False,
+        )
+        assert response.status_code == 303
+
+        blocked = client.post(
+            f"/initiative/{init_id}/backlog/generate",
+            follow_redirects=False,
+        )
+        assert "notice=spec.backlog_error" in blocked.headers["location"]
+
+    def test_prepares_specification_from_overview_context(self, client, session_base, monkeypatch):
+        from pm_os.infrastructure.ai.clients.fake_ai_client import FakeAIClient
+
+        monkeypatch.setattr(
+            "pm_os.web.app._build_ai_client",
+            lambda provider_override="": FakeAIClient(),
+        )
+        init_id = _create_initiative(
+            client,
+            "Context Based Specification",
+            "INT-CONTEXT-SPEC",
+        )
+
+        response = client.post(
+            f"/initiative/{init_id}/specification/prepare",
+            data={"ai_provider": "demo"},
+            follow_redirects=False,
+        )
+
+        assert response.status_code == 303
+        assert "notice=spec.prepared" in response.headers["location"]
+        state_path = (
+            session_base / "workspace" / "initiatives" / init_id
+            / "artifacts" / "specification.json"
+        )
+        specification = json.loads(state_path.read_text(encoding="utf-8"))
+        assert specification["sections"]["problem"]
+        assert specification["sections"]["requirements"]
+        assert specification["status"] == "draft"
+
+
+@pytest.mark.skipif(
+    os.getenv("PM_OS_RUN_OLLAMA_E2E") != "1",
+    reason="requires a running local Ollama model",
+)
+def test_real_ollama_upload_generation_and_nonzero_validation(
+    client, session_base
+):
+    from pm_os.infrastructure.utils import read_validation_score_from_file
+    from pm_os.web.app import config_manager, job_repository
+
+    config_manager.set("ai_provider", "ollama")
+    init_id = _create_initiative(
+        client,
+        "E2E Real Ollama Validation",
+        "INT-E2E-REAL-OLLAMA",
+    )
+    context = (
+        "# Pesquisa com usuários\n\n"
+        "8 de 10 analistas de operações descobrem rupturas de estoque tarde demais. "
+        "O objetivo é reduzir em 30% o tempo médio entre a previsão de ruptura e a ação. "
+        "O MVP deve enviar alertas, mostrar estoque projetado e registrar a decisão tomada. "
+        "Ficam fora do escopo compras automáticas e previsão de demanda por machine learning. "
+        "Riscos: alertas falsos, atraso na integração e fadiga de notificações. "
+        "A aceitação exige alertas em até 5 minutos e trilha de auditoria."
+    )
+    uploaded = client.post(
+        f"/initiative/{init_id}/upload",
+        files={"docs": ("pesquisa-usuarios.md", context.encode("utf-8"), "text/markdown")},
+    )
+    assert uploaded.status_code == 200
+    assert "pesquisa-usuarios.md" in uploaded.text
+
+    started = client.post(
+        "/generate",
+        data={"initiative_name": init_id},
+        headers={"x-requested-with": "fetch"},
+    )
+    assert started.status_code == 200
+    task_id = started.json()["job_id"]
+
+    deadline = time.monotonic() + 360
+    status = {}
+    while time.monotonic() < deadline:
+        status = job_repository.get_for_scope(task_id, "test@pmstudio.app", "") or {}
+        if status.get("done"):
+            break
+        time.sleep(1)
+
+    assert status.get("done") is True, "Ollama generation exceeded six minutes"
+    assert not status.get("error"), status.get("error")
+
+    artifacts = (
+        session_base / "workspace" / "initiatives" / init_id / "artifacts"
+    )
+    prd = (artifacts / "prd.md").read_text(encoding="utf-8")
+    report_path = artifacts / "prd-validation.md"
+    score = read_validation_score_from_file(report_path)
+
+    assert len(prd) > 500
+    assert score is not None
+    assert score > 0
+
+
 def _personal_product_docs_base(session_base: Path) -> Path:
     from pm_os.web.product_docs_service import ProductDocsService
 

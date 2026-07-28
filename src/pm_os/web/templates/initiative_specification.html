@@ -1,0 +1,304 @@
+{% extends "base.html" %}
+{% block page_title %}{{ "spec.title"|t }} · {{ initiative.name }}{% endblock %}
+
+{% block topbar_actions %}
+<div class="spec-mode-switch" aria-label="{{ 'spec.mode_label'|t }}">
+    <a href="/generate?initiative={{ initiative.name }}" class="spec-mode-option">{{ "spec.mode_quick"|t }}</a>
+    <span class="spec-mode-option active">{{ "spec.mode_guided"|t }} <span class="spec-beta">Beta</span></span>
+</div>
+{% endblock %}
+
+{% block content %}
+{% if notice %}
+<div class="alert alert-{{ notice_kind or 'success' }}" role="status">{{ notice|t }}</div>
+{% endif %}
+
+<nav class="initiative-tabs" aria-label="{{ 'spec.navigation'|t }}">
+    <a href="/initiative/{{ initiative.name }}">{{ "spec.tab_overview"|t }}</a>
+    <a href="/initiative/{{ initiative.name }}#context">{{ "spec.tab_evidence"|t }}</a>
+    <a href="/initiative/{{ initiative.name }}/specification" class="active">{{ "spec.tab_specification"|t }} <span class="spec-beta">Beta</span></a>
+    <a href="/initiative/{{ initiative.name }}/deliverables">{{ "spec.tab_deliverables"|t }}</a>
+    <a href="#decisions">{{ "spec.tab_decisions"|t }}</a>
+    <a href="#history">{{ "spec.tab_history"|t }}</a>
+</nav>
+
+<ol class="spec-flow" aria-label="{{ 'spec.progress'|t }}">
+    <li class="done">{{ "spec.step_evidence"|t }}</li>
+    <li class="current">{{ "spec.step_specification"|t }}</li>
+    <li class="{{ 'done' if specification.decisions else '' }}">{{ "spec.step_clarify"|t }}</li>
+    <li class="{{ 'done' if specification.status == 'approved' else '' }}">{{ "spec.step_approve"|t }}</li>
+    <li class="{{ 'done' if specification.artifacts else '' }}">{{ "spec.step_deliverables"|t }}</li>
+</ol>
+
+<section class="spec-prepare">
+    <div>
+        <span class="spec-prepare-icon">✦</span>
+        <div>
+            <h3>{{ "spec.prepare_title"|t }}</h3>
+            <p>{{ "spec.prepare_desc"|t }}</p>
+        </div>
+    </div>
+    <form method="POST" action="/initiative/{{ initiative.name }}/specification/prepare" data-loading="processing">
+        <label class="spec-provider">
+            <span>{{ "spec.provider_label"|t }}</span>
+            <select name="ai_provider">
+                {% for provider in available_ai_providers %}
+                <option value="{{ provider.id }}" {% if provider.id == active_ai_provider %}selected{% endif %}>{{ provider.label }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        {% if available_sources %}
+        <details class="spec-source-picker">
+            <summary>{{ available_sources|length }} {{ "spec.available_sources"|t }}</summary>
+            <div>
+                {% for source in available_sources %}
+                <label>
+                    <input type="checkbox" name="selected_source_ids" value="{{ source.source_id }}" checked>
+                    <span>{{ source.name }}</span>
+                    <small>{{ source.source_id }} · {{ source.confidentiality }}</small>
+                </label>
+                {% endfor %}
+            </div>
+        </details>
+        {% endif %}
+        <button type="submit" class="btn btn-ai" {% if not available_sources %}disabled{% endif %}>
+            {{ "spec.prepare_cta"|t }}
+        </button>
+    </form>
+</section>
+
+<div class="spec-layout">
+    <div>
+        <form method="POST" action="/initiative/{{ initiative.name }}/specification" class="card spec-editor" data-loading="saving">
+            <div class="card-header">
+                <div>
+                    <h3>{{ "spec.editor_title"|t }}</h3>
+                    <p class="spec-caption">
+                        {% if specification.version %}
+                        {{ "spec.version"|t }} {{ specification.version }} · {{ ("spec.status_" ~ specification.status)|t }}
+                        {% else %}
+                        {{ "spec.not_started"|t }}
+                        {% endif %}
+                    </p>
+                </div>
+                <span class="spec-completion">{{ completion }}% {{ "spec.complete"|t }}</span>
+            </div>
+            <div class="card-body">
+                <div class="spec-field-grid">
+                    <div class="form-group spec-span-2">
+                        <label for="problem">{{ "spec.problem"|t }}</label>
+                        <textarea id="problem" name="problem" rows="3" placeholder="{{ 'spec.problem_hint'|t }}">{{ specification.sections.problem }}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="users">{{ "spec.users"|t }}</label>
+                        <textarea id="users" name="users" rows="3">{{ specification.sections.users }}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="outcome">{{ "spec.outcome"|t }}</label>
+                        <textarea id="outcome" name="outcome" rows="3">{{ specification.sections.outcome }}</textarea>
+                    </div>
+                    <div class="form-group spec-span-2">
+                        <label for="evidence">{{ "spec.evidence"|t }}</label>
+                        <textarea id="evidence" name="evidence" rows="3" placeholder="{{ 'spec.evidence_hint'|t }}">{{ specification.sections.evidence }}</textarea>
+                        {% if specification.source_ids %}
+                        <div class="form-hint">{{ specification.source_ids|length }} {{ "spec.sources_linked"|t }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="form-group">
+                        <label for="metrics">{{ "spec.metrics"|t }}</label>
+                        <textarea id="metrics" name="metrics" rows="3">{{ specification.sections.metrics }}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="scope">{{ "spec.scope"|t }}</label>
+                        <textarea id="scope" name="scope" rows="3">{{ specification.sections.scope }}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="out_of_scope">{{ "spec.out_of_scope"|t }}</label>
+                        <textarea id="out_of_scope" name="out_of_scope" rows="3">{{ specification.sections.out_of_scope }}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="constraints">{{ "spec.constraints"|t }}</label>
+                        <textarea id="constraints" name="constraints" rows="3">{{ specification.sections.constraints }}</textarea>
+                    </div>
+                    <div class="form-group spec-span-2">
+                        <label for="requirements">{{ "spec.requirements"|t }}</label>
+                        <textarea id="requirements" name="requirements" rows="5" placeholder="{{ 'spec.list_hint'|t }}">{{ specification.sections.requirements }}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="risks">{{ "spec.risks"|t }}</label>
+                        <textarea id="risks" name="risks" rows="4">{{ specification.sections.risks }}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="dependencies">{{ "spec.dependencies"|t }}</label>
+                        <textarea id="dependencies" name="dependencies" rows="4">{{ specification.sections.dependencies }}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="hypotheses">{{ "spec.hypotheses"|t }}</label>
+                        <textarea id="hypotheses" name="hypotheses" rows="4">{{ specification.sections.hypotheses }}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="open_questions">{{ "spec.open_questions"|t }}</label>
+                        <textarea id="open_questions" name="open_questions" rows="4">{{ specification.sections.open_questions }}</textarea>
+                    </div>
+                    <div class="form-group spec-span-2">
+                        <label for="acceptance_criteria">{{ "spec.acceptance_criteria"|t }}</label>
+                        <textarea id="acceptance_criteria" name="acceptance_criteria" rows="5" placeholder="{{ 'spec.list_hint'|t }}">{{ specification.sections.acceptance_criteria }}</textarea>
+                    </div>
+                </div>
+                <div class="spec-actions">
+                    <a href="/generate?initiative={{ initiative.name }}" class="btn btn-secondary">{{ "spec.generate_prd_now"|t }}</a>
+                    <button type="submit" class="btn btn-primary">{{ "spec.save_draft"|t }}</button>
+                </div>
+            </div>
+        </form>
+
+        <section class="card" id="decisions">
+            <div class="card-header">
+                <div>
+                    <h3>{{ "spec.decisions_title"|t }}</h3>
+                    <p class="spec-caption">{{ "spec.decisions_desc"|t }}</p>
+                </div>
+                <span class="spec-count">{{ specification.decisions|length }}</span>
+            </div>
+            <div class="card-body">
+                {% if specification.decisions %}
+                <div class="spec-decision-list">
+                    {% for decision in specification.decisions %}
+                    <article class="spec-decision">
+                        <strong>{{ decision.id }} · {{ decision.title }}</strong>
+                        <p>{{ decision.rationale }}</p>
+                        <span>{{ decision.created_by }} · {{ decision.created_at[:10] }}</span>
+                    </article>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                <details class="advanced-options">
+                    <summary>{{ "spec.add_decision"|t }}</summary>
+                    <form method="POST" action="/initiative/{{ initiative.name }}/decisions" class="form spec-decision-form">
+                        <div class="form-group">
+                            <label for="decision-title">{{ "spec.decision_title"|t }}</label>
+                            <input id="decision-title" name="title" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="decision-rationale">{{ "spec.decision_rationale"|t }}</label>
+                            <textarea id="decision-rationale" name="rationale" rows="3" required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-secondary btn-sm">{{ "spec.record_decision"|t }}</button>
+                    </form>
+                </details>
+            </div>
+        </section>
+    </div>
+
+    <aside class="spec-sidebar">
+        <section class="card">
+            <div class="card-body">
+                <h3>{{ "spec.clarifications_title"|t }}</h3>
+                <p class="spec-caption">{{ "spec.clarifications_desc"|t }}</p>
+                {% if clarifications %}
+                <ol class="spec-clarifications">
+                    {% for item in clarifications[:4] %}
+                    <li><a href="#{{ item.field }}">{{ item.question }}</a></li>
+                    {% endfor %}
+                </ol>
+                {% else %}
+                <p class="spec-approved">✓ {{ "spec.no_critical_gaps"|t }}</p>
+                {% endif %}
+            </div>
+        </section>
+
+        <section class="card">
+            <div class="card-body">
+                <h3>{{ "spec.consistency_title"|t }}</h3>
+                {% if consistency_findings %}
+                <ul class="spec-findings">
+                    {% for finding in consistency_findings %}
+                    <li class="{{ finding.kind }}">{{ finding.message }}</li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="spec-approved">✓ {{ "spec.consistency_ok"|t }}</p>
+                {% endif %}
+            </div>
+        </section>
+
+        <section class="card">
+            <div class="card-body">
+                <h3>{{ "spec.quality_title"|t }}</h3>
+                <div class="spec-progress">
+                    <span style="width: {{ completion }}%"></span>
+                </div>
+                <p class="spec-caption">{{ "spec.quality_desc"|t }}</p>
+                <dl class="spec-metrics">
+                    <div><dt>{{ "spec.sources"|t }}</dt><dd>{{ specification.source_ids|length }}</dd></div>
+                    <div><dt>{{ "spec.hypotheses"|t }}</dt><dd>{{ 1 if specification.sections.hypotheses else 0 }}</dd></div>
+                    <div><dt>{{ "spec.open_questions"|t }}</dt><dd>{{ 1 if specification.sections.open_questions else 0 }}</dd></div>
+                    <div><dt>{{ "spec.decisions_title"|t }}</dt><dd>{{ specification.decisions|length }}</dd></div>
+                </dl>
+            </div>
+        </section>
+
+        <section class="card">
+            <div class="card-body">
+                <h3>{{ "spec.approval_title"|t }}</h3>
+                {% if specification.status == "approved" %}
+                <p class="spec-approved">✓ {{ "spec.approved_version"|t }} {{ specification.approved_version }}</p>
+                <p class="spec-caption">{{ specification.approved_by }} · {{ specification.approved_at[:10] }}</p>
+                {% else %}
+                <p class="spec-caption">{{ "spec.approval_desc"|t }}</p>
+                <form method="POST" action="/initiative/{{ initiative.name }}/specification/approve">
+                    <button class="btn btn-primary btn-sm" {% if not specification.version %}disabled{% endif %}>{{ "spec.approve"|t }}</button>
+                </form>
+                {% endif %}
+            </div>
+        </section>
+
+        <section class="card" id="deliverables">
+            <div class="card-body">
+                <h3>{{ "spec.deliverables_title"|t }}</h3>
+                <div class="spec-deliverables">
+                    <div>
+                        <span>PRD</span>
+                        {% set prd_artifact = artifacts.get("prd", {}) %}
+                        <strong class="{{ 'stale' if prd_artifact.status == 'stale' else '' }}">
+                            {{ ("spec.artifact_" ~ (prd_artifact.status or ("current" if prd_exists else "missing")))|t }}
+                        </strong>
+                    </div>
+                    <div>
+                        <span>Backlog</span>
+                        {% set backlog_artifact = artifacts.get("backlog", {}) %}
+                        <strong class="{{ 'stale' if backlog_artifact.status == 'stale' else '' }}">
+                            {{ ("spec.artifact_" ~ (backlog_artifact.status or ("current" if backlog_exists else "missing")))|t }}
+                        </strong>
+                    </div>
+                </div>
+                <div class="spec-stack-actions">
+                    {% if specification.version %}
+                    <a href="/initiative/{{ initiative.name }}/specification/download" class="btn btn-ghost btn-sm">{{ "spec.download_specification"|t }}</a>
+                    {% endif %}
+                    <a href="/generate?initiative={{ initiative.name }}" class="btn btn-secondary btn-sm">{{ "spec.create_prd"|t }}</a>
+                    {% if backlog_exists %}
+                    <a href="/initiative/{{ initiative.name }}/backlog/download" class="btn btn-ghost btn-sm">{{ "spec.download_backlog"|t }}</a>
+                    {% endif %}
+                    <form method="POST" action="/initiative/{{ initiative.name }}/backlog/generate">
+                        <button class="btn btn-secondary btn-sm" {% if specification.status != "approved" %}disabled{% endif %}>{{ "spec.create_backlog"|t }}</button>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        {% if history %}
+        <section class="card" id="history">
+            <div class="card-body">
+                <h3>{{ "spec.history_title"|t }}</h3>
+                <div class="spec-history">
+                    {% for item in history %}
+                    <div><span>v{{ item.version }}</span><small>{{ ("spec.status_" ~ item.status)|t }}</small></div>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+        {% endif %}
+    </aside>
+</div>
+{% endblock %}

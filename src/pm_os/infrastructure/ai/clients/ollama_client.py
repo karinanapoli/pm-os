@@ -1,3 +1,4 @@
+import http.client
 import json
 import os
 import urllib.error
@@ -29,17 +30,24 @@ class OllamaClient:
         self,
         model: str = "",
         base_url: str = "",
+        max_tokens: int = 0,
     ):
         self.model = model or os.getenv("PM_OS_MODEL", "llama3.2")
         self.base_url = (base_url or os.getenv("PM_OS_OLLAMA_URL", "http://localhost:11434")).rstrip("/")
+        configured_max = max_tokens or int(os.getenv("PM_OS_OLLAMA_MAX_TOKENS", "1024"))
+        self.max_tokens = max(128, configured_max)
 
     def generate(self, prompt: str) -> str:
+        return self.generate_with_limit(prompt, self.max_tokens)
+
+    def generate_with_limit(self, prompt: str, max_tokens: int) -> str:
         url = f"{self.base_url}/api/generate"
 
         payload = {
             "model": self.model,
             "prompt": prompt,
             "stream": False,
+            "options": {"num_predict": max(128, max_tokens)},
         }
 
         request = urllib.request.Request(
@@ -56,7 +64,12 @@ class OllamaClient:
             ) as response:
                 response_body = response.read().decode("utf-8")
 
-        except (urllib.error.URLError, TimeoutError) as error:
+        except (
+            urllib.error.URLError,
+            TimeoutError,
+            ConnectionError,
+            http.client.RemoteDisconnected,
+        ) as error:
             raise OllamaConnectionError() from error
 
         try:

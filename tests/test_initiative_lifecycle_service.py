@@ -4,6 +4,7 @@ from pm_os.web.initiative_lifecycle_service import (
     InvalidInitiativeId,
 )
 import pytest
+import yaml
 
 
 class FakeTracker:
@@ -26,6 +27,21 @@ def test_create_generates_unique_id_and_metadata(tmp_path):
     assert second == "INT-CHECKOUT-GROWTH-001"
     assert (repository.initiatives_path / first / "context" / "context.md").read_text() == "Research"
     assert (repository.initiatives_path / first / "metadata.yaml").exists()
+
+
+def test_create_preserves_quick_mode_and_accepts_guided_mode(tmp_path):
+    lifecycle, repository = service(tmp_path)
+    quick = lifecycle.create("Quick")
+    guided = lifecycle.create("Guided", experience_mode="guided")
+
+    quick_meta = yaml.safe_load(
+        (repository.initiatives_path / quick / "metadata.yaml").read_text()
+    )
+    guided_meta = yaml.safe_load(
+        (repository.initiatives_path / guided / "metadata.yaml").read_text()
+    )
+    assert quick_meta["experience_mode"] == "quick"
+    assert guided_meta["experience_mode"] == "guided"
 
 
 def test_create_rejects_unsafe_explicit_id(tmp_path):

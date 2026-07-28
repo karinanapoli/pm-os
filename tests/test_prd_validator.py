@@ -12,6 +12,12 @@ class FakeAIClientForValidator:
         return self.response
 
 
+class IncompleteLocalAIClient(FakeAIClientForValidator):
+    def generate_with_limit(self, prompt: str, max_tokens: int) -> str:
+        self.last_prompt = prompt
+        return self.response
+
+
 SAMPLE_PRD = """
 # PRD - My Feature
 
@@ -168,3 +174,34 @@ def test_validator_localizes_invalid_response_message():
 
     assert report.is_valid is False
     assert "Não foi possível" in report.summary
+
+
+def test_local_validator_falls_back_to_nonzero_structural_score():
+    report = PRDValidator(
+        ai_client=IncompleteLocalAIClient(response='{"overall_score": 0}'),
+        lang="pt-BR",
+    ).validate(
+        """
+# PRD
+## Problema
+Alertas chegam tarde.
+## Objetivos
+Reduzir o tempo de resposta em 30%.
+## Escopo
+Alertas e histórico.
+## Fora do escopo
+Compras automáticas.
+## Requisitos
+- Emitir alerta em até 5 min.
+## Métricas
+P95 menor que 5 min.
+## Riscos
+Fadiga de alertas; monitorar taxa de abertura.
+"""
+        + ("Contexto adicional. " * 20)
+    )
+
+    assert report.is_valid is True
+    assert report.overall_score > 0
+    assert len(report.sections) == 6
+    assert "nota conservadora" in report.summary

@@ -64,6 +64,10 @@ from pm_os.web.prd_generation_operation import (
     PRDGenerationRequest,
 )
 from pm_os.web.product_consultation_service import ProductConsultationService
+from pm_os.web.product_specification_service import (
+    ProductSpecificationService,
+    SPECIFICATION_FIELDS,
+)
 from pm_os.web.mcp_context_service import MCPContextService
 from pm_os.web.mcp_client import MCPAuthorizationRequired, MCPClient, MCPError
 from pm_os.web.mcp_connections import (
@@ -88,6 +92,7 @@ import logging
 _logger = logging.getLogger("pm_os")
 
 _gen_executor = ThreadPoolExecutor(max_workers=2)
+product_specification_service = ProductSpecificationService()
 
 app = FastAPI(title="PM Studio")
 
@@ -631,9 +636,9 @@ def _ctx(request: Request, **extra: object) -> dict:
     return base
 
 
-def _build_ai_client() -> AIClient:
+def _build_ai_client(provider_override: str = "") -> AIClient:
     cfg = config_manager.get_all()
-    provider = cfg.get("ai_provider", "ollama")
+    provider = provider_override or cfg.get("ai_provider", "ollama")
     if provider == "demo":
         return FakeAIClient()
     if provider == "openai":
@@ -665,6 +670,36 @@ def _build_ai_client() -> AIClient:
         model=cfg.get("model", "llama3.2"),
         base_url=cfg.get("ollama_url", "http://localhost:11434"),
     )
+
+
+def _available_ai_providers() -> list[dict]:
+    cfg = config_manager.get_all()
+    providers = [
+        {"id": "ollama", "label": f"Ollama · {cfg.get('model', 'llama3.2')}"},
+        {"id": "demo", "label": "Demo · conteúdo ilustrativo"},
+    ]
+    if cfg.get("openai_api_key"):
+        providers.append({
+            "id": "openai",
+            "label": f"OpenAI · {cfg.get('openai_model', 'gpt-4o-mini')}",
+        })
+    if cfg.get("anthropic_api_key"):
+        providers.append({
+            "id": "anthropic",
+            "label": f"Anthropic · {cfg.get('anthropic_model', 'claude-3-haiku-20240307')}",
+        })
+    if cfg.get("gateway_url") and cfg.get("gateway_identifier"):
+        providers.append({
+            "id": "gateway",
+            "label": f"Gateway · {cfg.get('gateway_identifier')}",
+        })
+    for provider in cfg.get("custom_providers") or []:
+        if provider.get("name") and provider.get("api_key"):
+            providers.append({
+                "id": provider["name"],
+                "label": f"{provider['name']} · {provider.get('model', '')}",
+            })
+    return providers
 
 
 def _validate_gateway_config(
@@ -989,6 +1024,7 @@ async def initiative_detail(
             validation_report_content = ""
 
     is_quickstart = request.query_params.get("quickstart") == "1"
+    specification = product_specification_service.load(selected.path)
 
     return templates.TemplateResponse(
         request,
@@ -1007,7 +1043,267 @@ async def initiative_detail(
             validation_history=read_validation_history(selected.path / "artifacts"),
             notice=notice,
             notice_kind=notice_kind,
+            specification=specification,
+            specification_completion=product_specification_service.completion(specification),
         ),
+    )
+
+
+@app.get("/initiative/{initiative_name}/specification", response_class=HTMLResponse)
+async def specification_page(
+    request: Request,
+    initiative_name: str,
+    notice: str = "",
+    notice_kind: str = "success",
+):
+    selected = _get_initiative_by_name(initiative_name, request)
+    if not selected:
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    specification = product_specification_service.load(selected.path)
+    artifacts = specification.get("artifacts") or {}
+    return templates.TemplateResponse(
+        request,
+        "initiative_specification.html",
+        _ctx(
+            request,
+            initiative=selected,
+            specification=specification,
+            specification_fields=SPECIFICATION_FIELDS,
+            completion=product_specification_service.completion(specification),
+            clarifications=product_specification_service.clarifications(
+                specification,
+                _get_lang(),
+            ),
+            consistency_findings=product_specification_service.analyze(
+                specification,
+                _get_lang(),
+            ),
+            history=product_specification_service.history(selected.path),
+            backlog_exists=(selected.path / "artifacts" / "backlog.md").exists(),
+            prd_exists=(selected.path / "artifacts" / "prd.md").exists(),
+            artifacts=artifacts,
+            available_sources=selected.sources,
+            available_ai_providers=_available_ai_providers(),
+            active_ai_provider=config_manager.get("ai_provider", "ollama"),
+            notice=notice,
+            notice_kind=notice_kind,
+        ),
+    )
+
+
+@app.get("/initiative/{initiative_name}/deliverables", response_class=HTMLResponse)
+async def initiative_deliverables(
+    request: Request,
+    initiative_name: str,
+    notice: str = "",
+    notice_kind: str = "success",
+):
+    selected = _get_initiative_by_name(initiative_name, request)
+    if not selected:
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    specification = product_specification_service.load(selected.path)
+    return templates.TemplateResponse(
+        request,
+        "initiative_deliverables.html",
+        _ctx(
+            request,
+            initiative=selected,
+            specification=specification,
+            completion=product_specification_service.completion(specification),
+            backlog_exists=(selected.path / "artifacts" / "backlog.md").exists(),
+            prd_exists=(selected.path / "artifacts" / "prd.md").exists(),
+            artifacts=specification.get("artifacts") or {},
+            notice=notice,
+            notice_kind=notice_kind,
+        ),
+    )
+
+
+@app.post("/initiative/{initiative_name}/specification/prepare")
+async def prepare_specification_from_context(
+    request: Request,
+    initiative_name: str,
+    selected_source_ids: list[str] = Form(default=[]),
+    ai_provider: str = Form(""),
+):
+    selected = _get_initiative_by_name(initiative_name, request)
+    if not selected:
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    selected_ids = set(selected_source_ids)
+    builder = ContextBuilder()
+    context = (
+        builder.build_selected(selected, selected_ids)
+        if selected_ids else builder.build(selected)
+    )
+    if not context.strip():
+        return RedirectResponse(
+            url=f"/initiative/{initiative_name}/specification?notice=spec.prepare_no_context&notice_kind=error",
+            status_code=303,
+        )
+    allowed_providers = {
+        provider["id"] for provider in _available_ai_providers()
+    }
+    chosen_provider = ai_provider or config_manager.get("ai_provider", "ollama")
+    if chosen_provider not in allowed_providers:
+        return RedirectResponse(
+            url=f"/initiative/{initiative_name}/specification?notice=spec.prepare_provider_unavailable&notice_kind=error",
+            status_code=303,
+        )
+    try:
+        prompt = PromptBuilder().build(
+            "create_specification",
+            context,
+            lang=_get_lang(),
+        )
+        generated = _build_ai_client(chosen_provider).generate(prompt)
+        product_specification_service.prepare_from_generated(
+            selected.path,
+            generated,
+            source_ids=selected_ids or extract_source_ids(context),
+            actor=_get_session_user_email(request),
+        )
+    except OllamaConnectionError:
+        notice = "spec.prepare_ollama_error"
+        notice_kind = "error"
+    except AIProviderError:
+        _logger.exception("AI provider failed while preparing specification")
+        notice = "spec.prepare_provider_error"
+        notice_kind = "error"
+    except Exception:
+        _logger.exception("Specification preparation failed")
+        notice = "spec.prepare_error"
+        notice_kind = "error"
+    else:
+        notice = "spec.prepared"
+        notice_kind = "success"
+    return RedirectResponse(
+        url=(
+            f"/initiative/{initiative_name}/specification"
+            f"?notice={notice}&notice_kind={notice_kind}"
+        ),
+        status_code=303,
+    )
+
+
+@app.post("/initiative/{initiative_name}/specification")
+async def save_specification(request: Request, initiative_name: str):
+    selected = _get_initiative_by_name(initiative_name, request)
+    if not selected:
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    form = await request.form()
+    sections = {
+        field: str(form.get(field, ""))
+        for field in SPECIFICATION_FIELDS
+    }
+    product_specification_service.save(
+        selected.path,
+        sections,
+        source_ids=[source.source_id for source in selected.sources],
+        actor=_get_session_user_email(request),
+    )
+    return RedirectResponse(
+        url=f"/initiative/{initiative_name}/specification?notice=spec.saved",
+        status_code=303,
+    )
+
+
+@app.post("/initiative/{initiative_name}/specification/approve")
+async def approve_specification(request: Request, initiative_name: str):
+    selected = _get_initiative_by_name(initiative_name, request)
+    if not selected:
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    try:
+        product_specification_service.approve(
+            selected.path,
+            actor=_get_session_user_email(request),
+        )
+    except ValueError:
+        return RedirectResponse(
+            url=f"/initiative/{initiative_name}/specification?notice=spec.approve_error&notice_kind=error",
+            status_code=303,
+        )
+    return RedirectResponse(
+        url=f"/initiative/{initiative_name}/specification?notice=spec.approved",
+        status_code=303,
+    )
+
+
+@app.post("/initiative/{initiative_name}/decisions")
+async def add_specification_decision(
+    request: Request,
+    initiative_name: str,
+    title: str = Form(...),
+    rationale: str = Form(...),
+):
+    selected = _get_initiative_by_name(initiative_name, request)
+    if not selected:
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    try:
+        product_specification_service.add_decision(
+            selected.path,
+            title=title,
+            rationale=rationale,
+            actor=_get_session_user_email(request),
+        )
+    except ValueError:
+        return RedirectResponse(
+            url=f"/initiative/{initiative_name}/specification?notice=spec.decision_error&notice_kind=error#decisions",
+            status_code=303,
+        )
+    return RedirectResponse(
+        url=f"/initiative/{initiative_name}/specification?notice=spec.decision_saved#decisions",
+        status_code=303,
+    )
+
+
+@app.post("/initiative/{initiative_name}/backlog/generate")
+async def generate_specification_backlog(request: Request, initiative_name: str):
+    selected = _get_initiative_by_name(initiative_name, request)
+    if not selected:
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    try:
+        product_specification_service.generate_backlog(
+            selected.path,
+            actor=_get_session_user_email(request),
+        )
+    except ValueError:
+        return RedirectResponse(
+            url=f"/initiative/{initiative_name}/specification?notice=spec.backlog_error&notice_kind=error",
+            status_code=303,
+        )
+    return RedirectResponse(
+        url=f"/initiative/{initiative_name}/specification?notice=spec.backlog_created",
+        status_code=303,
+    )
+
+
+@app.get("/initiative/{initiative_name}/backlog/download")
+async def download_backlog(request: Request, initiative_name: str):
+    selected = _get_initiative_by_name(initiative_name, request)
+    if not selected:
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    path = selected.path / "artifacts" / "backlog.md"
+    if not path.exists():
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    return FileResponse(
+        str(path),
+        media_type="text/markdown",
+        filename=f"{initiative_name}-backlog.md",
+    )
+
+
+@app.get("/initiative/{initiative_name}/specification/download")
+async def download_specification(request: Request, initiative_name: str):
+    selected = _get_initiative_by_name(initiative_name, request)
+    if not selected:
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    path = selected.path / "artifacts" / "specification.md"
+    if not path.exists():
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    return FileResponse(
+        str(path),
+        media_type="text/markdown",
+        filename=f"{initiative_name}-specification.md",
     )
 
 
@@ -1156,6 +1452,7 @@ async def create_initiative(
     id: str = Form(""),
     status: str = Form("discovery"),
     context: str = Form(""),
+    experience_mode: str = Form("quick"),
 ):
     repo = _repo(_get_session_squad(request))
     service = InitiativeLifecycleService(repo, create_change_tracker)
@@ -1166,6 +1463,7 @@ async def create_initiative(
             status=status,
             context=context,
             squad_name=_get_session_squad(request),
+            experience_mode=experience_mode,
         )
     except InvalidInitiativeId:
         return templates.TemplateResponse(
@@ -1174,6 +1472,11 @@ async def create_initiative(
             _ctx(request, error=_t("initiative.new.invalid_id", _get_lang())),
         )
     _logger.info("Initiative created: %s", init_id)
+    if experience_mode == "guided":
+        return RedirectResponse(
+            url=f"/initiative/{init_id}/specification",
+            status_code=303,
+        )
     return await dashboard(request)
 
 

@@ -29,3 +29,16 @@ def test_prompt_builder_rejects_unknown_workflow():
         assert "Unsupported workflow" in str(error)
     else:
         raise AssertionError("Expected ValueError")
+
+
+def test_prompt_builder_creates_evidence_aware_product_specification_prompt():
+    prompt = PromptBuilder().build(
+        workflow_name="create_specification",
+        context="Pesquisa [SRC-12345678]",
+        lang="pt-BR",
+    )
+
+    assert "objeto JSON válido" in prompt
+    assert "open_questions" in prompt
+    assert "hypotheses" in prompt
+    assert "Pesquisa [SRC-12345678]" in prompt

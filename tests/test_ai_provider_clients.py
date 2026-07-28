@@ -1,3 +1,4 @@
+import http.client
 import json
 import urllib.error
 
@@ -233,6 +234,41 @@ def test_ollama_uses_environment_and_returns_content(monkeypatch):
     assert result == "Local PRD"
     assert captured["url"] == "http://ollama.example/api/generate"
     assert captured["payload"]["model"] == "local-model"
+    assert captured["payload"]["options"]["num_predict"] == 1024
+
+
+def test_ollama_output_limit_can_be_configured(monkeypatch):
+    captured = {}
+
+    def fake_urlopen(request, timeout):
+        captured["payload"] = json.loads(request.data.decode("utf-8"))
+        return FakeOllamaResponse(b'{"response": "Local PRD"}')
+
+    monkeypatch.setattr(
+        "pm_os.infrastructure.ai.clients.ollama_client.urllib.request.urlopen",
+        fake_urlopen,
+    )
+
+    OllamaClient(max_tokens=640).generate("Product context")
+
+    assert captured["payload"]["options"]["num_predict"] == 640
+
+
+def test_ollama_supports_a_shorter_limit_for_specific_tasks(monkeypatch):
+    captured = {}
+
+    def fake_urlopen(request, timeout):
+        captured["payload"] = json.loads(request.data.decode("utf-8"))
+        return FakeOllamaResponse(b'{"response": "Short validation"}')
+
+    monkeypatch.setattr(
+        "pm_os.infrastructure.ai.clients.ollama_client.urllib.request.urlopen",
+        fake_urlopen,
+    )
+
+    OllamaClient().generate_with_limit("Validate", 320)
+
+    assert captured["payload"]["options"]["num_predict"] == 320
 
 
 @pytest.mark.parametrize(
@@ -252,6 +288,17 @@ def test_ollama_normalizes_network_errors(monkeypatch):
     monkeypatch.setattr(
         "pm_os.infrastructure.ai.clients.ollama_client.urllib.request.urlopen",
         lambda *args, **kwargs: (_ for _ in ()).throw(urllib.error.URLError("offline")),
+    )
+    with pytest.raises(OllamaConnectionError, match="Could not connect"):
+        OllamaClient().generate("prompt")
+
+
+def test_ollama_normalizes_dropped_connections(monkeypatch):
+    monkeypatch.setattr(
+        "pm_os.infrastructure.ai.clients.ollama_client.urllib.request.urlopen",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            http.client.RemoteDisconnected("connection closed")
+        ),
     )
     with pytest.raises(OllamaConnectionError, match="Could not connect"):
         OllamaClient().generate("prompt")
