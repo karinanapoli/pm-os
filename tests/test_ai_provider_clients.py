@@ -254,6 +254,23 @@ def test_ollama_output_limit_can_be_configured(monkeypatch):
     assert captured["payload"]["options"]["num_predict"] == 640
 
 
+def test_ollama_supports_a_shorter_limit_for_specific_tasks(monkeypatch):
+    captured = {}
+
+    def fake_urlopen(request, timeout):
+        captured["payload"] = json.loads(request.data.decode("utf-8"))
+        return FakeOllamaResponse(b'{"response": "Short validation"}')
+
+    monkeypatch.setattr(
+        "pm_os.infrastructure.ai.clients.ollama_client.urllib.request.urlopen",
+        fake_urlopen,
+    )
+
+    OllamaClient().generate_with_limit("Validate", 320)
+
+    assert captured["payload"]["options"]["num_predict"] == 320
+
+
 @pytest.mark.parametrize(
     "payload",
     [b"not json", b"{}", b'{"response": ""}'],

@@ -38,13 +38,16 @@ class OllamaClient:
         self.max_tokens = max(128, configured_max)
 
     def generate(self, prompt: str) -> str:
+        return self.generate_with_limit(prompt, self.max_tokens)
+
+    def generate_with_limit(self, prompt: str, max_tokens: int) -> str:
         url = f"{self.base_url}/api/generate"
 
         payload = {
             "model": self.model,
             "prompt": prompt,
             "stream": False,
-            "options": {"num_predict": self.max_tokens},
+            "options": {"num_predict": max(128, max_tokens)},
         }
 
         request = urllib.request.Request(

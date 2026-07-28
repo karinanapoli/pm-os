@@ -21,7 +21,12 @@ class PRDValidator:
 
     def validate(self, prd_content: str) -> ValidationReport:
         prompt = self._build_prompt(prd_content)
-        response = self.ai_client.generate(prompt)
+        limited_generate = getattr(self.ai_client, "generate_with_limit", None)
+        response = (
+            limited_generate(prompt, 640)
+            if callable(limited_generate)
+            else self.ai_client.generate(prompt)
+        )
         return self._parse_response(response)
 
     def _build_prompt(self, prd_content: str) -> str:
@@ -40,10 +45,10 @@ Evaluate the following PRD and return a JSON object with:
 - "sections": a list of objects, each with:
   - "name": section name (e.g. "Metrics", "Risks", "Scope", "Requirements")
   - "score": float from 0 to 10
-  - "rationale": a 2-3 sentence explanation of WHY this section received this score (what's missing, what's good, what's unclear)
-  - "issues": list of strings describing specific problems found
-  - "action_items": list of concrete, prescriptive next steps the PM should take (e.g. "Interview stakeholder X to validate requirements", "Add success metrics for feature Y", "Analyze the impact of decision Z on the schedule", "Document the dependency with team A"). Each item must be a specific action, not generic advice.
-  - "suggestions": list of strings with general improvement ideas
+  - "rationale": one concise sentence explaining WHY this section received this score
+  - "issues": up to 2 strings describing the most important problems found
+  - "action_items": up to 2 concrete, prescriptive next steps the PM should take
+  - "suggestions": up to 1 string with a general improvement idea
 
 Evaluation criteria:
 - **Metrics**: Are they specific, measurable, achievable, relevant, time-bound (SMART)?
@@ -53,7 +58,8 @@ Evaluation criteria:
 - **Structure**: Are all required sections present and well-organized?
 - **Coherence**: Does the PRD tell a consistent story from problem to solution?
 
-For each section, explain the score rationale and provide 2-3 specific action items the PM can execute immediately.
+Return exactly these 6 sections: Metrics, Risks, Scope, Requirements, Structure, Coherence.
+Keep the complete response concise (under 600 tokens).
 
 Return ONLY valid JSON inside a ```json code block.
 
@@ -73,10 +79,10 @@ Avalie o PRD abaixo e retorne um objeto JSON com:
 - "sections": uma lista de objetos, cada um com:
   - "name": nome da seção (ex: "Métricas", "Riscos", "Escopo", "Requisitos")
   - "score": float de 0 a 10
-  - "rationale": explicação de 2 a 3 frases do POR QUE esta seção recebeu esta nota (o que está faltando, o que está bom, o que não está claro)
-  - "issues": lista de strings descrevendo problemas específicos encontrados
-  - "action_items": lista de próximos passos concretos e prescritivos que o PM deve tomar (ex: "Entreviste o stakeholder X para validar os requisitos", "Adicione métricas de sucesso para a funcionalidade Y", "Analise o impacto da decisão Z no cronograma", "Documente a dependência com o time A"). Cada item deve ser uma ação específica, não um conselho genérico.
-  - "suggestions": lista de strings com ideias gerais de melhoria
+  - "rationale": uma frase concisa explicando POR QUE esta seção recebeu esta nota
+  - "issues": até 2 strings descrevendo os problemas mais importantes
+  - "action_items": até 2 próximos passos concretos e prescritivos
+  - "suggestions": até 1 string com uma ideia geral de melhoria
 
 Critérios de avaliação:
 - **Métricas**: São específicas, mensuráveis, atingíveis, relevantes e com prazo (SMART)?
@@ -86,7 +92,8 @@ Critérios de avaliação:
 - **Estrutura**: Todas as seções necessárias estão presentes e bem organizadas?
 - **Coerência**: O PRD conta uma história consistente do problema à solução?
 
-Para cada seção, explique o rationale da nota e forneça 2 a 3 itens de ação específicos que o PM pode executar imediatamente.
+Retorne exatamente estas 6 seções: Métricas, Riscos, Escopo, Requisitos, Estrutura e Coerência.
+Mantenha a resposta completa concisa (menos de 600 tokens).
 
 IMPORTANTE: Responda EM PORTUGUÊS. Todos os campos de texto (summary, rationale, issues, action_items, suggestions) devem estar em português brasileiro.
 
