@@ -41,7 +41,9 @@ PM Studio evolution happens through incremental capabilities, reusing a common a
 | Source-level Context Controls | ✅ Completed | Sprint 009 |
 | Citation Verification | ✅ Completed | Sprint 009 |
 | Architecture & Performance Hardening | ✅ Completed | Sprint 009 |
-| Create Backlog | 🟡 Planned | Sprint 005 |
+| Guided Product Specification (Beta) | ✅ Completed | Sprint 010 |
+| Decisions, Approval & Consistency Analysis | ✅ Completed | Sprint 010 |
+| Traceable Backlog from Approved Specification | ✅ Completed | Sprint 010 |
 | OKRs | 🟡 Planned | Sprint 005 |
 | AI Prototyping | 🟡 Planned | Sprint 006 |
 | Security Score | 🟡 Planned | Sprint 006 |
@@ -56,9 +58,25 @@ PM Studio evolution happens through incremental capabilities, reusing a common a
 
 # Current Focus
 
-## Sprint 009 — Architecture & Performance Hardening
+## Sprint 010 — Guided Product Specification
 
 ### Delivered
+
+- Optional guided experience without removing quick PRD generation.
+- Versioned product specification with evidence, hypotheses and open questions.
+- Non-blocking clarification and consistency findings.
+- Explicit decisions and human approval.
+- PRD compatibility and automatic quick-flow specification bootstrap.
+- Traceable backlog generation from an approved specification.
+- Derived-artifact freshness status and portable Markdown downloads.
+
+### Compatibility
+
+- Quick mode remains the default.
+- Existing initiatives and PRDs require no migration.
+- External systems are never changed automatically.
+
+## Previous foundation
 
 - Argon2 passwords with automatic migration of legacy hashes.
 - Expiring, one-time password reset links.
@@ -81,7 +99,7 @@ PM Studio evolution happens through incremental capabilities, reusing a common a
 
 ### Next
 
-- Create Backlog as the next complete PM capability.
+- Preview and governed export of backlog items to external systems.
 - Structured latency and reliability telemetry.
 - Route-module extraction as the web composition root evolves.
 

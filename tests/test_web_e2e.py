@@ -128,6 +128,96 @@ def _create_initiative(client, name: str = "Test Initiative", init_id: str = "")
     return f"INT-{safe[:30]}"
 
 
+class TestGuidedSpecification:
+    def test_guided_initiative_opens_specification_without_breaking_quick_mode(
+        self, client, session_base
+    ):
+        response = client.post(
+            "/initiatives/new",
+            data={
+                "name": "Guided Checkout",
+                "id": "INT-GUIDED",
+                "status": "discovery",
+                "context": "Pesquisa inicial.",
+                "experience_mode": "guided",
+            },
+            follow_redirects=False,
+        )
+        assert response.status_code == 303
+        assert response.headers["location"] == "/initiative/INT-GUIDED/specification"
+
+        quick_id = _create_initiative(client, "Quick Checkout", "INT-QUICK")
+        metadata = (
+            session_base / "workspace" / "initiatives" / quick_id / "metadata.yaml"
+        ).read_text()
+        assert "experience_mode: quick" in metadata
+
+    def test_saves_approves_and_generates_traceable_backlog(self, client, session_base):
+        init_id = _create_initiative(client, "Guided Checkout", "INT-GUIDED")
+        sections = {
+            "problem": "Abandono no checkout.",
+            "users": "Clientes autenticados.",
+            "evidence": "Pesquisa com clientes.",
+            "outcome": "Reduzir esforço.",
+            "metrics": "Conversão.",
+            "scope": "Checkout autenticado.",
+            "out_of_scope": "Visitantes.",
+            "requirements": "- Reutilizar endereço\n- Confirmar pagamento",
+            "constraints": "Consentimento.",
+            "risks": "Dispositivo compartilhado.",
+            "dependencies": "Identidade.",
+            "hypotheses": "Menos campos melhora conversão.",
+            "open_questions": "Qual a meta?",
+            "acceptance_criteria": "- Exigir consentimento\n- Exigir confirmação",
+        }
+        saved = client.post(
+            f"/initiative/{init_id}/specification",
+            data=sections,
+            follow_redirects=False,
+        )
+        assert saved.status_code == 303
+
+        approved = client.post(
+            f"/initiative/{init_id}/specification/approve",
+            follow_redirects=False,
+        )
+        assert approved.status_code == 303
+
+        backlog = client.post(
+            f"/initiative/{init_id}/backlog/generate",
+            follow_redirects=False,
+        )
+        assert backlog.status_code == 303
+        path = (
+            session_base / "workspace" / "initiatives" / init_id
+            / "artifacts" / "backlog.md"
+        )
+        assert "SPEC-v1" in path.read_text(encoding="utf-8")
+
+        page = client.get(f"/initiative/{init_id}/specification")
+        assert page.status_code == 200
+        assert "Especificação da iniciativa" in page.text
+        assert "Atualizado" in page.text
+
+    def test_records_decision_and_rejects_backlog_before_approval(self, client):
+        init_id = _create_initiative(client, "Decision Flow", "INT-DECISION")
+        response = client.post(
+            f"/initiative/{init_id}/decisions",
+            data={
+                "title": "Pedir consentimento",
+                "rationale": "Protege pessoas em dispositivos compartilhados.",
+            },
+            follow_redirects=False,
+        )
+        assert response.status_code == 303
+
+        blocked = client.post(
+            f"/initiative/{init_id}/backlog/generate",
+            follow_redirects=False,
+        )
+        assert "notice=spec.backlog_error" in blocked.headers["location"]
+
+
 def _personal_product_docs_base(session_base: Path) -> Path:
     from pm_os.web.product_docs_service import ProductDocsService
 

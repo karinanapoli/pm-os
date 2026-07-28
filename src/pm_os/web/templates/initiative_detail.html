@@ -27,6 +27,15 @@
 </div>
 {% endif %}
 
+<nav class="initiative-tabs" aria-label="{{ 'spec.navigation'|t }}">
+    <a href="/initiative/{{ initiative.name }}" class="active">{{ "spec.tab_overview"|t }}</a>
+    <a href="#context">{{ "spec.tab_evidence"|t }}</a>
+    <a href="/initiative/{{ initiative.name }}/specification">{{ "spec.tab_specification"|t }} <span class="spec-beta">Beta</span></a>
+    <a href="#deliverables">{{ "spec.tab_deliverables"|t }}</a>
+    <a href="/initiative/{{ initiative.name }}/specification#decisions">{{ "spec.tab_decisions"|t }}</a>
+    <a href="/initiative/{{ initiative.name }}/specification#history">{{ "spec.tab_history"|t }}</a>
+</nav>
+
 <div class="stats-row">
     <div class="stat-card">
         <div class="stat-label">{{ "initiative.detail.status"|t }}</div>
@@ -49,7 +58,7 @@
 </div>
 
 {# ── Context Documents ── #}
-<div class="card">
+<div class="card" id="context">
     <div class="card-header">
         <h3>{{ "initiative.detail.context_docs"|t }}</h3>
         <span style="font-size: 13px; color: var(--text-muted);">{{ docs|length }} {{ "initiative.detail.files"|t }}</span>
@@ -96,9 +105,37 @@
     </div>
 </div>
 
+{# ── Guided specification entry point ── #}
+<div class="card">
+    <div class="card-header">
+        <div>
+            <h3>{{ "spec.editor_title"|t }} <span class="spec-beta">Beta</span></h3>
+            <p class="spec-caption">
+                {% if specification.version %}
+                {{ "spec.version"|t }} {{ specification.version }} · {{ ("spec.status_" ~ specification.status)|t }}
+                {% else %}
+                {{ "spec.entry_desc"|t }}
+                {% endif %}
+            </p>
+        </div>
+        {% if specification.version %}
+        <span class="spec-completion">{{ specification_completion }}% {{ "spec.complete"|t }}</span>
+        {% endif %}
+    </div>
+    <div class="card-body">
+        <p style="color:var(--text-secondary);font-size:13px;margin-top:0;">{{ "spec.entry_help"|t }}</p>
+        <div class="spec-actions">
+            <a href="/generate?initiative={{ initiative.name }}" class="btn btn-secondary btn-sm">{{ "spec.mode_quick"|t }}</a>
+            <a href="/initiative/{{ initiative.name }}/specification" class="btn btn-primary btn-sm">
+                {{ "spec.continue_guided"|t if specification.version else "spec.start_guided"|t }}
+            </a>
+        </div>
+    </div>
+</div>
+
 {# ── PRD ── #}
 {% if prd_exists %}
-<div class="card">
+<div class="card" id="deliverables">
     <div class="card-header">
         <h3>PRD {% if version_label %}<span style="font-size: 12px; color: var(--text-muted); font-weight: 400;">— {{ "prd_versions.view"|t }} {{ version_label }}</span>{% endif %}</h3>
         <div style="display: flex; gap: 8px;">

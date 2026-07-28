@@ -10,6 +10,7 @@ from pm_os.infrastructure.utils import version_file
 from pm_os.infrastructure.validators.prd_validator import PRDValidator
 from pm_os.prompt_builder import PromptBuilder
 from pm_os.web.generation_job_service import GenerationJob
+from pm_os.web.product_specification_service import ProductSpecificationService
 from pm_os.writers.markdown_writer import MarkdownWriter
 
 _logger = logging.getLogger("pm_os")
@@ -66,6 +67,17 @@ class PRDGenerationOperation:
         if main_context.strip():
             context_parts.append(
                 f"--- Contexto Principal: {request.selected.name} ---\n\n{main_context}"
+            )
+        specification_path = request.selected.path / "artifacts" / "specification.md"
+        if specification_path.exists():
+            specification = ProductSpecificationService().load(request.selected.path)
+            label = (
+                f"Especificação de Produto v{specification['version']} "
+                f"({specification['status']})"
+            )
+            context_parts.append(
+                f"--- {label} ---\n\n"
+                f"{specification_path.read_text(encoding='utf-8')}"
             )
 
         used_additional = []
@@ -127,6 +139,13 @@ class PRDGenerationOperation:
                 str(artifacts / "prd-validation.md"),
             )
         self.change_tracker_factory().update_manifest(str(request.selected.path))
+        specification_service = ProductSpecificationService()
+        specification_service.bootstrap_from_prd(
+            request.selected.path,
+            prd_content,
+            source_ids=citations.available_ids,
+        )
+        specification_service.register_prd(request.selected.path)
         job.complete({
             "prd": prd_content,
             "score": report.overall_score,
