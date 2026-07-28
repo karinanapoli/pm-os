@@ -1108,6 +1108,32 @@ class TestConfiguration:
         assert server["policy"]["mode"] == "read_only"
         assert server["status"]["state"] == "authorization_required"
 
+    def test_adds_generic_stdio_server_and_protects_environment(
+        self, client, session_base
+    ):
+        response = client.post("/config/mcp/add", data={
+            "name": "Local Files",
+            "transport": "stdio",
+            "command": "npx",
+            "stdio_args": "-y\n@modelcontextprotocol/server-filesystem\n/tmp/docs",
+            "stdio_env": "PRIVATE_TOKEN=stdio-secret",
+            "policy_mode": "read_only",
+        })
+
+        assert response.status_code == 200
+        raw = (session_base / ".pm_os" / "config.json").read_text()
+        assert "stdio-secret" not in raw
+        cfg = json.loads(raw)
+        server = cfg["mcp_servers"][0]
+        assert server["type"] == "stdio"
+        assert server["transport"] == "stdio"
+        assert server["command"] == "npx"
+        assert server["args"] == [
+            "-y",
+            "@modelcontextprotocol/server-filesystem",
+            "/tmp/docs",
+        ]
+
     def test_mcp_secret_is_encrypted_and_not_rendered(self, client, session_base):
         response = client.post("/config/mcp/add", data={
             "name": "Private MCP",

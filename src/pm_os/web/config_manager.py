@@ -178,6 +178,12 @@ class ConfigManager:
                             auth["secret"] = decrypt(auth["secret"])
                         except Exception:
                             pass
+                    for key, value in (server.get("env") or {}).items():
+                        if value:
+                            try:
+                                server["env"][key] = decrypt(value)
+                            except Exception:
+                                pass
                 merged = {**DEFAULT_CONFIG, **raw}
                 return {k: v for k, v in merged.items() if k in DEFAULT_CONFIG}
             except (json.JSONDecodeError, OSError):
@@ -199,6 +205,9 @@ class ConfigManager:
             auth = server.get("auth") or {}
             if auth.get("secret"):
                 auth["secret"] = encrypt(auth["secret"])
+            for key, value in (server.get("env") or {}).items():
+                if value:
+                    server["env"][key] = encrypt(value)
         tmp = tempfile.NamedTemporaryFile(
             mode="w",
             dir=str(config_dir),

@@ -177,17 +177,27 @@ def delete_user(config: dict, email: str) -> bool:
 
 def add_mcp_server(config: dict, server: dict) -> bool:
     servers = config.get("mcp_servers") or []
-    if any(item.get("url") == server["url"] for item in servers):
+    if any(
+        (
+            server.get("id")
+            and item.get("id") == server.get("id")
+        )
+        or (
+            server.get("url")
+            and item.get("url") == server.get("url")
+        )
+        for item in servers
+    ):
         return False
     servers.append(server)
     config["mcp_servers"] = servers
     return True
 
 
-def toggle_mcp_server(config: dict, url: str) -> Optional[tuple[str, str]]:
+def toggle_mcp_server(config: dict, target: str) -> Optional[tuple[str, str]]:
     servers = config.get("mcp_servers") or []
     for server in servers:
-        if server.get("url") == url:
+        if server.get("id") == target or server.get("url") == target:
             server["enabled"] = not server.get("enabled", True)
             config["mcp_servers"] = servers
             state = "enabled" if server["enabled"] else "disabled"
@@ -195,10 +205,18 @@ def toggle_mcp_server(config: dict, url: str) -> Optional[tuple[str, str]]:
     return None
 
 
-def remove_mcp_server(config: dict, url: str) -> Optional[str]:
+def remove_mcp_server(config: dict, target: str) -> Optional[str]:
     servers = config.get("mcp_servers") or []
-    removed = next((item.get("name", "MCP") for item in servers if item.get("url") == url), None)
-    config["mcp_servers"] = [item for item in servers if item.get("url") != url]
+    removed = next((
+        item.get("name", "MCP")
+        for item in servers
+        if item.get("id") == target or item.get("url") == target
+    ), None)
+    config["mcp_servers"] = [
+        item
+        for item in servers
+        if item.get("id") != target and item.get("url") != target
+    ]
     return removed
 
 

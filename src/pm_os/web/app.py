@@ -70,10 +70,13 @@ from pm_os.web.product_specification_service import (
 )
 from pm_os.web.mcp_context_service import MCPContextService
 from pm_os.web.mcp_client import MCPAuthorizationRequired, MCPClient, MCPError
+from pm_os.web.mcp_stdio_client import MCPStdioClient
 from pm_os.web.mcp_connections import (
     build_connection,
     businessmap_endpoint,
     normalize_connection,
+    parse_stdio_args,
+    parse_stdio_env,
     public_connection,
     sanitize_capabilities,
 )
@@ -1924,13 +1927,22 @@ async def add_mcp_server(
     auth_header: str = Form(""),
     policy_mode: str = Form("read_only"),
     discovery_json: str = Form(""),
+    transport: str = Form("streamable_http"),
+    command: str = Form(""),
+    stdio_args: str = Form(""),
+    stdio_env: str = Form(""),
 ):
     try:
-        if preset == "businessmap":
+        if transport == "stdio":
+            connection_type = "stdio"
+            preset = "custom"
+            url = ""
+            auth_type = "none"
+        elif preset == "businessmap":
             url = businessmap_endpoint(businessmap_subdomain)
             auth_type = "oauth"
             connection_type = "mcp"
-        validated_url = _validate_mcp_url(url)
+        validated_url = "" if connection_type == "stdio" else _validate_mcp_url(url)
         connection = build_connection(
             name=name,
             url=validated_url,
@@ -1940,6 +1952,9 @@ async def add_mcp_server(
             auth_secret=auth_secret,
             auth_header=auth_header,
             policy_mode=policy_mode,
+            command=command,
+            args=parse_stdio_args(stdio_args),
+            env=parse_stdio_env(stdio_env),
         )
         if discovery_json:
             connection["capabilities"] = sanitize_capabilities(
@@ -1973,10 +1988,12 @@ async def add_mcp_server(
 @app.post("/config/mcp/toggle", response_class=HTMLResponse)
 async def toggle_mcp_server(
     request: Request,
-    url: str = Form(...),
+    target: str = Form(""),
+    url: str = Form(""),
 ):
+    resolved_target = target or url
     toggled = config_manager.transaction(
-        lambda config: config_ops.toggle_mcp_server(config, url)
+        lambda config: config_ops.toggle_mcp_server(config, resolved_target)
     )
     if toggled:
         _logger.info("MCP server toggled: %s → %s", toggled[0], toggled[1])
@@ -1990,10 +2007,12 @@ async def toggle_mcp_server(
 @app.post("/config/mcp/delete", response_class=HTMLResponse)
 async def delete_mcp_server(
     request: Request,
-    url: str = Form(...),
+    target: str = Form(""),
+    url: str = Form(""),
 ):
+    resolved_target = target or url
     removed = config_manager.transaction(
-        lambda config: config_ops.remove_mcp_server(config, url)
+        lambda config: config_ops.remove_mcp_server(config, resolved_target)
     )
     if removed:
         _logger.info("MCP server removed: %s", removed)
@@ -2016,13 +2035,22 @@ async def test_mcp_connection(
     auth_secret: str = Form(""),
     auth_header: str = Form(""),
     policy_mode: str = Form("read_only"),
+    transport: str = Form("streamable_http"),
+    command: str = Form(""),
+    stdio_args: str = Form(""),
+    stdio_env: str = Form(""),
 ):
     try:
-        if preset == "businessmap":
+        if transport == "stdio":
+            connection_type = "stdio"
+            preset = "custom"
+            url = ""
+            auth_type = "none"
+        elif preset == "businessmap":
             url = businessmap_endpoint(businessmap_subdomain)
             auth_type = "oauth"
             connection_type = "mcp"
-        validated_url = _validate_mcp_url(url)
+        validated_url = "" if connection_type == "stdio" else _validate_mcp_url(url)
         connection = build_connection(
             name=name,
             url=validated_url,
@@ -2032,7 +2060,17 @@ async def test_mcp_connection(
             auth_secret=auth_secret,
             auth_header=auth_header,
             policy_mode=policy_mode,
+            command=command,
+            args=parse_stdio_args(stdio_args),
+            env=parse_stdio_env(stdio_env),
         )
+        if connection_type == "stdio":
+            discovery = MCPStdioClient().discover(connection).as_dict()
+            return JSONResponse({
+                "ok": True,
+                "message": _t("mcp.test_success", _get_lang()),
+                "discovery": discovery,
+            })
         if connection_type == "legacy_http":
             fetch_public_url(validated_url, timeout=5)
             return JSONResponse({"ok": True, "message": _t("mcp.test_success", _get_lang())})

@@ -338,45 +338,61 @@
             </p>
 
             <form method="POST" action="/config/mcp/add" class="form mcp-wizard" data-loading="saving" id="mcpAddForm">
+                <div class="mcp-form-heading">
+                    <div>
+                        <h4>{{ "mcp.add_title"|t }}</h4>
+                        <p>{{ "mcp.add_desc"|t }}</p>
+                    </div>
+                </div>
                 <div class="mcp-choice-grid">
                     <label class="mcp-choice">
-                        <input type="radio" name="preset" value="businessmap" onchange="updateMcpForm()" checked>
-                        <strong>Businessmap</strong>
-                        <span>{{ "mcp.businessmap_desc"|t }}</span>
+                        <input type="radio" name="transport" value="streamable_http" onchange="updateMcpForm()" checked>
+                        <strong>HTTP</strong>
+                        <span>{{ "mcp.http_desc"|t }}</span>
                     </label>
                     <label class="mcp-choice">
-                        <input type="radio" name="preset" value="custom" onchange="updateMcpForm()">
-                        <strong>{{ "mcp.custom"|t }}</strong>
-                        <span>{{ "mcp.custom_desc"|t }}</span>
-                    </label>
-                    <label class="mcp-choice">
-                        <input type="radio" name="preset" value="legacy_http" onchange="updateMcpForm()">
-                        <strong>{{ "mcp.legacy"|t }}</strong>
-                        <span>{{ "mcp.legacy_desc"|t }}</span>
+                        <input type="radio" name="transport" value="stdio" onchange="updateMcpForm()">
+                        <strong>stdio</strong>
+                        <span>{{ "mcp.stdio_desc"|t }}</span>
                     </label>
                 </div>
+                <input type="hidden" name="preset" value="custom">
                 <input type="hidden" name="connection_type" id="mcp-connection-type" value="mcp">
                 <input type="hidden" name="discovery_json" id="mcp-discovery-json" value="">
                 <div class="mcp-form-grid">
                     <div class="form-group">
                         <label for="mcp-name">{{ "mcp.name"|t }}</label>
-                        <input type="text" name="name" id="mcp-name" value="Businessmap" placeholder="{{ 'mcp.name_placeholder'|t }}" required>
+                        <input type="text" name="name" id="mcp-name" placeholder="{{ 'mcp.name_placeholder'|t }}" required>
                     </div>
-                    <div class="form-group" id="mcp-businessmap-field">
-                        <label for="mcp-businessmap-subdomain">{{ "mcp.businessmap_subdomain"|t }}</label>
-                        <div class="mcp-url-builder">
-                            <span>https://</span>
-                            <input type="text" name="businessmap_subdomain" id="mcp-businessmap-subdomain" placeholder="sua-empresa">
-                            <span>.businessmap.io</span>
-                        </div>
-                        <div class="form-hint">{{ "mcp.businessmap_hint"|t }}</div>
-                    </div>
-                    <div class="form-group" id="mcp-url-field" hidden>
+                    <div class="form-group" id="mcp-url-field">
                         <label for="mcp-url">{{ "mcp.url"|t }}</label>
                         <input type="url" name="url" id="mcp-url" placeholder="https://servidor.example/mcp">
                     </div>
                 </div>
-                <div class="mcp-form-grid" id="mcp-advanced-fields" hidden>
+                <div id="mcp-stdio-fields" hidden>
+                    <div class="mcp-form-grid">
+                        <div class="form-group">
+                            <label for="mcp-command">{{ "mcp.command"|t }}</label>
+                            <input type="text" name="command" id="mcp-command" placeholder="npx">
+                            <div class="form-hint">{{ "mcp.command_hint"|t }}</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="mcp-stdio-args">{{ "mcp.args"|t }}</label>
+                            <textarea name="stdio_args" id="mcp-stdio-args" rows="3" placeholder="-y&#10;@modelcontextprotocol/server-filesystem&#10;/caminho/permitido"></textarea>
+                            <div class="form-hint">{{ "mcp.args_hint"|t }}</div>
+                        </div>
+                    </div>
+                    <details class="mcp-advanced">
+                        <summary>{{ "mcp.advanced"|t }}</summary>
+                        <div class="form-group">
+                            <label for="mcp-stdio-env">{{ "mcp.env"|t }}</label>
+                            <textarea name="stdio_env" id="mcp-stdio-env" rows="3" placeholder="API_KEY=valor"></textarea>
+                            <div class="form-hint">{{ "mcp.env_hint"|t }}</div>
+                        </div>
+                    </details>
+                    <div class="mcp-local-warning">{{ "mcp.stdio_warning"|t }}</div>
+                </div>
+                <div class="mcp-form-grid" id="mcp-http-auth-fields">
                     <div class="form-group">
                         <label for="mcp-auth-type">{{ "mcp.auth"|t }}</label>
                         <select name="auth_type" id="mcp-auth-type" onchange="updateMcpAuth()">
@@ -410,6 +426,11 @@
                     <span class="test-status" id="mcpTestStatus"></span>
                 </div>
                 <div class="form-hint" style="margin-top:8px">{{ "mcp.add_hint_test"|t }}</div>
+                <details class="mcp-examples">
+                    <summary>{{ "mcp.examples"|t }}</summary>
+                    <p><strong>BusinessMap:</strong> HTTP · <code>https://sua-empresa.businessmap.io/baiApi/v1/mcp</code> · OAuth</p>
+                    <p><strong>Filesystem:</strong> stdio · <code>npx</code> · <code>-y</code>, <code>@modelcontextprotocol/server-filesystem</code></p>
+                </details>
             </form>
 
             {% if mcp_servers %}
@@ -420,14 +441,20 @@
                         <span class="status-dot {% if server.enabled %}active{% endif %}" style="width: 8px; height: 8px; border-radius: 50%; background: {% if server.enabled %}#48bb78{% else %}#6b6890{% endif %};"></span>
                         <div>
                             <strong>{{ server.name }}</strong>
-                            <span class="mcp-kind-badge">{{ server.preset|default("legacy_http") }}</span>
+                            <span class="mcp-kind-badge">{{ server.transport|default("http_get") }}</span>
                             {% if server.status and server.status.state == "authorization_required" %}
                             <span class="mcp-auth-badge">{{ "mcp.authorization_required"|t }}</span>
                             {% elif server.status and server.status.state == "connected" %}
                             <span class="mcp-connected-badge">{{ "mcp.connected"|t }}</span>
                             {% endif %}
                             <br>
-                            <span style="color: var(--text-muted); font-size: 12px;">{{ server.url }}</span>
+                            <span style="color: var(--text-muted); font-size: 12px;">
+                                {% if server.transport == "stdio" %}
+                                {{ server.command }} {{ server.args|join(" ") }}
+                                {% else %}
+                                {{ server.url }}
+                                {% endif %}
+                            </span>
                             {% if server.capabilities and server.capabilities.tools %}
                             <br><span class="mcp-capabilities">{{ server.capabilities.tools|length }} tools · {{ server.capabilities.server_name }}</span>
                             {% endif %}
@@ -435,12 +462,12 @@
                     </div>
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <form method="POST" action="/config/mcp/toggle" style="margin: 0;">
-                            <input type="hidden" name="url" value="{{ server.url }}">
+                            <input type="hidden" name="target" value="{{ server.id }}">
                             <button type="submit" class="btn btn-ghost btn-sm" style="font-size: 11px;">
                                 {% if server.enabled %}{{ "mcp.deactivate"|t }}{% else %}{{ "mcp.activate"|t }}{% endif %}
                             </button>
                         </form>
-                        <button type="button" class="btn btn-ghost btn-sm" style="color: var(--danger);" data-target="mcpDeleteTarget" data-open="delete-mcp" data-value="{{ server.url }}">{{ "mcp.delete"|t }}</button>
+                        <button type="button" class="btn btn-ghost btn-sm" style="color: var(--danger);" data-target="mcpDeleteTarget" data-open="delete-mcp" data-value="{{ server.id }}">{{ "mcp.delete"|t }}</button>
                     </div>
                 </div>
                 {% endfor %}
@@ -489,7 +516,7 @@
         <div class="modal-actions">
             <button class="btn btn-ghost btn-sm" onclick="PMOS.closeModal('delete-mcp')">{{ "mcp.modal_cancel"|t }}</button>
             <form method="POST" action="/config/mcp/delete" style="display:inline;" data-loading="deleting" id="mcpDeleteForm">
-                <input type="hidden" name="url" id="mcpDeleteTarget" value="">
+                <input type="hidden" name="target" id="mcpDeleteTarget" value="">
                 <button type="submit" class="btn btn-coral btn-sm" onclick="PMOS.closeModal('delete-mcp')">{{ "mcp.modal_confirm"|t }}</button>
             </form>
         </div>
@@ -590,13 +617,20 @@ function testMcpConnection(btn) {
     var urlInput = form.querySelector('input[name="url"]');
     var testRow = form.querySelector('#mcpTestRow');
     var testStatus = form.querySelector('#mcpTestStatus');
-    var preset = form.querySelector('input[name="preset"]:checked').value;
+    var transport = form.querySelector('input[name="transport"]:checked').value;
     var url = urlInput.value.trim();
+    var command = form.querySelector('input[name="command"]').value.trim();
 
-    if (preset !== 'businessmap' && !url) {
+    if (transport === 'streamable_http' && !url) {
         testRow.style.display = 'flex';
         testStatus.className = 'test-status fail';
         testStatus.innerHTML = '{{ "mcp.test_no_url"|t }}';
+        return;
+    }
+    if (transport === 'stdio' && !command) {
+        testRow.style.display = 'flex';
+        testStatus.className = 'test-status fail';
+        testStatus.innerHTML = '{{ "mcp.test_no_command"|t }}';
         return;
     }
 
@@ -633,14 +667,12 @@ function testMcpConnection(btn) {
 
 function updateMcpForm() {
     var form = document.getElementById('mcpAddForm');
-    var preset = form.querySelector('input[name="preset"]:checked').value;
-    var businessmap = preset === 'businessmap';
-    var legacy = preset === 'legacy_http';
-    document.getElementById('mcp-businessmap-field').hidden = !businessmap;
-    document.getElementById('mcp-url-field').hidden = businessmap;
-    document.getElementById('mcp-advanced-fields').hidden = businessmap || legacy;
-    document.getElementById('mcp-connection-type').value = legacy ? 'legacy_http' : 'mcp';
-    document.getElementById('mcp-name').value = businessmap ? 'Businessmap' : '';
+    var transport = form.querySelector('input[name="transport"]:checked').value;
+    var stdio = transport === 'stdio';
+    document.getElementById('mcp-url-field').hidden = stdio;
+    document.getElementById('mcp-stdio-fields').hidden = !stdio;
+    document.getElementById('mcp-http-auth-fields').hidden = stdio;
+    document.getElementById('mcp-connection-type').value = stdio ? 'stdio' : 'mcp';
     document.getElementById('mcp-discovery-json').value = '';
     document.getElementById('mcpTestRow').style.display = 'none';
 }

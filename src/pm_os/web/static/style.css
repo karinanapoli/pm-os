@@ -2404,7 +2404,7 @@ body {
 .mcp-choice-grid,
 .mcp-form-grid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
     margin-bottom: 16px;
 }
@@ -2428,6 +2428,28 @@ body {
 .mcp-choice input { grid-row: 1 / 3; }
 .mcp-choice span { color: var(--text-muted); font-size: 12px; line-height: 1.4; }
 .mcp-form-grid .form-group { margin-bottom: 0; }
+.mcp-form-heading h4 { margin: 0 0 4px; }
+.mcp-form-heading p { margin: 0 0 16px; color: var(--text-muted); font-size: 13px; }
+.mcp-advanced,
+.mcp-examples {
+    margin: 12px 0;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-card);
+}
+.mcp-advanced summary,
+.mcp-examples summary { cursor: pointer; font-size: 13px; font-weight: 600; }
+.mcp-advanced .form-group { margin: 14px 0 0; }
+.mcp-examples p { margin: 10px 0 0; color: var(--text-muted); font-size: 12px; }
+.mcp-local-warning {
+    margin-bottom: 14px;
+    padding: 10px 12px;
+    border-left: 3px solid var(--warning);
+    background: rgba(245, 158, 11, .08);
+    color: var(--text-secondary);
+    font-size: 12px;
+}
 
 .mcp-url-builder {
     display: flex;

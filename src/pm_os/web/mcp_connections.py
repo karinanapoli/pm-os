@@ -5,10 +5,10 @@ from __future__ import annotations
 import hashlib
 import re
 from copy import deepcopy
-from typing import Any
+from typing import Any, Optional
 
 AUTH_TYPES = frozenset({"none", "bearer", "api_key", "oauth"})
-CONNECTION_TYPES = frozenset({"mcp", "legacy_http"})
+CONNECTION_TYPES = frozenset({"mcp", "legacy_http", "stdio"})
 POLICY_MODES = frozenset({"read_only", "confirm_writes"})
 PRESETS = {
     "businessmap": {
@@ -25,6 +25,7 @@ PRESETS = {
         "auth_type": "none",
     },
 }
+ENV_NAME_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 
 
 def connection_id(url: str) -> str:
@@ -38,6 +39,26 @@ def businessmap_endpoint(subdomain: str) -> str:
     return PRESETS["businessmap"]["endpoint_template"].format(subdomain=cleaned)
 
 
+def parse_stdio_args(value: str) -> list[str]:
+    return [line.strip() for line in value.splitlines() if line.strip()]
+
+
+def parse_stdio_env(value: str) -> dict[str, str]:
+    result = {}
+    for raw_line in value.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        if "=" not in line:
+            raise ValueError("Use o formato NOME=valor nas variáveis de ambiente.")
+        key, item_value = line.split("=", 1)
+        key = key.strip()
+        if not ENV_NAME_RE.fullmatch(key):
+            raise ValueError(f"Nome de variável de ambiente inválido: {key}")
+        result[key] = item_value
+    return result
+
+
 def build_connection(
     *,
     name: str,
@@ -48,6 +69,9 @@ def build_connection(
     auth_secret: str = "",
     auth_header: str = "",
     policy_mode: str = "read_only",
+    command: str = "",
+    args: Optional[list[str]] = None,
+    env: Optional[dict[str, str]] = None,
 ) -> dict[str, Any]:
     if not name.strip():
         raise ValueError("Informe um nome para a conexão.")
@@ -62,13 +86,23 @@ def build_connection(
         header = "X-API-Key"
     if header and not re.fullmatch(r"[!#$%&'*+\-.^_`|~0-9A-Za-z]+", header):
         raise ValueError("Nome de header inválido.")
-    return {
-        "id": connection_id(url),
+    clean_command = command.strip()
+    if connection_type == "stdio" and not clean_command:
+        raise ValueError("Informe o comando do servidor stdio.")
+    identity = url if connection_type != "stdio" else f"stdio:{clean_command}:{args or []}"
+    connection = {
+        "id": connection_id(identity),
         "name": name.strip(),
         "url": url,
         "type": connection_type,
         "preset": preset if preset in PRESETS else "custom",
-        "transport": "streamable_http" if connection_type == "mcp" else "http_get",
+        "transport": (
+            "stdio"
+            if connection_type == "stdio"
+            else "streamable_http"
+            if connection_type == "mcp"
+            else "http_get"
+        ),
         "auth": {
             "type": auth_type,
             "header": header,
@@ -85,6 +119,14 @@ def build_connection(
         },
         "enabled": True,
     }
+    if connection_type == "stdio":
+        connection.update({
+            "command": clean_command,
+            "args": [str(item) for item in (args or []) if str(item)],
+            "env": {str(key): str(value) for key, value in (env or {}).items()},
+            "status": {"state": "not_tested", "message": ""},
+        })
+    return connection
 
 
 def normalize_connection(connection: dict[str, Any]) -> dict[str, Any]:
@@ -105,6 +147,18 @@ def normalize_connection(connection: dict[str, Any]) -> dict[str, Any]:
     item.setdefault("enabled", True)
     item.setdefault("capabilities", {})
     item.setdefault("status", {"state": "not_tested", "message": ""})
+    item.setdefault(
+        "transport",
+        "stdio"
+        if item.get("type") == "stdio"
+        else "streamable_http"
+        if item.get("type") == "mcp"
+        else "http_get",
+    )
+    if item.get("type") == "stdio":
+        item.setdefault("command", "")
+        item.setdefault("args", [])
+        item.setdefault("env", {})
     return item
 
 
@@ -135,4 +189,6 @@ def public_connection(connection: dict[str, Any]) -> dict[str, Any]:
     auth["secret"] = ""
     auth["has_secret"] = bool((item.get("auth") or {}).get("secret"))
     item["auth"] = auth
+    item["env_keys"] = sorted((item.get("env") or {}).keys())
+    item["env"] = {}
     return item

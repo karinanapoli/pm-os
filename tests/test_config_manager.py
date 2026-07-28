@@ -66,6 +66,26 @@ def test_encrypts_nested_mcp_credentials(fresh_config):
     assert ConfigManager().get("mcp_servers")[0]["auth"]["secret"] == "mcp-secret"
 
 
+def test_encrypts_stdio_environment_values(fresh_config):
+    cm = ConfigManager()
+    cm.set("mcp_servers", [{
+        "name": "Local",
+        "type": "stdio",
+        "command": "npx",
+        "args": ["-y", "@example/mcp"],
+        "env": {"API_TOKEN": "stdio-secret", "REGION": "br"},
+    }])
+    config_file = Path(os.environ["PM_OS_CONFIG_DIR"]) / "config.json"
+    raw = json.loads(config_file.read_text(encoding="utf-8"))
+
+    assert raw["mcp_servers"][0]["env"]["API_TOKEN"] != "stdio-secret"
+    assert raw["mcp_servers"][0]["env"]["REGION"] != "br"
+    assert ConfigManager().get("mcp_servers")[0]["env"] == {
+        "API_TOKEN": "stdio-secret",
+        "REGION": "br",
+    }
+
+
 def test_loads_from_existing_file(tmp_path):
     config_dir = tmp_path / ".pm_os"
     config_dir.mkdir()
