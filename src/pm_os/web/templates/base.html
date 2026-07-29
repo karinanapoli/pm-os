@@ -35,6 +35,10 @@
                     <span class="nav-icon">◌</span>
                     <span>{{ "nav.signals"|t }}</span>
                 </a>
+                <a href="/decisions" class="nav-item {% if request.url.path == '/decisions' %}active{% endif %}">
+                    <span class="nav-icon">◆</span>
+                    <span>{{ "nav.decisions"|t }}</span>
+                </a>
                 <a href="/generate" class="nav-item {% if request.url.path == '/generate' %}active{% endif %}">
                     <span class="nav-icon">◇</span>
                     <span>{{ "nav.generate_prd"|t }}</span>

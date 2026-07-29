@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block page_title %}{{ "decisions.title"|t }}{% endblock %}
+{% block content %}
+{% if notice %}
+<div class="alert alert-success" role="status">{{ "spec.decision_updated"|t }}</div>
+{% endif %}
+<section class="decisions-hero">
+    <div>
+        <span class="eyebrow">{{ "decisions.eyebrow"|t }}</span>
+        <h3>{{ "decisions.hero_title"|t }}</h3>
+        <p>{{ "decisions.hero_desc"|t }}</p>
+    </div>
+    <strong>{{ decisions|length }}</strong>
+</section>
+
+<nav class="decision-filters" aria-label="{{ 'decisions.filter'|t }}">
+    <a href="/decisions" class="{{ 'active' if not selected_status }}">{{ "decisions.all"|t }}</a>
+    {% for value in ["active", "revisited", "superseded"] %}
+    <a href="/decisions?status={{ value }}" class="{{ 'active' if selected_status == value }}">{{ ("decisions.status." ~ value)|t }}</a>
+    {% endfor %}
+</nav>
+
+{% if decisions %}
+<div class="decision-memory-list">
+    {% for decision in decisions %}
+    <article class="card decision-memory-card">
+        <div class="card-body">
+            <div class="decision-heading">
+                <div>
+                    <a href="/initiative/{{ decision.initiative_id }}/specification#decisions" class="decision-initiative">{{ decision.initiative_id }}</a>
+                    <h3>{{ decision.title }}</h3>
+                </div>
+                <span class="decision-status decision-status-{{ decision.status }}">{{ ("decisions.status." ~ decision.status)|t }}</span>
+            </div>
+            <p>{{ decision.rationale }}</p>
+            {% if decision.revisit_if %}
+            <div class="decision-revisit"><strong>{{ "decisions.revisit_if"|t }}:</strong> {{ decision.revisit_if }}</div>
+            {% endif %}
+            <div class="decision-memory-footer">
+                <span>{{ decision.created_by or "—" }} · {{ decision.created_at[:10] }}</span>
+                <form method="POST" action="/initiative/{{ decision.initiative_id }}/decisions/{{ decision.id }}/status" class="decision-status-form">
+                    <input type="hidden" name="return_to" value="memory">
+                    <select name="status" aria-label="{{ 'decisions.status_label'|t }}">
+                        {% for value in ["active", "revisited", "superseded"] %}
+                        <option value="{{ value }}" {% if decision.status == value %}selected{% endif %}>{{ ("decisions.status." ~ value)|t }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" class="btn btn-secondary btn-sm">{{ "decisions.update_status"|t }}</button>
+                </form>
+            </div>
+        </div>
+    </article>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+    <div class="empty-icon">◆</div>
+    <h3>{{ "decisions.empty_title"|t }}</h3>
+    <p>{{ "decisions.empty_desc"|t }}</p>
+</div>
+{% endif %}
+{% endblock %}

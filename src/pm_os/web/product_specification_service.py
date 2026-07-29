@@ -50,10 +50,16 @@ class ProductSpecificationService:
             field: str((stored.get("sections") or {}).get(field, ""))
             for field in SPECIFICATION_FIELDS
         }
-        specification["decisions"] = [
-            item for item in (stored.get("decisions") or [])
-            if isinstance(item, dict)
-        ]
+        specification["decisions"] = []
+        for stored_decision in stored.get("decisions") or []:
+            if not isinstance(stored_decision, dict):
+                continue
+            item = deepcopy(stored_decision)
+            item.setdefault("status", "active")
+            item.setdefault("revisit_if", "")
+            item.setdefault("updated_at", item.get("created_at", ""))
+            item.setdefault("updated_by", item.get("created_by", ""))
+            specification["decisions"].append(item)
         specification["artifacts"] = stored.get("artifacts") or {}
         return specification
 
@@ -123,6 +129,7 @@ class ProductSpecificationService:
         rationale: str,
         actor: str = "",
         source_ids: Optional[Iterable[str]] = None,
+        revisit_if: str = "",
     ) -> dict:
         title = title.strip()
         rationale = rationale.strip()
@@ -140,11 +147,37 @@ class ProductSpecificationService:
             }),
             "created_at": self._now(),
             "created_by": actor,
+            "revisit_if": revisit_if.strip(),
+            "status": "active",
+            "updated_at": self._now(),
+            "updated_by": actor,
         }
         current["decisions"].append(decision)
         current["updated_at"] = self._now()
         self._persist(initiative_path, current)
         return decision
+
+    def update_decision_status(
+        self,
+        initiative_path: Path,
+        decision_id: str,
+        *,
+        status: str,
+        actor: str = "",
+    ) -> Optional[dict]:
+        if status not in {"active", "revisited", "superseded"}:
+            raise ValueError("Invalid decision status.")
+        current = self.load(initiative_path)
+        for decision in current["decisions"]:
+            if decision.get("id") != decision_id:
+                continue
+            decision["status"] = status
+            decision["updated_at"] = self._now()
+            decision["updated_by"] = actor
+            current["updated_at"] = self._now()
+            self._persist(initiative_path, current)
+            return decision
+        return None
 
     def generate_backlog(self, initiative_path: Path, *, actor: str = "") -> Path:
         current = self.load(initiative_path)
