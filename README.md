@@ -15,6 +15,8 @@ mantendo a pessoa responsável pelo produto no controle.
 - Decisões, aprovação e backlog rastreável sem remover o fluxo rápido de PRD.
 - Memória transversal de decisões com estado e condição explícita
   **“revisitar se”**.
+- Mapa da Iniciativa conectando sinais, fontes, especificação, decisões e
+  entregáveis.
 - Central de Sinais para relacionar feedbacks, pesquisas, métricas e relatórios
   às iniciativas.
 - Extração revisável de sinais a partir de PDF, Markdown e TXT, com
@@ -93,7 +95,8 @@ sinais → evidências → especificação → esclarecimentos → aprovação �
 Veja [Central de Sinais](docs/product/signals.md) e
 [Especificação Guiada](docs/product/guided-specification.md). A
 [Memória de Decisões](docs/product/decision-memory.md) conecta escolhas entre
-iniciativas.
+iniciativas. O [Mapa da Iniciativa](docs/product/initiative-map.md) apresenta
+a rastreabilidade de cada iniciativa em uma única visão.
 
 Comece por [Visão](docs/vision/vision.md),
 [Manifesto](docs/vision/manifesto.md),

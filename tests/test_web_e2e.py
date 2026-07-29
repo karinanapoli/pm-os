@@ -193,6 +193,42 @@ class TestSignals:
         assert b"Quatro clientes" in download.content
 
 
+class TestInitiativeMap:
+    def test_map_connects_context_specification_and_deliverables(self, client):
+        initiative_id = _create_initiative(
+            client,
+            "Mapa rastreável",
+            "INT-MAP",
+        )
+        client.post(
+            f"/initiative/{initiative_id}/decisions",
+            data={
+                "title": "Manter fluxo guiado",
+                "rationale": "Reduz lacunas antes da entrega.",
+                "revisit_if": "O tempo de preparação ultrapassar dois dias.",
+            },
+        )
+        client.post(
+            "/signals",
+            data={
+                "title": "PMs perdem contexto entre ferramentas",
+                "summary": "Entrevistas indicaram perda de rastreabilidade.",
+                "source_type": "research",
+                "theme": "workflow",
+                "strength": "medium",
+                "initiative_ids": initiative_id,
+            },
+        )
+
+        response = client.get(f"/initiative/{initiative_id}/map")
+
+        assert response.status_code == 200
+        assert "PMs perdem contexto entre ferramentas" in response.text
+        assert "Manter fluxo guiado" in response.text
+        assert "context.md" in response.text
+        assert "Mapa da iniciativa" in response.text
+
+
 class TestGuidedSpecification:
     def test_guided_initiative_opens_specification_without_breaking_quick_mode(
         self, client, session_base
