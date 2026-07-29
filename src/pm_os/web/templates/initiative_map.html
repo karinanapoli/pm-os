@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block page_title %}{{ "map.title"|t }} — {{ initiative.name }}{% endblock %}
+{% block topbar_actions %}
+<a href="/initiative/{{ initiative.name }}" class="btn btn-ghost btn-sm">{{ "map.back"|t }}</a>
+{% endblock %}
+{% block content %}
+<nav class="initiative-tabs" aria-label="{{ 'spec.navigation'|t }}">
+    <a href="/initiative/{{ initiative.name }}">{{ "spec.tab_overview"|t }}</a>
+    <a href="/initiative/{{ initiative.name }}/map" class="active">{{ "map.tab"|t }}</a>
+    <a href="/initiative/{{ initiative.name }}/specification">{{ "spec.tab_specification"|t }}</a>
+    <a href="/initiative/{{ initiative.name }}/deliverables">{{ "spec.tab_deliverables"|t }}</a>
+</nav>
+
+<section class="map-hero">
+    <span class="eyebrow">{{ "map.eyebrow"|t }}</span>
+    <h3>{{ "map.hero_title"|t }}</h3>
+    <p>{{ "map.hero_desc"|t }}</p>
+</section>
+
+<div class="initiative-map">
+    <section class="map-column">
+        <div class="map-column-heading"><span>1</span><h3>{{ "map.inputs"|t }}</h3></div>
+        <article class="map-node">
+            <div class="map-node-title"><span>◌</span><strong>{{ "nav.signals"|t }}</strong><em>{{ signals|length }}</em></div>
+            {% if signals %}
+                {% for signal in signals[:4] %}
+                <a href="/signals/{{ signal.signal_id }}">{{ signal.title }}</a>
+                {% endfor %}
+            {% else %}<p>{{ "map.no_signals"|t }}</p>{% endif %}
+            <a href="/signals#new-signal" class="map-node-action">+ {{ "signals.register"|t }}</a>
+        </article>
+        <article class="map-node">
+            <div class="map-node-title"><span>📄</span><strong>{{ "map.sources"|t }}</strong><em>{{ sources|length }}</em></div>
+            {% if sources %}
+                {% for source in sources[:4] %}<span>{{ source.name }}</span>{% endfor %}
+            {% else %}<p>{{ "map.no_sources"|t }}</p>{% endif %}
+            <a href="/initiative/{{ initiative.name }}#context" class="map-node-action">{{ "map.manage_sources"|t }}</a>
+        </article>
+    </section>
+
+    <div class="map-arrow" aria-hidden="true">→</div>
+
+    <section class="map-column map-column-core">
+        <div class="map-column-heading"><span>2</span><h3>{{ "map.thinking"|t }}</h3></div>
+        <article class="map-node map-node-primary">
+            <div class="map-node-title"><span>◇</span><strong>{{ "spec.tab_specification"|t }}</strong><em>{{ specification.version or 0 }}</em></div>
+            <p>{{ ("spec.status_" ~ specification.status)|t }}</p>
+            <a href="/initiative/{{ initiative.name }}/specification" class="map-node-action">{{ "map.open_spec"|t }}</a>
+        </article>
+        <article class="map-node">
+            <div class="map-node-title"><span>◆</span><strong>{{ "nav.decisions"|t }}</strong><em>{{ decisions|length }}</em></div>
+            {% if decisions %}
+                {% for decision in decisions[:4] %}
+                <span>{{ decision.title }} · {{ ("decisions.status." ~ decision.status)|t }}</span>
+                {% endfor %}
+            {% else %}<p>{{ "map.no_decisions"|t }}</p>{% endif %}
+            <a href="/initiative/{{ initiative.name }}/specification#decisions" class="map-node-action">{{ "map.manage_decisions"|t }}</a>
+        </article>
+    </section>
+
+    <div class="map-arrow" aria-hidden="true">→</div>
+
+    <section class="map-column">
+        <div class="map-column-heading"><span>3</span><h3>{{ "map.outputs"|t }}</h3></div>
+        {% for artifact in artifacts %}
+        <article class="map-node map-artifact {{ 'map-artifact-ready' if artifact.exists }}">
+            <div class="map-node-title">
+                <span>{{ "✓" if artifact.exists else "○" }}</span>
+                <strong>{{ ("map.artifact." ~ artifact.key)|t }}</strong>
+                <em>{{ "map.ready"|t if artifact.exists else "map.pending"|t }}</em>
+            </div>
+        </article>
+        {% endfor %}
+        <a href="/initiative/{{ initiative.name }}/deliverables" class="btn btn-secondary btn-sm">{{ "spec.tab_deliverables"|t }}</a>
+    </section>
+</div>
+{% endblock %}

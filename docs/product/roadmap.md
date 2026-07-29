@@ -49,6 +49,7 @@ PM Studio evolution happens through incremental capabilities, reusing a common a
 | Reviewable Signal Extraction from Sources | ✅ Completed | Sprint 011 |
 | Cross-Initiative Decision Memory | ✅ Completed | Sprint 012 |
 | Decision Review Conditions and Lifecycle | ✅ Completed | Sprint 012 |
+| Initiative Traceability Map | ✅ Completed | Sprint 013 |
 | OKRs | 🟡 Planned | Sprint 005 |
 | AI Prototyping | 🟡 Planned | Sprint 006 |
 | Security Score | 🟡 Planned | Sprint 006 |
@@ -63,7 +64,25 @@ PM Studio evolution happens through incremental capabilities, reusing a common a
 
 # Current Focus
 
-## Sprint 012 — Decision Memory
+## Sprint 013 — Initiative Map
+
+### Delivered
+
+- Single view connecting signals, initiative sources, specification, decisions,
+  and derived deliverables.
+- Direct navigation to the owning context and editing journeys.
+- Clear ready or pending state for specification, PRD, backlog, and validation.
+- Responsive three-stage flow: context → definition → deliverables.
+- In-product roadmap synchronized with Signals, Decision Memory, generic MCP,
+  traceable backlog, and Initiative Map availability.
+
+### Compatibility
+
+- The map is a derived read-only view.
+- Existing artifacts and workspace files remain the sources of truth.
+- No initiative migration is required.
+
+## Previous focus — Sprint 012
 
 ### Delivered
 
