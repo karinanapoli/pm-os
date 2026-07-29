@@ -59,6 +59,7 @@ Each block has well-defined responsibilities.
                      Workspace
 ──────────────────────────────────────────────────
 
+Signals and sources
 Initiatives
 Templates
 Knowledge
@@ -162,7 +163,8 @@ Each directory has a specific responsibility.
 
 # The Domain
 
-The central concept of PM Studio is the **Initiative**.
+The central planning concept of PM Studio is the **Initiative**. A **Signal**
+is reusable evidence that can precede and relate to one or more initiatives.
 
 An Initiative represents a business problem or a product opportunity.
 
@@ -195,6 +197,12 @@ Current structure:
 
 ```text
 workspace/
+├── signals/
+│   ├── SIG-*.yaml
+│   └── sources/
+│       └── SSRC-*/
+│           ├── metadata.yaml
+│           └── source-file.pdf
 └── initiatives/
     └── INT-0001-smart-supplier-query/
         ├── context/
@@ -202,6 +210,11 @@ workspace/
         ├── logs/
         └── metadata.yaml
 ```
+
+Signals and their uploaded sources carry the active personal or squad scope.
+Uploaded sources are never converted into accepted evidence automatically:
+the UI creates editable suggestions and persists only the signals confirmed by
+the user.
 
 ## Context
 
