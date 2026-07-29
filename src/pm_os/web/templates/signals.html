@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+{% block page_title %}{{ "signals.title"|t }}{% endblock %}
+{% block topbar_actions %}
+<a href="#new-signal" class="btn btn-primary btn-sm">+ {{ "signals.register"|t }}</a>
+{% endblock %}
+{% block content %}
+{% if notice %}
+<div class="alert alert-success" role="status">{{ "signals.saved"|t }}</div>
+{% endif %}
+{% if error %}
+<div class="alert alert-error" role="alert">{{ error }}</div>
+{% endif %}
+{% if upload_error %}
+<div class="alert alert-error" role="alert">{{ upload_error }}</div>
+{% endif %}
+
+<section class="signals-hero">
+    <div>
+        <span class="eyebrow">{{ "signals.memory"|t }}</span>
+        <h3>{{ "signals.hero_title"|t }}</h3>
+        <p>{{ "signals.hero_desc"|t }}</p>
+    </div>
+    <div class="signals-hero-stat">
+        <strong>{{ signals|length }}</strong>
+        <span>{{ "signals.count"|t }}</span>
+    </div>
+</section>
+
+<details class="card signal-upload-card" {% if source_draft or upload_error %}open{% endif %}>
+    <summary>
+        <span>
+            <span class="eyebrow">{{ "signals.upload.eyebrow"|t }}</span>
+            <strong>{{ "signals.upload.title"|t }}</strong>
+            <small>{{ "signals.upload.desc"|t }}</small>
+        </span>
+        <span class="btn btn-secondary btn-sm">{{ "signals.upload.cta"|t }}</span>
+    </summary>
+    <div class="signal-upload-body">
+        <form method="POST" action="/signals/extract" enctype="multipart/form-data" class="form signal-upload-form" data-loading="processing">
+            <div class="form-group">
+                <label for="signal-source-file">{{ "signals.upload.file"|t }}</label>
+                <input type="file" id="signal-source-file" name="source_file"
+                       accept=".pdf,.md,.txt" required
+                       onchange="PMOS.validateUploadFiles(this)">
+                <div class="form-hint">{{ "signals.upload.hint"|t }}</div>
+            </div>
+            <label class="checkbox-label signal-ai-option">
+                <input type="checkbox" name="use_ai" value="true">
+                <span>
+                    <strong>{{ "signals.upload.use_ai"|t }}</strong>
+                    <small>{{ "signals.upload.ai_notice"|t }}</small>
+                </span>
+            </label>
+            <button type="submit" class="btn btn-primary">{{ "signals.upload.analyze"|t }}</button>
+        </form>
+    </div>
+</details>
+
+{% if source_draft and suggestions %}
+<section class="signal-review-section" id="review-signals">
+    <div class="section-heading">
+        <div>
+            <span class="eyebrow">{{ "signals.review.eyebrow"|t }}</span>
+            <h3>{{ "signals.review.title"|t }}</h3>
+            <p>{{ "signals.review.desc"|t }} <strong>{{ source_draft.filename }}</strong></p>
+        </div>
+        <a href="/signals/sources/{{ source_draft.id }}" class="btn btn-ghost btn-sm">↗ {{ "signals.review.open_source"|t }}</a>
+    </div>
+    {% if not extraction_used_ai %}
+    <div class="learning-callout signal-review-note">
+        <strong>{{ "signals.review.local_title"|t }}</strong>
+        <span>{{ "signals.review.local_desc"|t }}</span>
+    </div>
+    {% endif %}
+    <div class="signal-suggestion-list">
+        {% for suggestion in suggestions %}
+        <form method="POST" action="/signals" class="card signal-suggestion-card">
+            <div class="card-body">
+                <div class="signal-suggestion-number">{{ loop.index }}</div>
+                <input type="hidden" name="source_id" value="{{ source_draft.id }}">
+                <input type="hidden" name="source_reference" value="{{ source_draft.filename }}">
+                <div class="form-group">
+                    <label for="suggestion-title-{{ loop.index }}">{{ "signals.field.title"|t }}</label>
+                    <input id="suggestion-title-{{ loop.index }}" name="title" value="{{ suggestion.title }}" maxlength="140" required>
+                </div>
+                <div class="form-group">
+                    <label for="suggestion-summary-{{ loop.index }}">{{ "signals.field.summary"|t }}</label>
+                    <textarea id="suggestion-summary-{{ loop.index }}" name="summary" rows="4" required>{{ suggestion.summary }}</textarea>
+                </div>
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label>{{ "signals.field.source"|t }}</label>
+                        <select name="source_type">
+                            {% for value in source_types %}
+                            <option value="{{ value }}" {% if suggestion.source_type == value %}selected{% endif %}>{{ ("signals.source." ~ value)|t }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>{{ "signals.field.strength"|t }}</label>
+                        <select name="strength">
+                            {% for value in strengths %}
+                            <option value="{{ value }}" {% if suggestion.strength == value %}selected{% endif %}>{{ ("signals.strength." ~ value)|t }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>{{ "signals.field.theme"|t }} <span class="optional">{{ "signals.optional"|t }}</span></label>
+                    <input name="theme" value="{{ suggestion.theme }}">
+                </div>
+                {% if initiatives %}
+                <div class="form-group">
+                    <label>{{ "signals.field.links"|t }} <span class="optional">{{ "signals.optional"|t }}</span></label>
+                    <div class="signal-link-picker">
+                        {% for initiative in initiatives %}
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="initiative_ids" value="{{ initiative.name }}">
+                            <span>{{ initiative.name }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                <div class="signal-suggestion-actions">
+                    <span>{{ "signals.review.confirm_help"|t }}</span>
+                    <button type="submit" class="btn btn-primary btn-sm">{{ "signals.review.confirm"|t }}</button>
+                </div>
+            </div>
+        </form>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<div class="signals-layout">
+    <section>
+        <div class="section-heading">
+            <div>
+                <h3>{{ "signals.recent"|t }}</h3>
+                <p>{{ "signals.recent_desc"|t }}</p>
+            </div>
+        </div>
+        {% if signals %}
+        <div class="signal-list">
+            {% for signal in signals %}
+            <a href="/signals/{{ signal.signal_id }}" class="signal-card">
+                <div class="signal-card-top">
+                    <span class="signal-source">{{ ("signals.source." ~ signal.source_type)|t }}</span>
+                    <span class="signal-strength signal-strength-{{ signal.strength }}">{{ ("signals.strength." ~ signal.strength)|t }}</span>
+                </div>
+                <h4>{{ signal.title }}</h4>
+                <p>{{ signal.summary }}</p>
+                <div class="signal-meta">
+                    {% if signal.theme %}<span># {{ signal.theme }}</span>{% endif %}
+                    <span>{{ signal.initiative_ids|length }} {{ "signals.initiative_count"|t }}</span>
+                    <span>{{ signal.signal_id }}</span>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state signal-empty">
+            <div class="empty-icon">◌</div>
+            <h3>{{ "signals.empty_title"|t }}</h3>
+            <p>{{ "signals.empty_desc"|t }}</p>
+            <a href="#new-signal" class="btn btn-primary">{{ "signals.first"|t }}</a>
+        </div>
+        {% endif %}
+    </section>
+
+    <aside class="card signal-form-card" id="new-signal">
+        <div class="card-body">
+            <span class="eyebrow">{{ "signals.new"|t }}</span>
+            <h3>{{ "signals.question"|t }}</h3>
+            <p class="form-hint signal-form-intro">{{ "signals.guidance"|t }}</p>
+            <form method="POST" action="/signals" class="form">
+                <div class="form-group">
+                    <label for="signal-title">{{ "signals.field.title"|t }}</label>
+                    <input id="signal-title" name="title" maxlength="140" required
+                           value="{{ (form_values or {}).get('title', '') }}"
+                           placeholder="{{ 'signals.placeholder.title'|t }}">
+                </div>
+                <div class="form-group">
+                    <label for="signal-summary">{{ "signals.field.summary"|t }}</label>
+                    <textarea id="signal-summary" name="summary" rows="5" required
+                              placeholder="{{ 'signals.placeholder.summary'|t }}">{{ (form_values or {}).get('summary', '') }}</textarea>
+                </div>
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label for="signal-source">{{ "signals.field.source"|t }}</label>
+                        <select id="signal-source" name="source_type">
+                            {% for value in source_types %}
+                            <option value="{{ value }}" {% if (form_values or {}).get('source_type') == value %}selected{% endif %}>{{ ("signals.source." ~ value)|t }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="signal-strength">{{ "signals.field.strength"|t }}</label>
+                        <select id="signal-strength" name="strength">
+                            {% for value in strengths %}
+                            <option value="{{ value }}" {% if (form_values or {}).get('strength', 'medium') == value %}selected{% endif %}>{{ ("signals.strength." ~ value)|t }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="signal-theme">{{ "signals.field.theme"|t }} <span class="optional">{{ "signals.optional"|t }}</span></label>
+                    <input id="signal-theme" name="theme" maxlength="80"
+                           value="{{ (form_values or {}).get('theme', '') }}"
+                           placeholder="{{ 'signals.placeholder.theme'|t }}">
+                </div>
+                <div class="form-group">
+                    <label for="signal-source-ref">{{ "signals.field.reference"|t }} <span class="optional">{{ "signals.optional"|t }}</span></label>
+                    <input id="signal-source-ref" name="source_reference"
+                           value="{{ (form_values or {}).get('source_reference', '') }}"
+                           placeholder="{{ 'signals.placeholder.reference'|t }}">
+                </div>
+                {% if initiatives %}
+                <div class="form-group">
+                    <label>{{ "signals.field.links"|t }} <span class="optional">{{ "signals.optional"|t }}</span></label>
+                    <div class="signal-link-picker">
+                        {% for initiative in initiatives %}
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="initiative_ids" value="{{ initiative.name }}"
+                                   {% if initiative.name in (form_values or {}).get('initiative_ids', []) %}checked{% endif %}>
+                            <span>{{ initiative.name }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                <button type="submit" class="btn btn-primary signal-submit">{{ "signals.save"|t }}</button>
+            </form>
+        </div>
+    </aside>
+</div>
+{% endblock %}

@@ -79,6 +79,7 @@ def _isolate_each_test(_session_base: Path, monkeypatch):
     product_docs_root = _session_base / "workspace" / "product-docs"
     shutil.rmtree(product_docs_root, ignore_errors=True)
     (product_docs_root / "context").mkdir(parents=True)
+    shutil.rmtree(_session_base / "workspace" / "signals", ignore_errors=True)
 
     monkeypatch.chdir(_session_base)
 
@@ -126,6 +127,70 @@ def _create_initiative(client, name: str = "Test Initiative", init_id: str = "")
         return init_id
     safe = re.sub(r'[^A-Z0-9]+', '-', name.upper()).strip('-')
     return f"INT-{safe[:30]}"
+
+
+class TestSignals:
+    def test_create_signal_and_show_it_on_linked_initiative(self, client):
+        initiative_id = _create_initiative(client, "Onboarding", "INT-ONBOARDING")
+
+        response = client.post(
+            "/signals",
+            data={
+                "title": "Abandono na etapa fiscal",
+                "summary": "Três clientes relataram dificuldade na mesma etapa.",
+                "source_type": "customer_feedback",
+                "theme": "onboarding",
+                "strength": "strong",
+                "initiative_ids": initiative_id,
+                "source_reference": "Entrevistas de julho",
+            },
+            follow_redirects=False,
+        )
+
+        assert response.status_code == 303
+        assert response.headers["location"].startswith("/signals/SIG-")
+        signals_page = client.get("/signals")
+        assert "Abandono na etapa fiscal" in signals_page.text
+        initiative_page = client.get(f"/initiative/{initiative_id}")
+        assert "Abandono na etapa fiscal" in initiative_page.text
+
+    def test_upload_source_review_confirm_and_download(self, client):
+        response = client.post(
+            "/signals/extract",
+            files={
+                "source_file": (
+                    "relatorio.md",
+                    b"# Relatorio\n\nQuatro clientes abandonaram o cadastro fiscal.",
+                    "text/markdown",
+                )
+            },
+        )
+
+        assert response.status_code == 200
+        assert "Quatro clientes abandonaram" in response.text
+        source_id = re.search(r'name="source_id" value="(SSRC-[A-F0-9]+)"', response.text)
+        assert source_id
+
+        confirmed = client.post(
+            "/signals",
+            data={
+                "title": "Abandono no cadastro fiscal",
+                "summary": "Quatro clientes abandonaram o cadastro fiscal.",
+                "source_type": "research",
+                "theme": "onboarding",
+                "strength": "strong",
+                "source_id": source_id.group(1),
+                "source_reference": "relatorio.md",
+            },
+            follow_redirects=False,
+        )
+        assert confirmed.status_code == 303
+        detail = client.get(confirmed.headers["location"])
+        assert "relatorio.md" in detail.text
+
+        download = client.get(f"/signals/sources/{source_id.group(1)}")
+        assert download.status_code == 200
+        assert b"Quatro clientes" in download.content
 
 
 class TestGuidedSpecification:
@@ -1107,6 +1172,32 @@ class TestConfiguration:
         assert server["auth"]["type"] == "oauth"
         assert server["policy"]["mode"] == "read_only"
         assert server["status"]["state"] == "authorization_required"
+
+    def test_adds_generic_stdio_server_and_protects_environment(
+        self, client, session_base
+    ):
+        response = client.post("/config/mcp/add", data={
+            "name": "Local Files",
+            "transport": "stdio",
+            "command": "npx",
+            "stdio_args": "-y\n@modelcontextprotocol/server-filesystem\n/tmp/docs",
+            "stdio_env": "PRIVATE_TOKEN=stdio-secret",
+            "policy_mode": "read_only",
+        })
+
+        assert response.status_code == 200
+        raw = (session_base / ".pm_os" / "config.json").read_text()
+        assert "stdio-secret" not in raw
+        cfg = json.loads(raw)
+        server = cfg["mcp_servers"][0]
+        assert server["type"] == "stdio"
+        assert server["transport"] == "stdio"
+        assert server["command"] == "npx"
+        assert server["args"] == [
+            "-y",
+            "@modelcontextprotocol/server-filesystem",
+            "/tmp/docs",
+        ]
 
     def test_mcp_secret_is_encrypted_and_not_rendered(self, client, session_base):
         response = client.post("/config/mcp/add", data={

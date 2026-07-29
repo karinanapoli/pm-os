@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block page_title %}{{ "signals.detail"|t }}{% endblock %}
+{% block topbar_actions %}
+<a href="/signals" class="btn btn-ghost btn-sm">{{ "signals.back"|t }}</a>
+{% endblock %}
+{% block content %}
+{% if notice %}
+<div class="alert alert-success" role="status">
+    {% if notice == "created" %}{{ "signals.created"|t }}{% else %}{{ "signals.links_updated"|t }}{% endif %}
+</div>
+{% endif %}
+
+<div class="signal-detail-layout">
+    <article class="card">
+        <div class="card-body signal-detail-body">
+            <div class="signal-card-top">
+                <span class="signal-source">{{ ("signals.source." ~ signal.source_type)|t }}</span>
+                <span class="signal-strength signal-strength-{{ signal.strength }}">{{ ("signals.strength." ~ signal.strength)|t }}</span>
+            </div>
+            <h3>{{ signal.title }}</h3>
+            <p class="signal-detail-summary">{{ signal.summary }}</p>
+            <dl class="signal-facts">
+                <div><dt>{{ "signals.identifier"|t }}</dt><dd>{{ signal.signal_id }}</dd></div>
+                {% if signal.theme %}<div><dt>{{ "signals.field.theme"|t }}</dt><dd>{{ signal.theme }}</dd></div>{% endif %}
+                {% if signal.source_reference %}<div><dt>{{ "signals.field.reference"|t }}</dt><dd>{{ signal.source_reference }}</dd></div>{% endif %}
+                <div><dt>{{ "signals.registered_by"|t }}</dt><dd>{{ signal.created_by or "—" }}</dd></div>
+            </dl>
+            {% if source %}
+            <a href="/signals/sources/{{ source.id }}" class="signal-source-link">
+                <span>📄</span>
+                <span><strong>{{ source.filename }}</strong><small>{{ "signals.detail.open_source"|t }}</small></span>
+                <span>↗</span>
+            </a>
+            {% endif %}
+        </div>
+    </article>
+
+    <aside class="card">
+        <div class="card-body">
+            <span class="eyebrow">{{ "signals.relationships"|t }}</span>
+            <h3>{{ "signals.related_initiatives"|t }}</h3>
+            <p class="form-hint signal-form-intro">{{ "signals.links_help"|t }}</p>
+            <form method="POST" action="/signals/{{ signal.signal_id }}/links" class="form">
+                {% if initiatives %}
+                <div class="signal-link-picker signal-link-picker-detail">
+                    {% for initiative in initiatives %}
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="initiative_ids" value="{{ initiative.name }}"
+                               {% if initiative.name in signal.initiative_ids %}checked{% endif %}>
+                        <span>{{ initiative.name }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+                <button type="submit" class="btn btn-primary signal-submit">{{ "signals.save_links"|t }}</button>
+                {% else %}
+                <div class="empty-inline">{{ "signals.no_initiative"|t }}</div>
+                {% endif %}
+            </form>
+        </div>
+    </aside>
+</div>
+{% endblock %}

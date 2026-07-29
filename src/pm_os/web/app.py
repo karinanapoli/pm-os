@@ -45,6 +45,11 @@ from pm_os.infrastructure.utils import (
 )
 from pm_os.repositories.initiative_repository import InitiativeRepository
 from pm_os.repositories.job_repository import JobRepository
+from pm_os.repositories.signal_repository import (
+    SIGNAL_SOURCE_TYPES,
+    SIGNAL_STRENGTHS,
+    SignalRepository,
+)
 from pm_os.workflows.workspace_scan_workflow import WorkspaceScanWorkflow
 from pm_os.context_builder import ContextBuilder
 from pm_os.prompt_builder import PromptBuilder
@@ -70,10 +75,13 @@ from pm_os.web.product_specification_service import (
 )
 from pm_os.web.mcp_context_service import MCPContextService
 from pm_os.web.mcp_client import MCPAuthorizationRequired, MCPClient, MCPError
+from pm_os.web.mcp_stdio_client import MCPStdioClient
 from pm_os.web.mcp_connections import (
     build_connection,
     businessmap_endpoint,
     normalize_connection,
+    parse_stdio_args,
+    parse_stdio_env,
     public_connection,
     sanitize_capabilities,
 )
@@ -87,6 +95,7 @@ from pm_os.web.request_limits import (
     RequestBodyLimitMiddleware,
 )
 from pm_os.web.safe_http import fetch_public_url, validate_public_url
+from pm_os.web.signal_source_service import SignalSourceError, SignalSourceService
 from pm_os.writers.markdown_writer import MarkdownWriter
 import logging
 _logger = logging.getLogger("pm_os")
@@ -569,6 +578,14 @@ def _repo(squad_name: Optional[str] = None) -> InitiativeRepository:
     return InitiativeRepository(squad_name=squad_name)
 
 
+def _signal_repo(request: Request) -> SignalRepository:
+    return SignalRepository(squad_name=_get_session_squad(request))
+
+
+def _signal_source_service(request: Request) -> SignalSourceService:
+    return SignalSourceService(squad_name=_get_session_squad(request))
+
+
 @pass_context
 def _t_filter(ctx, key: str) -> str:
     lang = ctx.get("lang", "en")
@@ -972,6 +989,215 @@ async def quickstart(request: Request) -> HTMLResponse:
 
 # ─── Initiative Detail ───
 
+@app.get("/signals", response_class=HTMLResponse)
+async def signals_page(request: Request, notice: str = ""):
+    initiatives = _repo(_get_session_squad(request)).list_initiatives(
+        load_content=False
+    )
+    return templates.TemplateResponse(
+        request,
+        "signals.html",
+        _ctx(
+            request,
+            signals=_signal_repo(request).list(),
+            initiatives=initiatives,
+            notice=notice,
+            source_types=SIGNAL_SOURCE_TYPES,
+            strengths=SIGNAL_STRENGTHS,
+        ),
+    )
+
+
+@app.post("/signals")
+async def create_signal(
+    request: Request,
+    title: str = Form(...),
+    summary: str = Form(...),
+    source_type: str = Form(...),
+    theme: str = Form(""),
+    strength: str = Form("medium"),
+    initiative_ids: list[str] = Form(default=[]),
+    source_reference: str = Form(""),
+    source_id: str = Form(""),
+):
+    available = set(_repo(_get_session_squad(request)).list_names())
+    valid_links = [item for item in initiative_ids if item in available]
+    valid_source_id = (
+        source_id
+        if source_id and _signal_source_service(request).get(source_id)
+        else ""
+    )
+    try:
+        signal = _signal_repo(request).create(
+            title=title,
+            summary=summary,
+            source_type=source_type,
+            theme=theme,
+            strength=strength,
+            initiative_ids=valid_links,
+            source_reference=source_reference,
+            source_id=valid_source_id,
+            created_by=_get_session_user_email(request),
+        )
+    except ValueError as exc:
+        initiatives = _repo(_get_session_squad(request)).list_initiatives(
+            load_content=False
+        )
+        return templates.TemplateResponse(
+            request,
+            "signals.html",
+            _ctx(
+                request,
+                signals=_signal_repo(request).list(),
+                initiatives=initiatives,
+                source_types=SIGNAL_SOURCE_TYPES,
+                strengths=SIGNAL_STRENGTHS,
+                error=str(exc),
+                form_values={
+                    "title": title,
+                    "summary": summary,
+                    "source_type": source_type,
+                    "theme": theme,
+                    "strength": strength,
+                    "initiative_ids": valid_links,
+                    "source_reference": source_reference,
+                    "source_id": valid_source_id,
+                },
+            ),
+            status_code=422,
+        )
+    return RedirectResponse(
+        url=f"/signals/{signal.signal_id}?notice=created",
+        status_code=303,
+    )
+
+
+@app.post("/signals/extract", response_class=HTMLResponse)
+async def extract_signals_from_source(
+    request: Request,
+    source_file: UploadFile = File(...),
+    use_ai: str = Form(""),
+):
+    initiatives = _repo(_get_session_squad(request)).list_initiatives(
+        load_content=False
+    )
+    content = await source_file.read(MAX_UPLOAD_FILE_BYTES + 1)
+    if len(content) > MAX_UPLOAD_FILE_BYTES:
+        return templates.TemplateResponse(
+            request,
+            "signals.html",
+            _ctx(
+                request,
+                signals=_signal_repo(request).list(),
+                initiatives=initiatives,
+                source_types=SIGNAL_SOURCE_TYPES,
+                strengths=SIGNAL_STRENGTHS,
+                upload_error=_t("upload.too_large", _get_lang()),
+            ),
+            status_code=413,
+        )
+    service = _signal_source_service(request)
+    try:
+        source = service.save(
+            source_file.filename or "",
+            content,
+            created_by=_get_session_user_email(request),
+        )
+        stored_source = service.get(source["id"])
+        text = service.extract_text(stored_source)
+        ai_client = _build_ai_client() if use_ai == "true" else None
+        suggestions, extraction_used_ai = service.suggest_with_metadata(
+            text,
+            source["filename"],
+            ai_client,
+            _get_lang(),
+        )
+    except SignalSourceError as exc:
+        return templates.TemplateResponse(
+            request,
+            "signals.html",
+            _ctx(
+                request,
+                signals=_signal_repo(request).list(),
+                initiatives=initiatives,
+                source_types=SIGNAL_SOURCE_TYPES,
+                strengths=SIGNAL_STRENGTHS,
+                upload_error=_t(str(exc), _get_lang()),
+            ),
+            status_code=422,
+        )
+    return templates.TemplateResponse(
+        request,
+        "signals.html",
+        _ctx(
+            request,
+            signals=_signal_repo(request).list(),
+            initiatives=initiatives,
+            source_types=SIGNAL_SOURCE_TYPES,
+            strengths=SIGNAL_STRENGTHS,
+            source_draft=source,
+            suggestions=suggestions,
+            extraction_used_ai=extraction_used_ai,
+        ),
+    )
+
+
+@app.get("/signals/sources/{source_id}")
+async def download_signal_source(request: Request, source_id: str):
+    source = _signal_source_service(request).get(source_id)
+    if not source:
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    return FileResponse(
+        source["path"],
+        filename=source["filename"],
+        media_type="application/octet-stream",
+    )
+
+
+@app.get("/signals/{signal_id}", response_class=HTMLResponse)
+async def signal_detail(request: Request, signal_id: str, notice: str = ""):
+    signal = _signal_repo(request).get(signal_id)
+    if not signal:
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    initiatives = _repo(_get_session_squad(request)).list_initiatives(
+        load_content=False
+    )
+    return templates.TemplateResponse(
+        request,
+        "signal_detail.html",
+        _ctx(
+            request,
+            signal=signal,
+            initiatives=initiatives,
+            notice=notice,
+            source=(
+                _signal_source_service(request).get(signal.source_id)
+                if signal.source_id
+                else None
+            ),
+        ),
+    )
+
+
+@app.post("/signals/{signal_id}/links")
+async def update_signal_links(
+    request: Request,
+    signal_id: str,
+    initiative_ids: list[str] = Form(default=[]),
+):
+    available = set(_repo(_get_session_squad(request)).list_names())
+    signal = _signal_repo(request).update_links(
+        signal_id,
+        [item for item in initiative_ids if item in available],
+    )
+    if not signal:
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    return RedirectResponse(
+        url=f"/signals/{signal_id}?notice=links_updated",
+        status_code=303,
+    )
+
+
 @app.get("/initiative/{initiative_name}", response_class=HTMLResponse)
 async def initiative_detail(
     request: Request,
@@ -1045,6 +1271,7 @@ async def initiative_detail(
             notice_kind=notice_kind,
             specification=specification,
             specification_completion=product_specification_service.completion(specification),
+            linked_signals=_signal_repo(request).list(initiative_name),
         ),
     )
 
@@ -1924,13 +2151,22 @@ async def add_mcp_server(
     auth_header: str = Form(""),
     policy_mode: str = Form("read_only"),
     discovery_json: str = Form(""),
+    transport: str = Form("streamable_http"),
+    command: str = Form(""),
+    stdio_args: str = Form(""),
+    stdio_env: str = Form(""),
 ):
     try:
-        if preset == "businessmap":
+        if transport == "stdio":
+            connection_type = "stdio"
+            preset = "custom"
+            url = ""
+            auth_type = "none"
+        elif preset == "businessmap":
             url = businessmap_endpoint(businessmap_subdomain)
             auth_type = "oauth"
             connection_type = "mcp"
-        validated_url = _validate_mcp_url(url)
+        validated_url = "" if connection_type == "stdio" else _validate_mcp_url(url)
         connection = build_connection(
             name=name,
             url=validated_url,
@@ -1940,6 +2176,9 @@ async def add_mcp_server(
             auth_secret=auth_secret,
             auth_header=auth_header,
             policy_mode=policy_mode,
+            command=command,
+            args=parse_stdio_args(stdio_args),
+            env=parse_stdio_env(stdio_env),
         )
         if discovery_json:
             connection["capabilities"] = sanitize_capabilities(
@@ -1973,10 +2212,12 @@ async def add_mcp_server(
 @app.post("/config/mcp/toggle", response_class=HTMLResponse)
 async def toggle_mcp_server(
     request: Request,
-    url: str = Form(...),
+    target: str = Form(""),
+    url: str = Form(""),
 ):
+    resolved_target = target or url
     toggled = config_manager.transaction(
-        lambda config: config_ops.toggle_mcp_server(config, url)
+        lambda config: config_ops.toggle_mcp_server(config, resolved_target)
     )
     if toggled:
         _logger.info("MCP server toggled: %s → %s", toggled[0], toggled[1])
@@ -1990,10 +2231,12 @@ async def toggle_mcp_server(
 @app.post("/config/mcp/delete", response_class=HTMLResponse)
 async def delete_mcp_server(
     request: Request,
-    url: str = Form(...),
+    target: str = Form(""),
+    url: str = Form(""),
 ):
+    resolved_target = target or url
     removed = config_manager.transaction(
-        lambda config: config_ops.remove_mcp_server(config, url)
+        lambda config: config_ops.remove_mcp_server(config, resolved_target)
     )
     if removed:
         _logger.info("MCP server removed: %s", removed)
@@ -2016,13 +2259,22 @@ async def test_mcp_connection(
     auth_secret: str = Form(""),
     auth_header: str = Form(""),
     policy_mode: str = Form("read_only"),
+    transport: str = Form("streamable_http"),
+    command: str = Form(""),
+    stdio_args: str = Form(""),
+    stdio_env: str = Form(""),
 ):
     try:
-        if preset == "businessmap":
+        if transport == "stdio":
+            connection_type = "stdio"
+            preset = "custom"
+            url = ""
+            auth_type = "none"
+        elif preset == "businessmap":
             url = businessmap_endpoint(businessmap_subdomain)
             auth_type = "oauth"
             connection_type = "mcp"
-        validated_url = _validate_mcp_url(url)
+        validated_url = "" if connection_type == "stdio" else _validate_mcp_url(url)
         connection = build_connection(
             name=name,
             url=validated_url,
@@ -2032,7 +2284,17 @@ async def test_mcp_connection(
             auth_secret=auth_secret,
             auth_header=auth_header,
             policy_mode=policy_mode,
+            command=command,
+            args=parse_stdio_args(stdio_args),
+            env=parse_stdio_env(stdio_env),
         )
+        if connection_type == "stdio":
+            discovery = MCPStdioClient().discover(connection).as_dict()
+            return JSONResponse({
+                "ok": True,
+                "message": _t("mcp.test_success", _get_lang()),
+                "discovery": discovery,
+            })
         if connection_type == "legacy_http":
             fetch_public_url(validated_url, timeout=5)
             return JSONResponse({"ok": True, "message": _t("mcp.test_success", _get_lang())})
