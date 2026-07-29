@@ -12,6 +12,6 @@ class Signal:
     squad: str = ""
     initiative_ids: list[str] = field(default_factory=list)
     source_reference: str = ""
+    source_id: str = ""
     created_at: str = ""
     created_by: str = ""
-

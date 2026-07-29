@@ -25,6 +25,13 @@
                 {% if signal.source_reference %}<div><dt>{{ "signals.field.reference"|t }}</dt><dd>{{ signal.source_reference }}</dd></div>{% endif %}
                 <div><dt>{{ "signals.registered_by"|t }}</dt><dd>{{ signal.created_by or "—" }}</dd></div>
             </dl>
+            {% if source %}
+            <a href="/signals/sources/{{ source.id }}" class="signal-source-link">
+                <span>📄</span>
+                <span><strong>{{ source.filename }}</strong><small>{{ "signals.detail.open_source"|t }}</small></span>
+                <span>↗</span>
+            </a>
+            {% endif %}
         </div>
     </article>
 

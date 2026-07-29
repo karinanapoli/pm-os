@@ -154,6 +154,44 @@ class TestSignals:
         initiative_page = client.get(f"/initiative/{initiative_id}")
         assert "Abandono na etapa fiscal" in initiative_page.text
 
+    def test_upload_source_review_confirm_and_download(self, client):
+        response = client.post(
+            "/signals/extract",
+            files={
+                "source_file": (
+                    "relatorio.md",
+                    b"# Relatorio\n\nQuatro clientes abandonaram o cadastro fiscal.",
+                    "text/markdown",
+                )
+            },
+        )
+
+        assert response.status_code == 200
+        assert "Quatro clientes abandonaram" in response.text
+        source_id = re.search(r'name="source_id" value="(SSRC-[A-F0-9]+)"', response.text)
+        assert source_id
+
+        confirmed = client.post(
+            "/signals",
+            data={
+                "title": "Abandono no cadastro fiscal",
+                "summary": "Quatro clientes abandonaram o cadastro fiscal.",
+                "source_type": "research",
+                "theme": "onboarding",
+                "strength": "strong",
+                "source_id": source_id.group(1),
+                "source_reference": "relatorio.md",
+            },
+            follow_redirects=False,
+        )
+        assert confirmed.status_code == 303
+        detail = client.get(confirmed.headers["location"])
+        assert "relatorio.md" in detail.text
+
+        download = client.get(f"/signals/sources/{source_id.group(1)}")
+        assert download.status_code == 200
+        assert b"Quatro clientes" in download.content
+
 
 class TestGuidedSpecification:
     def test_guided_initiative_opens_specification_without_breaking_quick_mode(

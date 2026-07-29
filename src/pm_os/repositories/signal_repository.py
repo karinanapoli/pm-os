@@ -65,6 +65,7 @@ class SignalRepository:
         strength: str,
         initiative_ids: Optional[list[str]] = None,
         source_reference: str = "",
+        source_id: str = "",
         created_by: str = "",
     ) -> Signal:
         title = title.strip()
@@ -92,6 +93,7 @@ class SignalRepository:
             squad=self.squad_name,
             initiative_ids=sorted(set(initiative_ids or [])),
             source_reference=source_reference.strip(),
+            source_id=source_id.strip(),
             created_at=now.isoformat(),
             created_by=created_by.strip(),
         )
@@ -119,6 +121,7 @@ class SignalRepository:
             "squad": signal.squad,
             "initiative_ids": signal.initiative_ids,
             "source_reference": signal.source_reference,
+            "source_id": signal.source_id,
             "created_at": signal.created_at,
             "created_by": signal.created_by,
         }
@@ -150,6 +153,7 @@ class SignalRepository:
                 squad=str(data.get("squad", "")),
                 initiative_ids=list(data.get("initiative_ids") or []),
                 source_reference=str(data.get("source_reference", "")),
+                source_id=str(data.get("source_id", "")),
                 created_at=str(data.get("created_at", "")),
                 created_by=str(data.get("created_by", "")),
             )

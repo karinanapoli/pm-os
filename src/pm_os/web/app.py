@@ -95,6 +95,7 @@ from pm_os.web.request_limits import (
     RequestBodyLimitMiddleware,
 )
 from pm_os.web.safe_http import fetch_public_url, validate_public_url
+from pm_os.web.signal_source_service import SignalSourceError, SignalSourceService
 from pm_os.writers.markdown_writer import MarkdownWriter
 import logging
 _logger = logging.getLogger("pm_os")
@@ -581,6 +582,10 @@ def _signal_repo(request: Request) -> SignalRepository:
     return SignalRepository(squad_name=_get_session_squad(request))
 
 
+def _signal_source_service(request: Request) -> SignalSourceService:
+    return SignalSourceService(squad_name=_get_session_squad(request))
+
+
 @pass_context
 def _t_filter(ctx, key: str) -> str:
     lang = ctx.get("lang", "en")
@@ -1013,9 +1018,15 @@ async def create_signal(
     strength: str = Form("medium"),
     initiative_ids: list[str] = Form(default=[]),
     source_reference: str = Form(""),
+    source_id: str = Form(""),
 ):
     available = set(_repo(_get_session_squad(request)).list_names())
     valid_links = [item for item in initiative_ids if item in available]
+    valid_source_id = (
+        source_id
+        if source_id and _signal_source_service(request).get(source_id)
+        else ""
+    )
     try:
         signal = _signal_repo(request).create(
             title=title,
@@ -1025,6 +1036,7 @@ async def create_signal(
             strength=strength,
             initiative_ids=valid_links,
             source_reference=source_reference,
+            source_id=valid_source_id,
             created_by=_get_session_user_email(request),
         )
     except ValueError as exc:
@@ -1049,6 +1061,7 @@ async def create_signal(
                     "strength": strength,
                     "initiative_ids": valid_links,
                     "source_reference": source_reference,
+                    "source_id": valid_source_id,
                 },
             ),
             status_code=422,
@@ -1056,6 +1069,88 @@ async def create_signal(
     return RedirectResponse(
         url=f"/signals/{signal.signal_id}?notice=created",
         status_code=303,
+    )
+
+
+@app.post("/signals/extract", response_class=HTMLResponse)
+async def extract_signals_from_source(
+    request: Request,
+    source_file: UploadFile = File(...),
+    use_ai: str = Form(""),
+):
+    initiatives = _repo(_get_session_squad(request)).list_initiatives(
+        load_content=False
+    )
+    content = await source_file.read(MAX_UPLOAD_FILE_BYTES + 1)
+    if len(content) > MAX_UPLOAD_FILE_BYTES:
+        return templates.TemplateResponse(
+            request,
+            "signals.html",
+            _ctx(
+                request,
+                signals=_signal_repo(request).list(),
+                initiatives=initiatives,
+                source_types=SIGNAL_SOURCE_TYPES,
+                strengths=SIGNAL_STRENGTHS,
+                upload_error=_t("upload.too_large", _get_lang()),
+            ),
+            status_code=413,
+        )
+    service = _signal_source_service(request)
+    try:
+        source = service.save(
+            source_file.filename or "",
+            content,
+            created_by=_get_session_user_email(request),
+        )
+        stored_source = service.get(source["id"])
+        text = service.extract_text(stored_source)
+        ai_client = _build_ai_client() if use_ai == "true" else None
+        suggestions, extraction_used_ai = service.suggest_with_metadata(
+            text,
+            source["filename"],
+            ai_client,
+            _get_lang(),
+        )
+    except SignalSourceError as exc:
+        return templates.TemplateResponse(
+            request,
+            "signals.html",
+            _ctx(
+                request,
+                signals=_signal_repo(request).list(),
+                initiatives=initiatives,
+                source_types=SIGNAL_SOURCE_TYPES,
+                strengths=SIGNAL_STRENGTHS,
+                upload_error=_t(str(exc), _get_lang()),
+            ),
+            status_code=422,
+        )
+    return templates.TemplateResponse(
+        request,
+        "signals.html",
+        _ctx(
+            request,
+            signals=_signal_repo(request).list(),
+            initiatives=initiatives,
+            source_types=SIGNAL_SOURCE_TYPES,
+            strengths=SIGNAL_STRENGTHS,
+            source_draft=source,
+            suggestions=suggestions,
+            extraction_used_ai=extraction_used_ai,
+        ),
+    )
+
+
+@app.get("/signals/sources/{source_id}")
+async def download_signal_source(request: Request, source_id: str):
+    source = _signal_source_service(request).get(source_id)
+    if not source:
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    return FileResponse(
+        source["path"],
+        filename=source["filename"],
+        media_type="application/octet-stream",
     )
 
 
@@ -1075,6 +1170,11 @@ async def signal_detail(request: Request, signal_id: str, notice: str = ""):
             signal=signal,
             initiatives=initiatives,
             notice=notice,
+            source=(
+                _signal_source_service(request).get(signal.source_id)
+                if signal.source_id
+                else None
+            ),
         ),
     )
 
