@@ -79,6 +79,7 @@ def _isolate_each_test(_session_base: Path, monkeypatch):
     product_docs_root = _session_base / "workspace" / "product-docs"
     shutil.rmtree(product_docs_root, ignore_errors=True)
     (product_docs_root / "context").mkdir(parents=True)
+    shutil.rmtree(_session_base / "workspace" / "signals", ignore_errors=True)
 
     monkeypatch.chdir(_session_base)
 
@@ -126,6 +127,32 @@ def _create_initiative(client, name: str = "Test Initiative", init_id: str = "")
         return init_id
     safe = re.sub(r'[^A-Z0-9]+', '-', name.upper()).strip('-')
     return f"INT-{safe[:30]}"
+
+
+class TestSignals:
+    def test_create_signal_and_show_it_on_linked_initiative(self, client):
+        initiative_id = _create_initiative(client, "Onboarding", "INT-ONBOARDING")
+
+        response = client.post(
+            "/signals",
+            data={
+                "title": "Abandono na etapa fiscal",
+                "summary": "Três clientes relataram dificuldade na mesma etapa.",
+                "source_type": "customer_feedback",
+                "theme": "onboarding",
+                "strength": "strong",
+                "initiative_ids": initiative_id,
+                "source_reference": "Entrevistas de julho",
+            },
+            follow_redirects=False,
+        )
+
+        assert response.status_code == 303
+        assert response.headers["location"].startswith("/signals/SIG-")
+        signals_page = client.get("/signals")
+        assert "Abandono na etapa fiscal" in signals_page.text
+        initiative_page = client.get(f"/initiative/{initiative_id}")
+        assert "Abandono na etapa fiscal" in initiative_page.text
 
 
 class TestGuidedSpecification:

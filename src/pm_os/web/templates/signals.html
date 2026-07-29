@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block page_title %}Sinais{% endblock %}
+{% block topbar_actions %}
+<a href="#new-signal" class="btn btn-primary btn-sm">+ Registrar sinal</a>
+{% endblock %}
+{% block content %}
+{% set source_labels = {
+    "customer_feedback": "Feedback de cliente",
+    "research": "Pesquisa / entrevista",
+    "support": "Suporte",
+    "commercial": "Comercial",
+    "metric": "Métrica",
+    "competitor": "Concorrente",
+    "internal_hypothesis": "Hipótese interna"
+} %}
+{% set strength_labels = {"weak": "Fraco", "medium": "Médio", "strong": "Forte"} %}
+
+{% if notice %}
+<div class="alert alert-success" role="status">Sinal salvo com sucesso.</div>
+{% endif %}
+{% if error %}
+<div class="alert alert-error" role="alert">{{ error }}</div>
+{% endif %}
+
+<section class="signals-hero">
+    <div>
+        <span class="eyebrow">Memória de produto</span>
+        <h3>Transforme evidências dispersas em contexto reutilizável</h3>
+        <p>Registre o que clientes, dados e mercado estão indicando. Depois, conecte esses sinais às iniciativas que precisam deles.</p>
+    </div>
+    <div class="signals-hero-stat">
+        <strong>{{ signals|length }}</strong>
+        <span>sinais neste espaço</span>
+    </div>
+</section>
+
+<div class="signals-layout">
+    <section>
+        <div class="section-heading">
+            <div>
+                <h3>Sinais recentes</h3>
+                <p>Uma memória compartilhada de evidências, hipóteses e aprendizados.</p>
+            </div>
+        </div>
+        {% if signals %}
+        <div class="signal-list">
+            {% for signal in signals %}
+            <a href="/signals/{{ signal.signal_id }}" class="signal-card">
+                <div class="signal-card-top">
+                    <span class="signal-source">{{ source_labels.get(signal.source_type, signal.source_type) }}</span>
+                    <span class="signal-strength signal-strength-{{ signal.strength }}">{{ strength_labels.get(signal.strength, signal.strength) }}</span>
+                </div>
+                <h4>{{ signal.title }}</h4>
+                <p>{{ signal.summary }}</p>
+                <div class="signal-meta">
+                    {% if signal.theme %}<span># {{ signal.theme }}</span>{% endif %}
+                    <span>{{ signal.initiative_ids|length }} iniciativa(s)</span>
+                    <span>{{ signal.signal_id }}</span>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state signal-empty">
+            <div class="empty-icon">◌</div>
+            <h3>Ainda não há sinais registrados</h3>
+            <p>Comece com um feedback de cliente, uma descoberta de pesquisa ou uma mudança importante em uma métrica.</p>
+            <a href="#new-signal" class="btn btn-primary">Registrar primeiro sinal</a>
+        </div>
+        {% endif %}
+    </section>
+
+    <aside class="card signal-form-card" id="new-signal">
+        <div class="card-body">
+            <span class="eyebrow">Novo sinal</span>
+            <h3>O que você observou?</h3>
+            <p class="form-hint signal-form-intro">Registre a evidência como ela é. A interpretação pode evoluir depois.</p>
+            <form method="POST" action="/signals" class="form">
+                <div class="form-group">
+                    <label for="signal-title">Título</label>
+                    <input id="signal-title" name="title" maxlength="140" required
+                           value="{{ (form_values or {}).get('title', '') }}"
+                           placeholder="Ex: Clientes abandonam o cadastro na etapa fiscal">
+                </div>
+                <div class="form-group">
+                    <label for="signal-summary">Descrição</label>
+                    <textarea id="signal-summary" name="summary" rows="5" required
+                              placeholder="O que aconteceu? Quem foi afetado? Qual evidência existe?">{{ (form_values or {}).get('summary', '') }}</textarea>
+                </div>
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label for="signal-source">Origem</label>
+                        <select id="signal-source" name="source_type">
+                            {% for value in source_types %}
+                            <option value="{{ value }}" {% if (form_values or {}).get('source_type') == value %}selected{% endif %}>{{ source_labels.get(value, value) }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="signal-strength">Intensidade</label>
+                        <select id="signal-strength" name="strength">
+                            {% for value in strengths %}
+                            <option value="{{ value }}" {% if (form_values or {}).get('strength', 'medium') == value %}selected{% endif %}>{{ strength_labels.get(value, value) }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="signal-theme">Tema <span class="optional">opcional</span></label>
+                    <input id="signal-theme" name="theme" maxlength="80"
+                           value="{{ (form_values or {}).get('theme', '') }}"
+                           placeholder="Ex: onboarding, pagamentos, busca">
+                </div>
+                <div class="form-group">
+                    <label for="signal-source-ref">Referência <span class="optional">opcional</span></label>
+                    <input id="signal-source-ref" name="source_reference"
+                           value="{{ (form_values or {}).get('source_reference', '') }}"
+                           placeholder="Link, nome da pesquisa ou chamado">
+                </div>
+                {% if initiatives %}
+                <div class="form-group">
+                    <label>Relacionar a iniciativas <span class="optional">opcional</span></label>
+                    <div class="signal-link-picker">
+                        {% for initiative in initiatives %}
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="initiative_ids" value="{{ initiative.name }}"
+                                   {% if initiative.name in (form_values or {}).get('initiative_ids', []) %}checked{% endif %}>
+                            <span>{{ initiative.name }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                <button type="submit" class="btn btn-primary signal-submit">Salvar sinal</button>
+            </form>
+        </div>
+    </aside>
+</div>
+{% endblock %}
+

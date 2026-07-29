@@ -45,6 +45,11 @@ from pm_os.infrastructure.utils import (
 )
 from pm_os.repositories.initiative_repository import InitiativeRepository
 from pm_os.repositories.job_repository import JobRepository
+from pm_os.repositories.signal_repository import (
+    SIGNAL_SOURCE_TYPES,
+    SIGNAL_STRENGTHS,
+    SignalRepository,
+)
 from pm_os.workflows.workspace_scan_workflow import WorkspaceScanWorkflow
 from pm_os.context_builder import ContextBuilder
 from pm_os.prompt_builder import PromptBuilder
@@ -572,6 +577,10 @@ def _repo(squad_name: Optional[str] = None) -> InitiativeRepository:
     return InitiativeRepository(squad_name=squad_name)
 
 
+def _signal_repo(request: Request) -> SignalRepository:
+    return SignalRepository(squad_name=_get_session_squad(request))
+
+
 @pass_context
 def _t_filter(ctx, key: str) -> str:
     lang = ctx.get("lang", "en")
@@ -975,6 +984,120 @@ async def quickstart(request: Request) -> HTMLResponse:
 
 # ─── Initiative Detail ───
 
+@app.get("/signals", response_class=HTMLResponse)
+async def signals_page(request: Request, notice: str = ""):
+    initiatives = _repo(_get_session_squad(request)).list_initiatives(
+        load_content=False
+    )
+    return templates.TemplateResponse(
+        request,
+        "signals.html",
+        _ctx(
+            request,
+            signals=_signal_repo(request).list(),
+            initiatives=initiatives,
+            notice=notice,
+            source_types=SIGNAL_SOURCE_TYPES,
+            strengths=SIGNAL_STRENGTHS,
+        ),
+    )
+
+
+@app.post("/signals")
+async def create_signal(
+    request: Request,
+    title: str = Form(...),
+    summary: str = Form(...),
+    source_type: str = Form(...),
+    theme: str = Form(""),
+    strength: str = Form("medium"),
+    initiative_ids: list[str] = Form(default=[]),
+    source_reference: str = Form(""),
+):
+    available = set(_repo(_get_session_squad(request)).list_names())
+    valid_links = [item for item in initiative_ids if item in available]
+    try:
+        signal = _signal_repo(request).create(
+            title=title,
+            summary=summary,
+            source_type=source_type,
+            theme=theme,
+            strength=strength,
+            initiative_ids=valid_links,
+            source_reference=source_reference,
+            created_by=_get_session_user_email(request),
+        )
+    except ValueError as exc:
+        initiatives = _repo(_get_session_squad(request)).list_initiatives(
+            load_content=False
+        )
+        return templates.TemplateResponse(
+            request,
+            "signals.html",
+            _ctx(
+                request,
+                signals=_signal_repo(request).list(),
+                initiatives=initiatives,
+                source_types=SIGNAL_SOURCE_TYPES,
+                strengths=SIGNAL_STRENGTHS,
+                error=str(exc),
+                form_values={
+                    "title": title,
+                    "summary": summary,
+                    "source_type": source_type,
+                    "theme": theme,
+                    "strength": strength,
+                    "initiative_ids": valid_links,
+                    "source_reference": source_reference,
+                },
+            ),
+            status_code=422,
+        )
+    return RedirectResponse(
+        url=f"/signals/{signal.signal_id}?notice=created",
+        status_code=303,
+    )
+
+
+@app.get("/signals/{signal_id}", response_class=HTMLResponse)
+async def signal_detail(request: Request, signal_id: str, notice: str = ""):
+    signal = _signal_repo(request).get(signal_id)
+    if not signal:
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    initiatives = _repo(_get_session_squad(request)).list_initiatives(
+        load_content=False
+    )
+    return templates.TemplateResponse(
+        request,
+        "signal_detail.html",
+        _ctx(
+            request,
+            signal=signal,
+            initiatives=initiatives,
+            notice=notice,
+        ),
+    )
+
+
+@app.post("/signals/{signal_id}/links")
+async def update_signal_links(
+    request: Request,
+    signal_id: str,
+    initiative_ids: list[str] = Form(default=[]),
+):
+    available = set(_repo(_get_session_squad(request)).list_names())
+    signal = _signal_repo(request).update_links(
+        signal_id,
+        [item for item in initiative_ids if item in available],
+    )
+    if not signal:
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    return RedirectResponse(
+        url=f"/signals/{signal_id}?notice=links_updated",
+        status_code=303,
+    )
+
+
 @app.get("/initiative/{initiative_name}", response_class=HTMLResponse)
 async def initiative_detail(
     request: Request,
@@ -1048,6 +1171,7 @@ async def initiative_detail(
             notice_kind=notice_kind,
             specification=specification,
             specification_completion=product_specification_service.completion(specification),
+            linked_signals=_signal_repo(request).list(initiative_name),
         ),
     )
 

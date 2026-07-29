@@ -57,6 +57,33 @@
     </div>
 </div>
 
+<div class="card initiative-signals-card">
+    <div class="card-header">
+        <div>
+            <h3>Sinais relacionados</h3>
+            <p class="spec-caption">Evidências e aprendizados conectados a esta iniciativa.</p>
+        </div>
+        <a href="/signals#new-signal" class="btn btn-secondary btn-sm">+ Registrar sinal</a>
+    </div>
+    <div class="card-body">
+        {% if linked_signals %}
+        <div class="initiative-signal-list">
+            {% for signal in linked_signals %}
+            <a href="/signals/{{ signal.signal_id }}" class="initiative-signal-item">
+                <div>
+                    <strong>{{ signal.title }}</strong>
+                    <span>{{ signal.source_type|replace("_", " ") }}{% if signal.theme %} · {{ signal.theme }}{% endif %}</span>
+                </div>
+                <span class="signal-strength signal-strength-{{ signal.strength }}">{{ signal.strength }}</span>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-inline">Nenhum sinal relacionado. Registre uma evidência para fortalecer o contexto desta iniciativa.</div>
+        {% endif %}
+    </div>
+</div>
+
 {# ── Context Documents ── #}
 <div class="card" id="context">
     <div class="card-header">
