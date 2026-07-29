@@ -279,10 +279,25 @@ class TestGuidedSpecification:
             data={
                 "title": "Pedir consentimento",
                 "rationale": "Protege pessoas em dispositivos compartilhados.",
+                "revisit_if": "A adoção ficar abaixo de 30%.",
             },
             follow_redirects=False,
         )
         assert response.status_code == 303
+
+        memory = client.get("/decisions")
+        assert memory.status_code == 200
+        assert "Pedir consentimento" in memory.text
+        assert "A adoção ficar abaixo de 30%." in memory.text
+
+        updated = client.post(
+            f"/initiative/{init_id}/decisions/DEC-001/status",
+            data={"status": "superseded", "return_to": "memory"},
+            follow_redirects=False,
+        )
+        assert updated.status_code == 303
+        filtered = client.get("/decisions?status=superseded")
+        assert "Pedir consentimento" in filtered.text
 
         blocked = client.post(
             f"/initiative/{init_id}/backlog/generate",

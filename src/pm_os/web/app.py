@@ -989,6 +989,36 @@ async def quickstart(request: Request) -> HTMLResponse:
 
 # ─── Initiative Detail ───
 
+@app.get("/decisions", response_class=HTMLResponse)
+async def decisions_page(
+    request: Request,
+    status: str = "",
+    notice: str = "",
+):
+    rows = []
+    for initiative in _repo(_get_session_squad(request)).list_initiatives(
+        load_content=False
+    ):
+        specification = product_specification_service.load(initiative.path)
+        for decision in specification.get("decisions") or []:
+            if status and decision.get("status") != status:
+                continue
+            rows.append({
+                **decision,
+                "initiative_id": initiative.name,
+            })
+    rows.sort(key=lambda item: item.get("created_at", ""), reverse=True)
+    return templates.TemplateResponse(
+        request,
+        "decisions.html",
+        _ctx(
+            request,
+            decisions=rows,
+            selected_status=status,
+            notice=notice,
+        ),
+    )
+
 @app.get("/signals", response_class=HTMLResponse)
 async def signals_page(request: Request, notice: str = ""):
     initiatives = _repo(_get_session_squad(request)).list_initiatives(
@@ -1461,6 +1491,7 @@ async def add_specification_decision(
     initiative_name: str,
     title: str = Form(...),
     rationale: str = Form(...),
+    revisit_if: str = Form(""),
 ):
     selected = _get_initiative_by_name(initiative_name, request)
     if not selected:
@@ -1470,6 +1501,7 @@ async def add_specification_decision(
             selected.path,
             title=title,
             rationale=rationale,
+            revisit_if=revisit_if,
             actor=_get_session_user_email(request),
         )
     except ValueError:
@@ -1481,6 +1513,36 @@ async def add_specification_decision(
         url=f"/initiative/{initiative_name}/specification?notice=spec.decision_saved#decisions",
         status_code=303,
     )
+
+
+@app.post("/initiative/{initiative_name}/decisions/{decision_id}/status")
+async def update_specification_decision_status(
+    request: Request,
+    initiative_name: str,
+    decision_id: str,
+    status: str = Form(...),
+    return_to: str = Form("initiative"),
+):
+    selected = _get_initiative_by_name(initiative_name, request)
+    if not selected:
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    try:
+        decision = product_specification_service.update_decision_status(
+            selected.path,
+            decision_id,
+            status=status,
+            actor=_get_session_user_email(request),
+        )
+    except ValueError:
+        decision = None
+    if not decision:
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    destination = (
+        "/decisions?notice=decision_status_updated"
+        if return_to == "memory"
+        else f"/initiative/{initiative_name}/specification?notice=spec.decision_updated#decisions"
+    )
+    return RedirectResponse(url=destination, status_code=303)
 
 
 @app.post("/initiative/{initiative_name}/backlog/generate")

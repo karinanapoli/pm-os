@@ -47,6 +47,8 @@ PM Studio evolution happens through incremental capabilities, reusing a common a
 | Generic MCP Connections (HTTP and stdio) | ✅ Completed | Sprint 011 |
 | Product Signal Memory | ✅ Completed | Sprint 011 |
 | Reviewable Signal Extraction from Sources | ✅ Completed | Sprint 011 |
+| Cross-Initiative Decision Memory | ✅ Completed | Sprint 012 |
+| Decision Review Conditions and Lifecycle | ✅ Completed | Sprint 012 |
 | OKRs | 🟡 Planned | Sprint 005 |
 | AI Prototyping | 🟡 Planned | Sprint 006 |
 | Security Score | 🟡 Planned | Sprint 006 |
@@ -61,7 +63,24 @@ PM Studio evolution happens through incremental capabilities, reusing a common a
 
 # Current Focus
 
-## Sprint 011 — Product Signal Memory and MCP Connections
+## Sprint 012 — Decision Memory
+
+### Delivered
+
+- Workspace-wide view of decisions recorded in initiative specifications.
+- Explicit `revisit if` condition for observable review triggers.
+- Active, revisited, and superseded lifecycle states.
+- Status filters and direct navigation back to the owning initiative.
+- Backward-compatible defaults for existing decisions.
+
+### Safety and ownership
+
+- The initiative specification remains the source of truth.
+- The global memory is a derived view and does not duplicate decision files.
+- Status changes are explicit user actions.
+- Personal and squad scope follow the existing initiative repository rules.
+
+## Previous focus — Sprint 011
 
 ### Delivered
 

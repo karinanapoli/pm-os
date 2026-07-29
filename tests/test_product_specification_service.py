@@ -80,11 +80,22 @@ def test_decision_is_persisted_without_overwriting_specification(tmp_path):
         rationale="Reduz risco em dispositivos compartilhados.",
         actor="pm@example.com",
         source_ids=["SRC-12345678"],
+        revisit_if="A adoção ficar abaixo de 30%.",
     )
 
     loaded = service.load(tmp_path)
     assert decision["id"] == "DEC-001"
     assert loaded["decisions"][0]["title"] == "Usar consentimento explícito"
+    assert loaded["decisions"][0]["revisit_if"] == "A adoção ficar abaixo de 30%."
+    assert loaded["decisions"][0]["status"] == "active"
+    updated = service.update_decision_status(
+        tmp_path,
+        "DEC-001",
+        status="revisited",
+        actor="lead@example.com",
+    )
+    assert updated["status"] == "revisited"
+    assert service.load(tmp_path)["decisions"][0]["updated_by"] == "lead@example.com"
     assert loaded["version"] == 1
 
 

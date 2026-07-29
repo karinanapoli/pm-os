@@ -165,6 +165,9 @@ Each directory has a specific responsibility.
 
 The central planning concept of PM Studio is the **Initiative**. A **Signal**
 is reusable evidence that can precede and relate to one or more initiatives.
+A **Decision** remains owned by its initiative specification while the
+cross-initiative memory provides a derived, workspace-scoped view. This avoids
+creating a second source of truth.
 
 An Initiative represents a business problem or a product opportunity.
 
