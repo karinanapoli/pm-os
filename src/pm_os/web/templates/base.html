@@ -33,7 +33,7 @@
                 </a>
                 <a href="/signals" class="nav-item {% if request.url.path.startswith('/signals') %}active{% endif %}">
                     <span class="nav-icon">◌</span>
-                    <span>Sinais</span>
+                    <span>{{ "nav.signals"|t }}</span>
                 </a>
                 <a href="/generate" class="nav-item {% if request.url.path == '/generate' %}active{% endif %}">
                     <span class="nav-icon">◇</span>

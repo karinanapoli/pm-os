@@ -1,18 +1,12 @@
 {% extends "base.html" %}
-{% block page_title %}Detalhe do sinal{% endblock %}
+{% block page_title %}{{ "signals.detail"|t }}{% endblock %}
 {% block topbar_actions %}
-<a href="/signals" class="btn btn-ghost btn-sm">← Voltar para sinais</a>
+<a href="/signals" class="btn btn-ghost btn-sm">{{ "signals.back"|t }}</a>
 {% endblock %}
 {% block content %}
-{% set source_labels = {
-    "customer_feedback": "Feedback de cliente", "research": "Pesquisa / entrevista",
-    "support": "Suporte", "commercial": "Comercial", "metric": "Métrica",
-    "competitor": "Concorrente", "internal_hypothesis": "Hipótese interna"
-} %}
-{% set strength_labels = {"weak": "Fraco", "medium": "Médio", "strong": "Forte"} %}
 {% if notice %}
 <div class="alert alert-success" role="status">
-    {% if notice == "created" %}Sinal registrado com sucesso.{% else %}Relacionamentos atualizados.{% endif %}
+    {% if notice == "created" %}{{ "signals.created"|t }}{% else %}{{ "signals.links_updated"|t }}{% endif %}
 </div>
 {% endif %}
 
@@ -20,25 +14,25 @@
     <article class="card">
         <div class="card-body signal-detail-body">
             <div class="signal-card-top">
-                <span class="signal-source">{{ source_labels.get(signal.source_type, signal.source_type) }}</span>
-                <span class="signal-strength signal-strength-{{ signal.strength }}">{{ strength_labels.get(signal.strength, signal.strength) }}</span>
+                <span class="signal-source">{{ ("signals.source." ~ signal.source_type)|t }}</span>
+                <span class="signal-strength signal-strength-{{ signal.strength }}">{{ ("signals.strength." ~ signal.strength)|t }}</span>
             </div>
             <h3>{{ signal.title }}</h3>
             <p class="signal-detail-summary">{{ signal.summary }}</p>
             <dl class="signal-facts">
-                <div><dt>Identificador</dt><dd>{{ signal.signal_id }}</dd></div>
-                {% if signal.theme %}<div><dt>Tema</dt><dd>{{ signal.theme }}</dd></div>{% endif %}
-                {% if signal.source_reference %}<div><dt>Referência</dt><dd>{{ signal.source_reference }}</dd></div>{% endif %}
-                <div><dt>Registrado por</dt><dd>{{ signal.created_by or "—" }}</dd></div>
+                <div><dt>{{ "signals.identifier"|t }}</dt><dd>{{ signal.signal_id }}</dd></div>
+                {% if signal.theme %}<div><dt>{{ "signals.field.theme"|t }}</dt><dd>{{ signal.theme }}</dd></div>{% endif %}
+                {% if signal.source_reference %}<div><dt>{{ "signals.field.reference"|t }}</dt><dd>{{ signal.source_reference }}</dd></div>{% endif %}
+                <div><dt>{{ "signals.registered_by"|t }}</dt><dd>{{ signal.created_by or "—" }}</dd></div>
             </dl>
         </div>
     </article>
 
     <aside class="card">
         <div class="card-body">
-            <span class="eyebrow">Relacionamentos</span>
-            <h3>Iniciativas relacionadas</h3>
-            <p class="form-hint signal-form-intro">Este sinal ficará disponível como evidência nas iniciativas selecionadas.</p>
+            <span class="eyebrow">{{ "signals.relationships"|t }}</span>
+            <h3>{{ "signals.related_initiatives"|t }}</h3>
+            <p class="form-hint signal-form-intro">{{ "signals.links_help"|t }}</p>
             <form method="POST" action="/signals/{{ signal.signal_id }}/links" class="form">
                 {% if initiatives %}
                 <div class="signal-link-picker signal-link-picker-detail">
@@ -50,9 +44,9 @@
                     </label>
                     {% endfor %}
                 </div>
-                <button type="submit" class="btn btn-primary signal-submit">Salvar relacionamentos</button>
+                <button type="submit" class="btn btn-primary signal-submit">{{ "signals.save_links"|t }}</button>
                 {% else %}
-                <div class="empty-inline">Crie uma iniciativa para relacionar este sinal.</div>
+                <div class="empty-inline">{{ "signals.no_initiative"|t }}</div>
                 {% endif %}
             </form>
         </div>
