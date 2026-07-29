@@ -44,6 +44,9 @@ PM Studio evolution happens through incremental capabilities, reusing a common a
 | Guided Product Specification (Beta) | ✅ Completed | Sprint 010 |
 | Decisions, Approval & Consistency Analysis | ✅ Completed | Sprint 010 |
 | Traceable Backlog from Approved Specification | ✅ Completed | Sprint 010 |
+| Generic MCP Connections (HTTP and stdio) | ✅ Completed | Sprint 011 |
+| Product Signal Memory | ✅ Completed | Sprint 011 |
+| Reviewable Signal Extraction from Sources | ✅ Completed | Sprint 011 |
 | OKRs | 🟡 Planned | Sprint 005 |
 | AI Prototyping | 🟡 Planned | Sprint 006 |
 | Security Score | 🟡 Planned | Sprint 006 |
@@ -58,7 +61,29 @@ PM Studio evolution happens through incremental capabilities, reusing a common a
 
 # Current Focus
 
-## Sprint 010 — Guided Product Specification
+## Sprint 011 — Product Signal Memory and MCP Connections
+
+### Delivered
+
+- Signals scoped to personal workspaces and squads.
+- Relationships between signals and initiatives.
+- PDF, Markdown and TXT sources with protected download.
+- Local suggestion preparation by default.
+- Optional AI-assisted extraction with explicit provider disclosure.
+- Human review before any suggested signal is saved.
+- Generic MCP registration through HTTP or stdio.
+- Safe stdio process execution without a shell and with bounded timeouts.
+- Encrypted MCP credentials and environment values.
+
+### Compatibility and safety
+
+- Existing initiatives, specifications and PRDs require no migration.
+- A document is a source; it is never accepted as a signal automatically.
+- AI extraction falls back to local preparation when the provider fails.
+- Sources cannot cross personal and squad scopes.
+- MCP write tools are never executed automatically.
+
+## Previous focus — Sprint 010
 
 ### Delivered
 

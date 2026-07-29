@@ -13,6 +13,10 @@ mantendo a pessoa responsável pelo produto no controle.
 - Iniciativas com documentos de contexto e histórico de artefatos.
 - Especificação de produto guiada, versionada e opcional.
 - Decisões, aprovação e backlog rastreável sem remover o fluxo rápido de PRD.
+- Central de Sinais para relacionar feedbacks, pesquisas, métricas e relatórios
+  às iniciativas.
+- Extração revisável de sinais a partir de PDF, Markdown e TXT, com
+  processamento local por padrão.
 - Geração, validação de PRD e consulta a documentos.
 - Ollama local, OpenAI, Anthropic e provedores compatíveis com OpenAI.
 - **Modo Demo**, sem chave, custo ou envio de dados a uma IA externa.
@@ -81,10 +85,11 @@ Cada iniciativa pode continuar no **modo rápido** ou usar o **modo guiado
 (Beta)**:
 
 ```text
-evidências → especificação → esclarecimentos → aprovação → PRD/backlog
+sinais → evidências → especificação → esclarecimentos → aprovação → PRD/backlog
 ```
 
-Veja [Especificação Guiada](docs/product/guided-specification.md).
+Veja [Central de Sinais](docs/product/signals.md) e
+[Especificação Guiada](docs/product/guided-specification.md).
 
 Comece por [Visão](docs/vision/vision.md),
 [Manifesto](docs/vision/manifesto.md),
@@ -98,6 +103,18 @@ Comece por [Visão](docs/vision/vision.md),
 Com Python 3.10+, instale `python -m pip install -e ".[mcp]"` e execute
 `python mcp/server.py`. O servidor expõe `list_initiatives`,
 `get_initiative_context` e `get_initiative_prd`, usando o mesmo `workspace/`.
+
+Em **Configurações → Fontes externas**, também é possível cadastrar servidores
+MCP de terceiros:
+
+- **HTTP** para servidores remotos usando Streamable HTTP;
+- **stdio** para iniciar um servidor como processo local, com comando,
+  argumentos e variáveis de ambiente.
+
+O cadastro testa e descobre capacidades, mas não executa ferramentas de escrita
+automaticamente. Variáveis de ambiente e credenciais são criptografadas no
+arquivo de configuração. Consulte
+[Conexões MCP](docs/product/mcp-connections.md).
 
 ## Desenvolvimento
 
