@@ -1,6 +1,15 @@
 import asyncio
 
-from pm_os.web.request_limits import RequestBodyLimitMiddleware
+from pm_os.web.request_limits import (
+    MAX_REQUEST_BODY_BYTES,
+    MAX_UPLOAD_FILE_BYTES,
+    RequestBodyLimitMiddleware,
+)
+
+
+def test_default_limits_support_25_mb_files_with_multipart_overhead():
+    assert MAX_UPLOAD_FILE_BYTES == 25 * 1024 * 1024
+    assert MAX_REQUEST_BODY_BYTES > 2 * MAX_UPLOAD_FILE_BYTES
 
 
 def _scope(content_length=None):

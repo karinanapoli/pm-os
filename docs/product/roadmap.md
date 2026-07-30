@@ -43,7 +43,7 @@ PM Studio evolution happens through incremental capabilities, reusing a common a
 | Architecture & Performance Hardening | ✅ Completed | Sprint 009 |
 | Guided Product Specification (Beta) | ✅ Completed | Sprint 010 |
 | Decisions, Approval & Consistency Analysis | ✅ Completed | Sprint 010 |
-| Traceable Backlog from Approved Specification | ✅ Completed | Sprint 010 |
+| Traceable Backlog from Approved Specification | 🧪 Beta | Sprint 010 |
 | Generic MCP Connections (HTTP and stdio) | ✅ Completed | Sprint 011 |
 | Product Signal Memory | ✅ Completed | Sprint 011 |
 | Reviewable Signal Extraction from Sources | ✅ Completed | Sprint 011 |
@@ -130,7 +130,7 @@ PM Studio evolution happens through incremental capabilities, reusing a common a
 - Non-blocking clarification and consistency findings.
 - Explicit decisions and human approval.
 - PRD compatibility and automatic quick-flow specification bootstrap.
-- Traceable backlog generation from an approved specification.
+- Initial traceable backlog generation from an approved specification (Beta).
 - Derived-artifact freshness status and portable Markdown downloads.
 
 ### Compatibility
@@ -162,6 +162,7 @@ PM Studio evolution happens through incremental capabilities, reusing a common a
 
 ### Next
 
+- Complete backlog creation, review, editing, prioritization, and export journey.
 - Preview and governed export of backlog items to external systems.
 - Structured latency and reliability telemetry.
 - Route-module extraction as the web composition root evolves.

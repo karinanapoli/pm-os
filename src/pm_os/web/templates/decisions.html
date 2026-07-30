@@ -1,5 +1,12 @@
 {% extends "base.html" %}
 {% block page_title %}{{ "decisions.title"|t }}{% endblock %}
+{% block topbar_actions %}
+{% if initiatives %}
+<a href="/initiative/{{ initiatives[0].name }}/specification#decisions" class="btn btn-primary btn-sm">+ {{ "decisions.register"|t }}</a>
+{% else %}
+<a href="/initiatives/new" class="btn btn-primary btn-sm">+ {{ "nav.new_initiative"|t }}</a>
+{% endif %}
+{% endblock %}
 {% block content %}
 {% if notice %}
 <div class="alert alert-success" role="status">{{ "spec.decision_updated"|t }}</div>
@@ -57,6 +64,18 @@
     <div class="empty-icon">◆</div>
     <h3>{{ "decisions.empty_title"|t }}</h3>
     <p>{{ "decisions.empty_desc"|t }}</p>
+    {% if initiatives %}
+    <div id="choose-initiative" class="decision-initiative-picker">
+        <strong>{{ "decisions.choose_initiative"|t }}</strong>
+        <div>
+            {% for initiative in initiatives[:4] %}
+            <a href="/initiative/{{ initiative.name }}/specification#decisions" class="btn btn-secondary btn-sm">{{ initiative.name }}</a>
+            {% endfor %}
+        </div>
+    </div>
+    {% else %}
+    <a href="/initiatives/new" class="btn btn-primary">{{ "nav.new_initiative"|t }}</a>
+    {% endif %}
 </div>
 {% endif %}
 {% endblock %}

@@ -130,6 +130,16 @@ def _create_initiative(client, name: str = "Test Initiative", init_id: str = "")
 
 
 class TestSignals:
+    def test_signals_page_uses_progressive_disclosure(self, client):
+        response = client.get("/signals")
+
+        assert response.status_code == 200
+        assert '<details class="card signal-upload-card" id="signal-upload"' in response.text
+        assert '<details class="card signal-form-card" id="new-signal"' in response.text
+        assert 'href="#signal-upload"' in response.text
+        assert 'href="#new-signal"' in response.text
+        assert "openSignalPanel" in response.text
+
     def test_create_signal_and_show_it_on_linked_initiative(self, client):
         initiative_id = _create_initiative(client, "Onboarding", "INT-ONBOARDING")
 
@@ -340,6 +350,11 @@ class TestGuidedSpecification:
             follow_redirects=False,
         )
         assert "notice=spec.backlog_error" in blocked.headers["location"]
+
+        deliverables = client.get(f"/initiative/{init_id}/deliverables")
+        assert "BACKLOG · BETA" in deliverables.text
+        assert "Revisar e aprovar especificação" in deliverables.text
+        assert 'disabled title="Aprove uma versão' not in deliverables.text
 
     def test_prepares_specification_from_overview_context(self, client, session_base, monkeypatch):
         from pm_os.infrastructure.ai.clients.fake_ai_client import FakeAIClient
@@ -1813,6 +1828,15 @@ class TestDashboardEmptyState:
         assert resp.status_code == 200
         assert "/workspace/default" in resp.text
         assert "Default" in resp.text
+
+    def test_dashboard_exposes_recent_capabilities_and_version(self, client):
+        response = client.get("/")
+
+        assert response.status_code == 200
+        assert 'href="/signals"' in response.text
+        assert 'href="/decisions"' in response.text
+        assert 'href="/config#plugins"' in response.text
+        assert "PM Studio v0.2.0" in response.text
 
 
 class TestGenerateLinks:

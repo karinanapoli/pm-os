@@ -36,6 +36,40 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
 </div>
 
+{# ── Capability Discovery ── #}
+<section class="capability-section" aria-labelledby="capability-title">
+    <div class="capability-section-heading">
+        <div>
+            <span class="eyebrow">{{ "dashboard.capabilities.eyebrow"|t }}</span>
+            <h3 id="capability-title">{{ "dashboard.capabilities.title"|t }}</h3>
+            <p>{{ "dashboard.capabilities.desc"|t }}</p>
+        </div>
+        <a href="/timeline" class="btn btn-ghost btn-sm">{{ "dashboard.capabilities.roadmap"|t }} →</a>
+    </div>
+    <div class="capability-grid">
+        <a href="/signals" class="capability-card">
+            <span class="capability-icon">◌</span>
+            <div><strong>{{ "nav.signals"|t }}</strong><p>{{ "dashboard.capabilities.signals"|t }}</p></div>
+            <span class="capability-status status-live">{{ "timeline.live"|t }}</span>
+        </a>
+        <a href="/decisions" class="capability-card">
+            <span class="capability-icon">◆</span>
+            <div><strong>{{ "nav.decisions"|t }}</strong><p>{{ "dashboard.capabilities.decisions"|t }}</p></div>
+            <span class="capability-status status-live">{{ "timeline.live"|t }}</span>
+        </a>
+        <a href="{% if initiatives %}/initiative/{{ initiatives[0].name }}/map{% else %}/initiatives/new{% endif %}" class="capability-card">
+            <span class="capability-icon">◈</span>
+            <div><strong>{{ "map.tab"|t }}</strong><p>{{ "dashboard.capabilities.map"|t }}</p></div>
+            <span class="capability-status status-live">{{ "timeline.live"|t }}</span>
+        </a>
+        <a href="/config#plugins" class="capability-card">
+            <span class="capability-icon">✦</span>
+            <div><strong>{{ "timeline.feat_mcp_generic"|t }}</strong><p>{{ "dashboard.capabilities.mcp"|t }}</p></div>
+            <span class="capability-status status-live">{{ "timeline.live"|t }}</span>
+        </a>
+    </div>
+</section>
+
 {% if initiatives %}
 
 {# ── Recommended Next Action ── #}

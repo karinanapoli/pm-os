@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from typing import Optional
 
-MAX_UPLOAD_FILE_BYTES = 10 * 1024 * 1024
-MAX_REQUEST_BODY_BYTES = 25 * 1024 * 1024
+MAX_UPLOAD_FILE_BYTES = 25 * 1024 * 1024
+# Allows two files near the per-file limit while still protecting request buffering.
+MAX_REQUEST_BODY_BYTES = 55 * 1024 * 1024
 
 
 class _RequestTooLarge(Exception):

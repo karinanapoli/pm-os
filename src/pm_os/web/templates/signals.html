@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block page_title %}{{ "signals.title"|t }}{% endblock %}
 {% block topbar_actions %}
+<a href="#signal-upload" class="btn btn-secondary btn-sm">{{ "signals.upload.cta"|t }}</a>
 <a href="#new-signal" class="btn btn-primary btn-sm">+ {{ "signals.register"|t }}</a>
 {% endblock %}
 {% block content %}
@@ -26,7 +27,7 @@
     </div>
 </section>
 
-<details class="card signal-upload-card" {% if source_draft or upload_error %}open{% endif %}>
+<details class="card signal-upload-card" id="signal-upload" {% if source_draft or upload_error %}open{% endif %}>
     <summary>
         <span>
             <span class="eyebrow">{{ "signals.upload.eyebrow"|t }}</span>
@@ -150,10 +151,13 @@
                     <span class="signal-strength signal-strength-{{ signal.strength }}">{{ ("signals.strength." ~ signal.strength)|t }}</span>
                 </div>
                 <h4>{{ signal.title }}</h4>
-                <p>{{ signal.summary }}</p>
+                <p>{{ signal.summary|replace('**', '')|replace('__', '') }}</p>
                 <div class="signal-meta">
                     {% if signal.theme %}<span># {{ signal.theme }}</span>{% endif %}
-                    <span>{{ signal.initiative_ids|length }} {{ "signals.initiative_count"|t }}</span>
+                    <span>
+                        {{ signal.initiative_ids|length }}
+                        {% if signal.initiative_ids|length == 1 %}{{ "signals.one_initiative"|t }}{% else %}{{ "signals.many_initiatives"|t }}{% endif %}
+                    </span>
                     <span>{{ signal.signal_id }}</span>
                 </div>
             </a>
@@ -169,9 +173,16 @@
         {% endif %}
     </section>
 
-    <aside class="card signal-form-card" id="new-signal">
+    <details class="card signal-form-card" id="new-signal" {% if error or form_values %}open{% endif %}>
+        <summary>
+            <span>
+                <span class="eyebrow">{{ "signals.manual.eyebrow"|t }}</span>
+                <strong>{{ "signals.manual.title"|t }}</strong>
+                <small>{{ "signals.manual.desc"|t }}</small>
+            </span>
+            <span class="signal-form-toggle" aria-hidden="true">+</span>
+        </summary>
         <div class="card-body">
-            <span class="eyebrow">{{ "signals.new"|t }}</span>
             <h3>{{ "signals.question"|t }}</h3>
             <p class="form-hint signal-form-intro">{{ "signals.guidance"|t }}</p>
             <form method="POST" action="/signals" class="form">
@@ -233,6 +244,36 @@
                 <button type="submit" class="btn btn-primary signal-submit">{{ "signals.save"|t }}</button>
             </form>
         </div>
-    </aside>
+    </details>
 </div>
+
+<script>
+(function () {
+    function openSignalPanel(hash, focusField) {
+        var panel = document.querySelector(hash);
+        if (!panel || panel.tagName !== 'DETAILS') return;
+        panel.open = true;
+        window.requestAnimationFrame(function () {
+            panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            if (focusField) {
+                var field = panel.querySelector(focusField);
+                if (field) field.focus({ preventScroll: true });
+            }
+        });
+    }
+
+    document.querySelectorAll('a[href="#new-signal"], a[href="#signal-upload"]').forEach(function (link) {
+        link.addEventListener('click', function (event) {
+            event.preventDefault();
+            var hash = link.getAttribute('href');
+            history.replaceState(null, '', hash);
+            openSignalPanel(hash, hash === '#new-signal' ? '#signal-title' : '#signal-source-file');
+        });
+    });
+
+    if (window.location.hash === '#new-signal' || window.location.hash === '#signal-upload') {
+        openSignalPanel(window.location.hash, window.location.hash === '#new-signal' ? '#signal-title' : '#signal-source-file');
+    }
+})();
+</script>
 {% endblock %}
