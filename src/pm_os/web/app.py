@@ -995,10 +995,11 @@ async def decisions_page(
     status: str = "",
     notice: str = "",
 ):
-    rows = []
-    for initiative in _repo(_get_session_squad(request)).list_initiatives(
+    initiatives = _repo(_get_session_squad(request)).list_initiatives(
         load_content=False
-    ):
+    )
+    rows = []
+    for initiative in initiatives:
         specification = product_specification_service.load(initiative.path)
         for decision in specification.get("decisions") or []:
             if status and decision.get("status") != status:
@@ -1014,6 +1015,7 @@ async def decisions_page(
         _ctx(
             request,
             decisions=rows,
+            initiatives=initiatives,
             selected_status=status,
             notice=notice,
         ),

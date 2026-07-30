@@ -21,7 +21,7 @@ the Product Manager explicitly confirms.
 5. Optionally relate the signal to one or more initiatives.
 6. Confirm each useful signal individually.
 
-Supported source formats are PDF, Markdown, and TXT, up to 10 MB.
+Supported source formats are PDF, Markdown, and TXT, up to 25 MB.
 
 ## Evidence strength
 
