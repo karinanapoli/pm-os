@@ -1678,6 +1678,82 @@ class TestGeneratePreSelection:
         assert "gen-source" in resp.text
         assert "Fontes incluídas" in resp.text or "Included sources" in resp.text
 
+    def test_demo_mode_does_not_pretend_to_read_uploaded_files(self, client):
+        init_id = _create_initiative(client, "Demo upload", "INT-DEMO-UPLOAD")
+        client.post(
+            f"/initiative/{init_id}/upload",
+            files={"docs": ("pesquisa.md", b"Contexto exclusivo do upload")},
+        )
+
+        response = client.post(
+            "/generate",
+            data={"initiative_name": init_id},
+        )
+
+        assert response.status_code == 422
+        assert "modo Demo não lê o conteúdo dos arquivos" in response.text
+
+        fetch_response = client.post(
+            "/generate",
+            data={"initiative_name": init_id},
+            headers={"X-Requested-With": "fetch"},
+        )
+        assert fetch_response.status_code == 422
+        assert "modo Demo não lê" in fetch_response.json()["error"]
+
+    def test_uploaded_file_content_reaches_prd_prompt(
+        self, client, monkeypatch
+    ):
+        from pm_os.web.app import config_manager, job_repository
+
+        class RecordingAIClient:
+            def __init__(self):
+                self.prompts = []
+
+            def generate(self, prompt):
+                self.prompts.append(prompt)
+                if "Avalie a qualidade" in prompt or "Evaluate the quality" in prompt:
+                    return '{"overall_score": 8, "sections": []}'
+                return "# PRD contextual\n\nConteúdo fundamentado na pesquisa enviada."
+
+        recording = RecordingAIClient()
+        config_manager.set("ai_provider", "ollama")
+        monkeypatch.setattr(
+            "pm_os.web.app._build_ai_client",
+            lambda provider_override="": recording,
+        )
+        init_id = _create_initiative(client, "Prompt upload", "INT-PROMPT-UPLOAD")
+        unique_context = "CLIENTES-ALFA precisam reduzir o cadastro de 14 para 5 minutos."
+        client.post(
+            f"/initiative/{init_id}/upload",
+            files={"docs": ("entrevistas.md", unique_context.encode("utf-8"))},
+        )
+        source_id = "SRC-" + hashlib.sha256(
+            f"{init_id}/entrevistas.md".encode("utf-8")
+        ).hexdigest()[:8].upper()
+
+        response = client.post(
+            "/generate",
+            data={
+                "initiative_name": init_id,
+                "source_selection_enabled": "true",
+                "selected_source_ids": source_id,
+            },
+            headers={"X-Requested-With": "fetch"},
+        )
+        assert response.status_code == 200
+        job_id = response.json()["job_id"]
+        task = None
+        for _ in range(80):
+            task = job_repository.get_for_scope(job_id, "test@pmstudio.app", "")
+            if task and task["done"]:
+                break
+            time.sleep(0.05)
+
+        assert task and task["done"] is True
+        assert task["error"] is None
+        assert unique_context in recording.prompts[0]
+
 
 class TestGenerateAdditionalContext:
     """Additional context UX improvements on generate page."""
