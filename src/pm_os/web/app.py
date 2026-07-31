@@ -1849,6 +1849,29 @@ async def generate_prd(
                  mcp_count=len(_get_mcp_context_servers())),
         )
 
+    has_uploaded_sources = any(
+        source.name != "context.md" for source in selected.sources
+    )
+    if config_manager.get("ai_provider") == "demo" and has_uploaded_sources:
+        message = _t("generate.demo_context_error", _get_lang())
+        if request.headers.get("x-requested-with") == "fetch":
+            return JSONResponse({"error": message}, status_code=422)
+        pd_service = _product_docs_service(request)
+        return templates.TemplateResponse(
+            request,
+            "generate.html",
+            _ctx(
+                request,
+                initiatives=initiatives,
+                result=None,
+                error=message,
+                product_docs_count=pd_service.count_docs(),
+                mcp_count=len(_get_mcp_context_servers()),
+                selected_initiative=initiative_name,
+            ),
+            status_code=422,
+        )
+
     pd_service = _product_docs_service(request)
     additional = [n for n in additional_initiatives if n != initiative_name]
     selected_source_set = set(selected_source_ids)

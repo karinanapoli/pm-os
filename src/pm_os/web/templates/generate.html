@@ -8,6 +8,13 @@
             <strong>{{ "generate.guide_title"|t }}</strong>
             <span>{{ "generate.guide_desc"|t }}</span>
         </div>
+        {% if (config.ai_provider or 'demo') == 'demo' %}
+        <div class="alert alert-warning generate-demo-warning" role="note">
+            <strong>{{ "generate.demo_warning_title"|t }}</strong>
+            <span>{{ "generate.demo_warning_desc"|t }}</span>
+            <a href="/config#general" class="btn btn-secondary btn-sm">{{ "generate.demo_warning_cta"|t }}</a>
+        </div>
+        {% endif %}
         <form method="POST" action="/generate" class="form" data-loading="processing" id="genForm">
             <div class="form-group">
                 <label for="initiative_name">{{ "generate.initiative"|t }}</label>
@@ -697,6 +704,8 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(function(data) {
                 if (data.job_id) {
                     poll(data.job_id);
+                } else if (data.error) {
+                    showError(data.error);
                 } else {
                     showForm();
                 }

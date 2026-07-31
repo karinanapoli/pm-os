@@ -2400,6 +2400,14 @@ body {
 
 .gen-result-icon { font-size: 20px; }
 
+.generate-demo-warning {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+}
+.generate-demo-warning span { flex: 1; }
+
 /* ── Product signals ── */
 .signals-hero {
     display: flex;
@@ -2585,6 +2593,7 @@ body {
     .signal-form-card { position: static; }
 }
 @media (max-width: 620px) {
+    .generate-demo-warning { align-items: flex-start; flex-direction: column; }
     .signals-hero { align-items: flex-start; flex-direction: column; }
     .signals-hero-stat { text-align: left; }
     .signal-facts { grid-template-columns: 1fr; }
