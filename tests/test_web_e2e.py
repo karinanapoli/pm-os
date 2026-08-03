@@ -592,6 +592,31 @@ class TestInitiativeCRUD:
         assert resp.status_code == 200
         assert not doc_path.exists()
 
+    def test_delete_context_doc_modal_submits_selected_filename(self, client, session_base):
+        init_name = _create_initiative(client)
+        context_dir = session_base / "workspace" / "initiatives" / init_name / "context"
+        (context_dir / "keep.md").write_text("# Keep")
+        (context_dir / "delete.md").write_text("# Delete")
+
+        resp = client.get(f"/initiative/{init_name}")
+
+        assert resp.status_code == 200
+        assert 'id="deleteDocFilename"' in resp.text
+        assert 'name="filename"' in resp.text
+        assert "confirmFilename.value = filenameInput.value" in resp.text
+
+    def test_context_metadata_file_is_not_listed_as_document(self, client, session_base):
+        init_name = _create_initiative(client)
+        context_dir = session_base / "workspace" / "initiatives" / init_name / "context"
+        (context_dir / ".sources.yaml").write_text("sources: {}")
+        (context_dir / "visible.md").write_text("# Visible")
+
+        resp = client.get(f"/initiative/{init_name}")
+
+        assert resp.status_code == 200
+        assert "visible.md" in resp.text
+        assert ".sources.yaml" not in resp.text
+
     def test_archive_initiative(self, client, session_base):
         init_name = _create_initiative(client)
         resp = client.post(f"/initiative/{init_name}/delete")

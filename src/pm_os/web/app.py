@@ -1253,7 +1253,11 @@ async def initiative_detail(
     docs = []
     if ctx_dir.exists():
         for f in sorted(ctx_dir.iterdir()):
-            if f.is_file():
+            if (
+                f.is_file()
+                and not f.name.startswith(".")
+                and f.suffix.lower() in ALLOWED_EXTENSIONS
+            ):
                 size = f.stat().st_size
                 size_str = f"{size} B" if size < 1024 else f"{size // 1024} KB"
                 docs.append({"name": f.name, "size": size_str})
