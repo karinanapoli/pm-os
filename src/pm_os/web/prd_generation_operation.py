@@ -148,6 +148,7 @@ class PRDGenerationOperation:
         job.complete({
             "prd": prd_content,
             "score": report.overall_score,
+            "is_fallback": report.is_fallback,
             "sections": [asdict(section) for section in report.sections],
             "initiative": request.initiative_name,
             "additional": used_additional,

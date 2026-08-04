@@ -17,6 +17,7 @@ class ValidationReport:
     summary: str
     sections: list[SectionEvaluation] = field(default_factory=list)
     is_valid: bool = True
+    is_fallback: bool = False
 
     def to_markdown(self, lang: str = "en") -> str:
         if lang == "pt-BR":
@@ -43,13 +44,26 @@ class ValidationReport:
             "",
             f"{score_label} {self.overall_score:.1f}/10",
             "",
+        ]
+        if self.is_fallback:
+            warning = (
+                "> ⚠️ **Verificação estrutural:** a IA não concluiu a avaliação. "
+                "As notas abaixo consideram apenas a presença e a organização "
+                "das seções; não representam uma análise completa do conteúdo."
+                if lang == "pt-BR"
+                else "> ⚠️ **Structural check:** AI did not complete the assessment. "
+                "The scores below only consider section presence and organization; "
+                "they do not represent a complete content analysis."
+            )
+            lines.extend([warning, ""])
+        lines.extend([
             summary_label,
             "",
             self.summary,
             "",
             breakdown_label,
             "",
-        ]
+        ])
 
         for section in self.sections:
             lines.append(f"### {section.name}")

@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block page_title %}{{ "backlog.title"|t }} · {{ initiative.name }}{% endblock %}
+
+{% block content %}
+{% if notice %}
+<div class="alert alert-{{ notice_kind or 'success' }}" role="status">{{ notice|t }}</div>
+{% endif %}
+
+<nav class="initiative-tabs" aria-label="{{ 'spec.navigation'|t }}">
+    <a href="/initiative/{{ initiative.name }}">{{ "spec.tab_overview"|t }}</a>
+    <a href="/initiative/{{ initiative.name }}/map">{{ "map.tab"|t }}</a>
+    <a href="/initiative/{{ initiative.name }}/specification">{{ "spec.tab_specification"|t }} <span class="spec-beta">Beta</span></a>
+    <a href="/initiative/{{ initiative.name }}/deliverables">{{ "spec.tab_deliverables"|t }}</a>
+    <a href="/initiative/{{ initiative.name }}/backlog" class="active" aria-current="page">{{ "backlog.tab"|t }}</a>
+</nav>
+
+<section class="page-header">
+    <div>
+        <p class="eyebrow">{{ initiative.name }}</p>
+        <h2>{{ "backlog.title"|t }}</h2>
+        <p>{{ "backlog.desc"|t }}</p>
+    </div>
+    {% if backlog %}
+    <span class="score score-{{ 'high' if backlog_artifact.review_status == 'approved' else 'mid' }}">
+        {{ ("backlog.status_" ~ (backlog_artifact.review_status or "draft"))|t }}
+    </span>
+    {% endif %}
+</section>
+
+<ol class="spec-flow" aria-label="{{ 'backlog.progress'|t }}">
+    <li class="{{ 'done' if backlog else 'current' }}">{{ "backlog.step_configure"|t }}</li>
+    <li class="{{ 'done' if backlog else '' }}">{{ "backlog.step_generate"|t }}</li>
+    <li class="{{ 'current' if backlog and backlog_artifact.review_status != 'approved' else 'done' if backlog else '' }}">{{ "backlog.step_review"|t }}</li>
+    <li class="{{ 'done' if backlog_artifact.review_status == 'approved' else '' }}">{{ "backlog.step_approve"|t }}</li>
+    <li class="{{ 'done' if backlog_artifact.review_status == 'approved' else '' }}">{{ "backlog.step_download"|t }}</li>
+</ol>
+
+<section class="card">
+    <div class="card-header">
+        <div>
+            <h3>{{ "backlog.configure_title"|t }}</h3>
+            <p class="spec-caption">{{ "backlog.single_file_help"|t }}</p>
+        </div>
+        <span class="deliverable-type">MARKDOWN · 1 {{ "backlog.file"|t }}</span>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="/initiative/{{ initiative.name }}/backlog/generate" class="form" data-loading="processing">
+            <div class="spec-field-grid">
+                <fieldset class="form-group">
+                    <legend>{{ "backlog.source"|t }}</legend>
+                    <label class="checkbox-label">
+                        <input type="radio" name="source" value="specification" {% if specification.status == 'approved' %}checked{% endif %} {% if specification.status != 'approved' %}disabled{% endif %}>
+                        <span>{{ "backlog.source_specification"|t }}</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="radio" name="source" value="prd" {% if specification.status != 'approved' and prd_exists %}checked{% endif %} {% if not prd_exists %}disabled{% endif %}>
+                        <span>{{ "backlog.source_prd"|t }}</span>
+                    </label>
+                </fieldset>
+                <div class="form-group">
+                    <label for="story-format">{{ "backlog.story_format"|t }}</label>
+                    <select id="story-format" name="story_format">
+                        <option value="user_story">User Story</option>
+                        <option value="job_story">Job Story</option>
+                        <option value="wwa">WWA</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="granularity">{{ "backlog.granularity"|t }}</label>
+                    <select id="granularity" name="granularity">
+                        <option value="compact">{{ "backlog.granularity_compact"|t }}</option>
+                        <option value="standard" selected>{{ "backlog.granularity_standard"|t }}</option>
+                        <option value="detailed">{{ "backlog.granularity_detailed"|t }}</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="epic-count">{{ "backlog.epic_count"|t }}</label>
+                    <input id="epic-count" name="epic_count" type="number" min="0" max="12" value="0">
+                    <div class="form-hint">{{ "backlog.epic_count_help"|t }}</div>
+                </div>
+                <div class="form-group">
+                    <label for="backlog-provider">{{ "spec.provider_label"|t }}</label>
+                    <select id="backlog-provider" name="ai_provider">
+                        {% for provider in available_ai_providers %}
+                        <option value="{{ provider.id }}" {% if provider.id == active_ai_provider %}selected{% endif %}>{{ provider.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-ai" {% if specification.status != 'approved' and not prd_exists %}disabled{% endif %}>
+                {{ "backlog.generate"|t if not backlog else "backlog.regenerate"|t }}
+            </button>
+        </form>
+    </div>
+</section>
+
+{% if backlog %}
+<section class="card" style="margin-top: 16px;">
+    <div class="card-header">
+        <div>
+            <h3>{{ "backlog.review_title"|t }}</h3>
+            <p class="spec-caption">{{ "backlog.review_desc"|t }}</p>
+        </div>
+        <div class="spec-actions">
+            <a href="/initiative/{{ initiative.name }}/backlog/download" class="btn btn-ghost btn-sm">{{ "spec.download_backlog"|t }}</a>
+            {% if backlog_artifact.review_status != "approved" %}
+            <form method="POST" action="/initiative/{{ initiative.name }}/backlog/approve">
+                <button class="btn btn-primary btn-sm">{{ "backlog.approve"|t }}</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+    <div class="card-body">
+        <details class="prd-preview" open>
+            <summary>{{ "backlog.preview"|t }}</summary>
+            <div class="prd-content markdown-body" style="max-height: 620px; overflow-y: auto;">{{ backlog|markdown }}</div>
+        </details>
+        <details class="advanced-options" style="margin-top: 16px;">
+            <summary>{{ "backlog.edit"|t }}</summary>
+            <form method="POST" action="/initiative/{{ initiative.name }}/backlog/save" class="form" data-loading="saving">
+                <div class="form-group">
+                    <label for="backlog-content">{{ "backlog.file_content"|t }}</label>
+                    <textarea id="backlog-content" name="content" rows="28" spellcheck="false">{{ backlog }}</textarea>
+                    <div class="form-hint">{{ "backlog.edit_help"|t }}</div>
+                </div>
+                <button type="submit" class="btn btn-primary">{{ "backlog.save"|t }}</button>
+            </form>
+        </details>
+    </div>
+</section>
+{% endif %}
+{% endblock %}

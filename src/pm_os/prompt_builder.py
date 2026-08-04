@@ -4,6 +4,8 @@ class PromptBuilder:
             return self._build_create_prd_prompt(context, lang)
         if workflow_name == "create_specification":
             return self._build_create_specification_prompt(context, lang)
+        if workflow_name == "create_backlog":
+            return self._build_create_backlog_prompt(context, lang)
         if workflow_name == "consult":
             if lang == "en":
                 return self._build_consult_prompt_en(context, question)
@@ -69,8 +71,15 @@ Crie um PRD completo em Markdown com base no contexto abaixo.
 
 Regras de evidência:
 
-- Para cada afirmação factual, cite uma ou mais fontes usando o identificador
-  exato no formato [SRC-XXXXXXXX].
+- Use as fontes como contexto de forma silenciosa e consolide informações
+  coincidentes em uma única narrativa.
+- Não cite, enumere ou repita todos os documentos consultados ao longo do PRD.
+- Cite o identificador exato [SRC-XXXXXXXX] somente quando a rastreabilidade
+  for relevante: dado decisivo, citação direta, requisito regulatório,
+  divergência entre fontes ou decisão que precise ser auditada.
+- Quando houver fontes essenciais, inclua ao final uma seção opcional
+  "Referências essenciais", limitada a cinco itens. Omita a seção quando ela
+  não agregar valor à leitura.
 - Nunca invente uma fonte.
 - Separe explicitamente "Fatos sustentados pelas fontes", "Inferências" e
   "Recomendações".
@@ -101,8 +110,15 @@ Create a complete PRD in Markdown based on the context below.
 
 Evidence rules:
 
-- Cite every factual claim with one or more exact source identifiers in the
-  format [SRC-XXXXXXXX].
+- Use sources silently as context and consolidate matching information into a
+  single narrative.
+- Do not cite, enumerate, or repeat every document throughout the PRD.
+- Cite an exact [SRC-XXXXXXXX] identifier only when traceability matters: a
+  decisive data point, direct quote, regulatory requirement, source conflict,
+  or a decision that must be audited.
+- When essential sources exist, add an optional "Essential references"
+  section at the end with no more than five items. Omit it when it does not
+  improve comprehension.
 - Never invent a source identifier.
 - Explicitly separate "Source-backed facts", "Inferences", and
   "Recommendations".
@@ -122,6 +138,104 @@ The PRD must include:
 10. Open questions
 
 Context:
+
+{context}
+"""
+
+    def _build_create_backlog_prompt(self, context: str, lang: str = "en") -> str:
+        if lang == "pt-BR":
+            return f"""
+Você é o agente "Criar Histórias de Usuário — Gerador de Backlog". Transforme
+a especificação aprovada abaixo em um backlog completo na hierarquia
+Iniciativa → Épico → História.
+
+Use somente as informações fornecidas. Não invente pessoas, squads, métricas,
+baselines, metas, prazos ou dependências. Quando um campo obrigatório não
+estiver disponível, escreva "A definir".
+
+Respeite o objeto "preferences" da entrada: use o formato de história, a
+granularidade e a quantidade de épicos solicitados. O resultado inteiro deve
+estar em um único arquivo Markdown, contendo a iniciativa, todos os épicos e
+todas as histórias; nunca divida a resposta em arquivos separados.
+
+Gere sempre:
+
+1. Uma Iniciativa com objetivo de negócio, alinhamento estratégico, tabela de
+   métricas (Métrica | Baseline atual | Meta | Prazo), squads envolvidos,
+   horizonte temporal, checklist de épicos, fora do escopo, riscos e
+   dependências macro e status.
+2. Épicos coesos com iniciativa pai, responsáveis (Squad, PM, Tech Lead e
+   Designer), problema, descrição, Definition of Done, métricas, estimativa
+   macro P/M/G, dependências, checklist de histórias e status.
+3. De 5 a 15 histórias independentes por épico, ordenadas primeiro por
+   dependência e depois por prioridade. Use "User Story" como padrão e escreva
+   "Como [tipo de usuário], quero [capacidade], para que [benefício]".
+4. Para cada história, inclua contexto e motivação, 3 a 5 critérios de
+   aceite numerados e testáveis, fora do escopo, notas de design, notas
+   técnicas, prioridade P0/P1/P2, esforço P/M/G, dependências e indicação de
+   spike.
+
+Regras de qualidade:
+
+- Uma história representa uma unidade de valor entregável, idealmente em até
+  três dias de desenvolvimento.
+- Não invente limites numéricos. Use números apenas quando sustentados pela
+  especificação; caso contrário, escreva "A definir".
+- Evite histórias técnicas puras e não transforme subtarefas internas ou QA em
+  histórias separadas.
+- Não duplique requisitos entre histórias ou épicos.
+- Prefixe com "[SPIKE]" apenas histórias de investigação necessárias para
+  resolver uma incerteza que bloqueie estimativa ou solução.
+- Mantenha os nomes idênticos nas relações entre iniciativa, épicos e histórias.
+
+Formato obrigatório dos títulos:
+
+## Iniciativa: [Nome]
+## Épico: [Nome]
+### História: [Título]
+
+Retorne APENAS o backlog em Markdown, começando por "## Iniciativa". Não
+inclua introdução, explicações, comentários sobre o processo, documentos
+consultados ou texto após o backlog.
+
+Especificação aprovada:
+
+{context}
+"""
+        return f"""
+You are the "Create User Stories — Backlog Generator" agent. Transform the
+approved specification below into a complete Initiative → Epic → Story backlog.
+
+Use only the supplied information. Do not invent people, squads, metrics,
+baselines, targets, dates, or dependencies. Write "To be defined" when a
+required field is unsupported.
+
+Honor the input "preferences" object, including story format, granularity, and
+requested epic count. The complete result must be one Markdown file containing
+the initiative, every epic, and every story; never split it across files.
+
+Always generate one Initiative with business and strategic context, measurable
+success, ownership, scope, risks and status; cohesive Epics with ownership,
+problem, description, Definition of Done, metrics, estimate, dependencies,
+story checklist and status; and 5 to 15 independent User Stories per Epic.
+Order stories by dependency and then priority. Every story must use "As a... I
+want... so that...", include context, 3 to 5 numbered and testable acceptance
+criteria, out of scope, design and technical notes, P0/P1/P2 priority, P/M/G
+effort, dependencies, and spike indication. Prefix a necessary investigation
+with "[SPIKE]". Keep each story to a deliverable unit of user or business value,
+ideally no more than three development days. Do not create pure technical,
+internal-task, or standalone QA stories, and do not duplicate requirements.
+
+Required heading format:
+
+## Initiative: [Name]
+## Epic: [Name]
+### Story: [Title]
+
+Return ONLY the Markdown backlog beginning with "## Initiative". Do not add an
+introduction, process commentary, consulted-document list, or trailing notes.
+
+Approved specification:
 
 {context}
 """

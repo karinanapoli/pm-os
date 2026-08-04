@@ -15,6 +15,8 @@ def test_prompt_builder_builds_create_prd_prompt():
     assert "Source-backed facts" in prompt
     assert "Inferences" in prompt
     assert "Recommendations" in prompt
+    assert "Do not cite, enumerate, or repeat every document" in prompt
+    assert "Cite every factual claim" not in prompt
 
 
 def test_prompt_builder_rejects_unknown_workflow():
@@ -42,3 +44,19 @@ def test_prompt_builder_creates_evidence_aware_product_specification_prompt():
     assert "open_questions" in prompt
     assert "hypotheses" in prompt
     assert "Pesquisa [SRC-12345678]" in prompt
+
+
+def test_prompt_builder_creates_hierarchical_backlog_prompt():
+    prompt = PromptBuilder().build(
+        workflow_name="create_backlog",
+        context='{"initiative_name": "Checkout"}',
+        lang="pt-BR",
+    )
+
+    assert "Iniciativa → Épico → História" in prompt
+    assert "De 5 a 15 histórias independentes por épico" in prompt
+    assert "3 a 5 critérios" in prompt
+    assert "aceite" in prompt
+    assert "## Iniciativa: [Nome]" in prompt
+    assert "um único arquivo Markdown" in prompt
+    assert '"initiative_name": "Checkout"' in prompt

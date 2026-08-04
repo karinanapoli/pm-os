@@ -204,4 +204,6 @@ Fadiga de alertas; monitorar taxa de abertura.
     assert report.is_valid is True
     assert report.overall_score > 0
     assert len(report.sections) == 6
+    assert report.is_fallback is True
+    assert all(not section.rationale for section in report.sections)
     assert "nota conservadora" in report.summary

@@ -201,11 +201,6 @@ Conteúdo do PRD:
         sections = []
         for name, present, strong in checks:
             score = 6.0 if strong else 4.0 if present else 2.0
-            rationale = (
-                "Avaliação estrutural de recuperação; revise o conteúdo e valide novamente."
-                if self.lang == "pt-BR"
-                else "Structural fallback assessment; review the content and validate again."
-            )
             issue = (
                 []
                 if strong
@@ -219,7 +214,7 @@ Conteúdo do PRD:
                 SectionEvaluation(
                     name=name,
                     score=score,
-                    rationale=rationale,
+                    rationale="",
                     issues=issue,
                     action_items=[],
                     suggestions=[],
@@ -238,6 +233,7 @@ Conteúdo do PRD:
             summary=summary,
             sections=sections,
             is_valid=True,
+            is_fallback=True,
         )
 
     @staticmethod

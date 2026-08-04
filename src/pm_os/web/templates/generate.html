@@ -225,6 +225,12 @@
         {% endif %}
     </div>
     <div class="card-body">
+        {% if result.is_fallback %}
+        <div class="alert alert-warning" role="alert" style="margin-bottom: 16px;">
+            <strong>{{ "validate.fallback_title"|t }}</strong><br>
+            {{ "validate.fallback_desc"|t }}
+        </div>
+        {% endif %}
         <div class="gen-result-box">
             <span class="gen-result-icon">✅</span>
             <div>
