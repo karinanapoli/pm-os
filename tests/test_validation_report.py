@@ -81,3 +81,17 @@ def test_to_markdown_default_lang():
     md = report.to_markdown()
     assert "PRD Validation Report" in md
     assert "**Overall Score:**" in md
+
+
+def test_to_markdown_identifies_structural_fallback_once():
+    report = ValidationReport(
+        overall_score=5.0,
+        summary="Nota conservadora.",
+        sections=[SectionEvaluation(name="Métricas", score=4.0)],
+        is_fallback=True,
+    )
+
+    md = report.to_markdown(lang="pt-BR")
+
+    assert md.count("Verificação estrutural") == 1
+    assert "não representam uma análise completa do conteúdo" in md
