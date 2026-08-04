@@ -1760,6 +1760,46 @@ async def save_backlog(request: Request, initiative_name: str, content: str = Fo
     )
 
 
+@app.post("/initiative/{initiative_name}/backlog/upload")
+async def upload_backlog(
+    request: Request,
+    initiative_name: str,
+    backlog_file: UploadFile = File(...),
+):
+    selected = _get_initiative_by_name(initiative_name, request)
+    if not selected:
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    filename = safe_upload_filename(backlog_file.filename or "")
+    if not filename or Path(filename).suffix.casefold() != ".md":
+        return RedirectResponse(
+            url=f"/initiative/{initiative_name}/backlog?notice=backlog.upload_type_error&notice_kind=error",
+            status_code=303,
+        )
+    raw_content = await backlog_file.read(MAX_UPLOAD_FILE_BYTES + 1)
+    if len(raw_content) > MAX_UPLOAD_FILE_BYTES:
+        return RedirectResponse(
+            url=f"/initiative/{initiative_name}/backlog?notice=backlog.upload_size_error&notice_kind=error",
+            status_code=303,
+        )
+    try:
+        content = raw_content.decode("utf-8-sig")
+        product_specification_service.import_backlog(
+            selected.path,
+            content,
+            filename=filename,
+            actor=_get_session_user_email(request),
+        )
+    except (UnicodeDecodeError, ValueError):
+        return RedirectResponse(
+            url=f"/initiative/{initiative_name}/backlog?notice=backlog.upload_structure_error&notice_kind=error",
+            status_code=303,
+        )
+    return RedirectResponse(
+        url=f"/initiative/{initiative_name}/backlog?notice=backlog.uploaded",
+        status_code=303,
+    )
+
+
 @app.post("/initiative/{initiative_name}/backlog/approve")
 async def approve_backlog(request: Request, initiative_name: str):
     selected = _get_initiative_by_name(initiative_name, request)

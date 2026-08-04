@@ -105,6 +105,26 @@
     </div>
 </section>
 
+<section class="card" style="margin-top: 16px;">
+    <div class="card-header">
+        <div>
+            <h3>{{ "backlog.upload_title"|t }}</h3>
+            <p class="spec-caption">{{ "backlog.upload_desc"|t }}</p>
+        </div>
+        <span class="deliverable-type">MARKDOWN · .MD</span>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="/initiative/{{ initiative.name }}/backlog/upload" enctype="multipart/form-data" class="form" data-loading="processing">
+            <div class="form-group">
+                <label for="backlog-file">{{ "backlog.upload_file"|t }}</label>
+                <input id="backlog-file" name="backlog_file" type="file" accept=".md,text/markdown" required onchange="PMOS.validateUploadFiles(this)">
+                <div class="form-hint">{{ "backlog.upload_replace_help"|t }}</div>
+            </div>
+            <button type="submit" class="btn btn-secondary">{{ "backlog.upload_action"|t }}</button>
+        </form>
+    </div>
+</section>
+
 {% if backlog %}
 <section class="card" style="margin-top: 16px;">
     <div class="card-header">

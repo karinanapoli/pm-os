@@ -275,6 +275,46 @@ class TestGuidedSpecification:
         assert 'name="source" value="prd" checked' in page.text
         assert 'class="btn btn-ai" disabled' not in page.text
 
+    def test_uploads_complete_backlog_into_review_flow(self, client, session_base):
+        init_id = _create_initiative(client, "Imported Backlog", "INT-IMPORTED-BACKLOG")
+        content = (
+            "## Iniciativa: Fornecedores\n\n"
+            "## Épico: Consulta\n\n"
+            "### História: Consultar fornecedor\n"
+        )
+
+        uploaded = client.post(
+            f"/initiative/{init_id}/backlog/upload",
+            files={"backlog_file": ("meu-backlog.md", content, "text/markdown")},
+            follow_redirects=False,
+        )
+
+        assert uploaded.status_code == 303
+        assert "notice=backlog.uploaded" in uploaded.headers["location"]
+        page = client.get(f"/initiative/{init_id}/backlog")
+        assert "Consultar fornecedor" in page.text
+        assert "Em revisão" in page.text
+        assert f'/initiative/{init_id}/backlog/download' not in page.text
+        state_path = (
+            session_base / "workspace" / "initiatives" / init_id
+            / "artifacts" / "specification.json"
+        )
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+        assert state["artifacts"]["backlog"]["source"] == "upload"
+        assert state["artifacts"]["backlog"]["source_filename"] == "meu-backlog.md"
+
+    def test_rejects_uploaded_backlog_without_required_hierarchy(self, client):
+        init_id = _create_initiative(client, "Invalid Imported Backlog", "INT-INVALID-IMPORT")
+
+        response = client.post(
+            f"/initiative/{init_id}/backlog/upload",
+            files={"backlog_file": ("incompleto.md", "# Lista\n- tarefa", "text/markdown")},
+            follow_redirects=False,
+        )
+
+        assert response.status_code == 303
+        assert "notice=backlog.upload_structure_error" in response.headers["location"]
+
     def test_guided_initiative_opens_specification_without_breaking_quick_mode(
         self, client, session_base
     ):

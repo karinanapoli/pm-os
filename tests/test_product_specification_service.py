@@ -189,6 +189,23 @@ def test_backlog_edit_and_approval_lifecycle(tmp_path):
     assert approved["approved_by"] == "pm@example.com"
 
 
+def test_imported_backlog_enters_review_and_preserves_source_filename(tmp_path):
+    service = ProductSpecificationService()
+
+    output = service.import_backlog(
+        tmp_path,
+        "## Iniciativa: Busca\n\n## Épico: Consulta\n\n### História: Buscar fornecedor",
+        filename="backlog-planejado.md",
+        actor="pm@example.com",
+    )
+
+    state = service.load(tmp_path)
+    assert output.is_file()
+    assert state["artifacts"]["backlog"]["source"] == "upload"
+    assert state["artifacts"]["backlog"]["source_filename"] == "backlog-planejado.md"
+    assert state["artifacts"]["backlog"]["review_status"] == "draft"
+
+
 def test_backlog_requires_approved_specification_and_requirements(tmp_path):
     service = ProductSpecificationService()
     service.save(tmp_path, _sections())

@@ -452,6 +452,37 @@ class ProductSpecificationService:
         self._persist(initiative_path, current)
         return output
 
+    def import_backlog(
+        self,
+        initiative_path: Path,
+        content: str,
+        *,
+        filename: str,
+        actor: str = "",
+    ) -> Path:
+        """Import a complete Markdown backlog into the normal review lifecycle."""
+        current = self.load(initiative_path)
+        normalized = self._normalize_backlog(content)
+        if not self._is_structured_backlog(normalized):
+            raise ValueError("Backlog must contain an Initiative, Epic, and Story.")
+        artifacts = initiative_path / "artifacts"
+        artifacts.mkdir(parents=True, exist_ok=True)
+        output = artifacts / "backlog.md"
+        self._version_existing(output)
+        output.write_text(normalized.rstrip() + "\n", encoding="utf-8")
+        current["artifacts"]["backlog"] = {
+            "path": "artifacts/backlog.md",
+            "derived_from_version": current.get("version", 0),
+            "status": "current",
+            "review_status": "draft",
+            "source": "upload",
+            "source_filename": filename,
+            "uploaded_at": self._now(),
+            "uploaded_by": actor,
+        }
+        self._persist(initiative_path, current)
+        return output
+
     def approve_backlog(self, initiative_path: Path, *, actor: str = "") -> dict:
         current = self.load(initiative_path)
         output = initiative_path / "artifacts" / "backlog.md"
