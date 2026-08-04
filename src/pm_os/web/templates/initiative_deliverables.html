@@ -70,17 +70,16 @@
             </div>
             <p class="spec-caption">{{ "spec.backlog_deliverable_desc"|t }}</p>
             <div class="spec-actions">
-                {% if specification.status == "approved" %}
-                <form method="POST" action="/initiative/{{ initiative.name }}/backlog/generate">
-                    <button class="btn btn-secondary btn-sm">{{ "spec.create_backlog"|t }}</button>
-                </form>
-                {% else %}
+                {% if (specification.status == "approved" or prd_exists) and not backlog_exists %}
+                <a href="/initiative/{{ initiative.name }}/backlog" class="btn btn-secondary btn-sm">{{ "spec.create_backlog"|t }}</a>
+                {% elif not backlog_exists %}
                 <div class="deliverable-prerequisite" role="note">
                     <span>{{ "spec.backlog_requires_approval"|t }}</span>
                     <a href="/initiative/{{ initiative.name }}/specification#approval" class="btn btn-secondary btn-sm">{{ "spec.review_specification"|t }}</a>
                 </div>
                 {% endif %}
                 {% if backlog_exists %}
+                <a href="/initiative/{{ initiative.name }}/backlog" class="btn btn-primary btn-sm">{{ "backlog.review"|t }}</a>
                 <a href="/initiative/{{ initiative.name }}/backlog/download" class="btn btn-ghost btn-sm">{{ "spec.download_backlog"|t }}</a>
                 {% endif %}
             </div>

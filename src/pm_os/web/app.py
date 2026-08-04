@@ -1587,31 +1587,59 @@ async def update_specification_decision_status(
 
 
 @app.post("/initiative/{initiative_name}/backlog/generate")
-async def generate_specification_backlog(request: Request, initiative_name: str):
+async def generate_specification_backlog(
+    request: Request,
+    initiative_name: str,
+    source: str = Form("specification"),
+    story_format: str = Form("user_story"),
+    granularity: str = Form("standard"),
+    epic_count: int = Form(0),
+    ai_provider: str = Form(""),
+):
     selected = _get_initiative_by_name(initiative_name, request)
     if not selected:
         return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    if story_format not in {"user_story", "job_story", "wwa"}:
+        story_format = "user_story"
+    if granularity not in {"compact", "standard", "detailed"}:
+        granularity = "standard"
+    epic_count = max(0, min(12, epic_count))
+    allowed_providers = {provider["id"] for provider in _available_ai_providers()}
+    chosen_provider = ai_provider or config_manager.get("ai_provider", "ollama")
+    if chosen_provider not in allowed_providers:
+        return RedirectResponse(
+            url=f"/initiative/{initiative_name}/backlog?notice=backlog.provider_error&notice_kind=error",
+            status_code=303,
+        )
     try:
         context = product_specification_service.backlog_context(
             selected.path,
             selected.name,
+            source=source,
+            story_format=story_format,
+            granularity=granularity,
+            epic_count=epic_count,
         )
         prompt = PromptBuilder().build(
             "create_backlog",
             context,
             lang=_get_lang(),
         )
-        generated_content = _build_ai_client().generate(prompt)
+        generated_content = _build_ai_client(chosen_provider).generate(prompt)
         product_specification_service.generate_backlog(
             selected.path,
             actor=_get_session_user_email(request),
             initiative_name=selected.name,
             generated_content=generated_content,
+            source=source,
+            story_format=story_format,
+            granularity=granularity,
+            epic_count=epic_count,
         )
     except ValueError:
         _logger.exception("Backlog generation failed")
         return RedirectResponse(
-            url=f"/initiative/{initiative_name}/specification?notice=spec.backlog_error&notice_kind=error",
+            url=f"/initiative/{initiative_name}/backlog?notice=backlog.source_error&notice_kind=error",
             status_code=303,
         )
     except (OllamaConnectionError, AIProviderError):
@@ -1620,9 +1648,86 @@ async def generate_specification_backlog(request: Request, initiative_name: str)
             selected.path,
             actor=_get_session_user_email(request),
             initiative_name=selected.name,
+            source=source,
+            story_format=story_format,
+            granularity=granularity,
+            epic_count=epic_count,
         )
     return RedirectResponse(
-        url=f"/initiative/{initiative_name}/specification?notice=spec.backlog_created",
+        url=f"/initiative/{initiative_name}/backlog?notice=backlog.created",
+        status_code=303,
+    )
+
+
+@app.get("/initiative/{initiative_name}/backlog", response_class=HTMLResponse)
+async def review_backlog(
+    request: Request,
+    initiative_name: str,
+    notice: str = "",
+    notice_kind: str = "success",
+):
+    selected = _get_initiative_by_name(initiative_name, request)
+    if not selected:
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    specification = product_specification_service.load(selected.path)
+    backlog_content = product_specification_service.load_backlog(selected.path)
+    return templates.TemplateResponse(
+        request,
+        "initiative_backlog.html",
+        _ctx(
+            request,
+            initiative=selected,
+            specification=specification,
+            backlog=backlog_content,
+            backlog_artifact=(specification.get("artifacts") or {}).get("backlog", {}),
+            prd_exists=(selected.path / "artifacts" / "prd.md").exists(),
+            available_ai_providers=_available_ai_providers(),
+            active_ai_provider=config_manager.get("ai_provider", "ollama"),
+            notice=notice,
+            notice_kind=notice_kind,
+        ),
+    )
+
+
+@app.post("/initiative/{initiative_name}/backlog/save")
+async def save_backlog(request: Request, initiative_name: str, content: str = Form(...)):
+    selected = _get_initiative_by_name(initiative_name, request)
+    if not selected:
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    try:
+        product_specification_service.save_backlog(
+            selected.path,
+            content,
+            actor=_get_session_user_email(request),
+        )
+    except ValueError:
+        return RedirectResponse(
+            url=f"/initiative/{initiative_name}/backlog?notice=backlog.save_error&notice_kind=error",
+            status_code=303,
+        )
+    return RedirectResponse(
+        url=f"/initiative/{initiative_name}/backlog?notice=backlog.saved",
+        status_code=303,
+    )
+
+
+@app.post("/initiative/{initiative_name}/backlog/approve")
+async def approve_backlog(request: Request, initiative_name: str):
+    selected = _get_initiative_by_name(initiative_name, request)
+    if not selected:
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    try:
+        product_specification_service.approve_backlog(
+            selected.path,
+            actor=_get_session_user_email(request),
+        )
+    except ValueError:
+        return RedirectResponse(
+            url=f"/initiative/{initiative_name}/backlog?notice=backlog.approve_error&notice_kind=error",
+            status_code=303,
+        )
+    return RedirectResponse(
+        url=f"/initiative/{initiative_name}/backlog?notice=backlog.approved",
         status_code=303,
     )
 

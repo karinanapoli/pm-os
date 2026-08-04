@@ -186,12 +186,14 @@ class ProductSpecificationService:
         actor: str = "",
         initiative_name: str = "",
         generated_content: str = "",
+        source: str = "specification",
+        story_format: str = "user_story",
+        granularity: str = "standard",
+        epic_count: int = 0,
     ) -> Path:
         current = self.load(initiative_path)
-        if current.get("status") != "approved":
-            raise ValueError("Approve the specification before generating a backlog.")
-
-        requirements = self._items(current["sections"].get("requirements", ""))
+        source_state = self._backlog_source_state(initiative_path, current, source)
+        requirements = self._items(source_state["sections"].get("requirements", ""))
         if not requirements:
             raise ValueError("Add at least one requirement before generating a backlog.")
 
@@ -200,8 +202,9 @@ class ProductSpecificationService:
             content = self._fallback_backlog(
                 current,
                 initiative_name or initiative_path.name,
+                sections=source_state["sections"],
             )
-        content = self._with_traceability(content, current["version"])
+        content = self._with_traceability(content, source_state["marker"])
 
         artifacts = initiative_path / "artifacts"
         artifacts.mkdir(parents=True, exist_ok=True)
@@ -212,24 +215,44 @@ class ProductSpecificationService:
             "path": "artifacts/backlog.md",
             "derived_from_version": current["version"],
             "status": "current",
+            "review_status": "draft",
+            "source": source,
+            "story_format": story_format,
+            "granularity": granularity,
+            "epic_count": epic_count,
             "generated_at": self._now(),
             "generated_by": actor,
         }
         self._persist(initiative_path, current)
         return output
 
-    def backlog_context(self, initiative_path: Path, initiative_name: str = "") -> str:
-        """Serialize the approved specification for the backlog prompt."""
+    def backlog_context(
+        self,
+        initiative_path: Path,
+        initiative_name: str = "",
+        *,
+        source: str = "specification",
+        story_format: str = "user_story",
+        granularity: str = "standard",
+        epic_count: int = 0,
+    ) -> str:
+        """Serialize the selected product artifact and generation preferences."""
         current = self.load(initiative_path)
-        if current.get("status") != "approved":
-            raise ValueError("Approve the specification before generating a backlog.")
-        if not self._items(current["sections"].get("requirements", "")):
+        source_state = self._backlog_source_state(initiative_path, current, source)
+        if not self._items(source_state["sections"].get("requirements", "")):
             raise ValueError("Add at least one requirement before generating a backlog.")
         return json.dumps(
             {
                 "initiative_name": initiative_name or initiative_path.name,
                 "specification_version": current["version"],
-                "sections": current["sections"],
+                "source": source,
+                "preferences": {
+                    "story_format": story_format,
+                    "granularity": granularity,
+                    "epic_count": epic_count or "automatic",
+                    "single_markdown_file": True,
+                },
+                "sections": source_state["sections"],
             },
             ensure_ascii=False,
             indent=2,
@@ -253,8 +276,7 @@ class ProductSpecificationService:
         return bool(initiative and epic and story)
 
     @staticmethod
-    def _with_traceability(content: str, version: int) -> str:
-        marker = f"SPEC-v{version}"
+    def _with_traceability(content: str, marker: str) -> str:
         if marker in content:
             return content
         heading, separator, remainder = content.partition("\n")
@@ -262,9 +284,15 @@ class ProductSpecificationService:
             return content
         return f"{heading}\n\n> Rastreabilidade: {marker}.\n\n{remainder.lstrip()}"
 
-    def _fallback_backlog(self, current: dict, initiative_name: str) -> str:
+    def _fallback_backlog(
+        self,
+        current: dict,
+        initiative_name: str,
+        *,
+        sections: Optional[dict] = None,
+    ) -> str:
         """Keep backlog generation useful when an AI provider returns invalid output."""
-        sections = current["sections"]
+        sections = sections or current["sections"]
         requirements = self._items(sections.get("requirements", ""))
         acceptance = self._items(sections.get("acceptance_criteria", ""))
         metrics = self._items(sections.get("metrics", "")) or ["A definir"]
@@ -303,8 +331,6 @@ class ProductSpecificationService:
             f"- {sections.get('dependencies') or 'A definir'}",
             "",
             "**Status:** [ ] Em discovery  [x] Aprovada  [ ] Em desenvolvimento  [ ] Concluída",
-            "",
-            f"> Derivado da Especificação v{current['version']}.",
             "",
             f"## Épico: {epic_name}",
             "",
@@ -368,6 +394,66 @@ class ProductSpecificationService:
                 "",
             ])
         return "\n".join(lines).rstrip()
+
+    def _backlog_source_state(self, initiative_path: Path, current: dict, source: str) -> dict:
+        if source == "prd":
+            prd_path = initiative_path / "artifacts" / "prd.md"
+            if not prd_path.is_file():
+                raise ValueError("Generate a PRD before using it as backlog source.")
+            content = prd_path.read_text(encoding="utf-8")
+            return {
+                "sections": self._sections_from_markdown(content),
+                "marker": "PRD atual",
+            }
+        if source != "specification":
+            raise ValueError("Unsupported backlog source.")
+        if current.get("status") != "approved":
+            raise ValueError("Approve the specification before generating a backlog.")
+        return {
+            "sections": current["sections"],
+            "marker": f"SPEC-v{current['version']}",
+        }
+
+    def save_backlog(self, initiative_path: Path, content: str, *, actor: str = "") -> Path:
+        current = self.load(initiative_path)
+        normalized = self._normalize_backlog(content)
+        if not self._is_structured_backlog(normalized):
+            raise ValueError("Backlog must contain an Initiative, Epic, and Story.")
+        output = initiative_path / "artifacts" / "backlog.md"
+        if not output.is_file():
+            raise ValueError("Generate a backlog before editing it.")
+        self._version_existing(output)
+        output.write_text(normalized.rstrip() + "\n", encoding="utf-8")
+        artifact = current["artifacts"].setdefault("backlog", {})
+        artifact.update({
+            "path": "artifacts/backlog.md",
+            "status": "current",
+            "review_status": "draft",
+            "updated_at": self._now(),
+            "updated_by": actor,
+        })
+        self._persist(initiative_path, current)
+        return output
+
+    def approve_backlog(self, initiative_path: Path, *, actor: str = "") -> dict:
+        current = self.load(initiative_path)
+        output = initiative_path / "artifacts" / "backlog.md"
+        artifact = current["artifacts"].get("backlog") or {}
+        if not output.is_file() or artifact.get("status") == "stale":
+            raise ValueError("Generate or review the current backlog before approval.")
+        artifact.update({
+            "review_status": "approved",
+            "approved_at": self._now(),
+            "approved_by": actor,
+        })
+        current["artifacts"]["backlog"] = artifact
+        self._persist(initiative_path, current)
+        return artifact
+
+    @staticmethod
+    def load_backlog(initiative_path: Path) -> str:
+        path = initiative_path / "artifacts" / "backlog.md"
+        return path.read_text(encoding="utf-8") if path.is_file() else ""
 
     def register_prd(self, initiative_path: Path, *, actor: str = "") -> None:
         current = self.load(initiative_path)

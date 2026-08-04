@@ -58,4 +58,5 @@ def test_prompt_builder_creates_hierarchical_backlog_prompt():
     assert "3 a 5 critérios" in prompt
     assert "aceite" in prompt
     assert "## Iniciativa: [Nome]" in prompt
+    assert "um único arquivo Markdown" in prompt
     assert '"initiative_name": "Checkout"' in prompt

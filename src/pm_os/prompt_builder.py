@@ -153,6 +153,11 @@ Use somente as informações fornecidas. Não invente pessoas, squads, métricas
 baselines, metas, prazos ou dependências. Quando um campo obrigatório não
 estiver disponível, escreva "A definir".
 
+Respeite o objeto "preferences" da entrada: use o formato de história, a
+granularidade e a quantidade de épicos solicitados. O resultado inteiro deve
+estar em um único arquivo Markdown, contendo a iniciativa, todos os épicos e
+todas as histórias; nunca divida a resposta em arquivos separados.
+
 Gere sempre:
 
 1. Uma Iniciativa com objetivo de negócio, alinhamento estratégico, tabela de
@@ -204,6 +209,10 @@ approved specification below into a complete Initiative → Epic → Story backl
 Use only the supplied information. Do not invent people, squads, metrics,
 baselines, targets, dates, or dependencies. Write "To be defined" when a
 required field is unsupported.
+
+Honor the input "preferences" object, including story format, granularity, and
+requested epic count. The complete result must be one Markdown file containing
+the initiative, every epic, and every story; never split it across files.
 
 Always generate one Initiative with business and strategic context, measurable
 success, ownership, scope, risks and status; cohesive Epics with ownership,

@@ -98,6 +98,66 @@ def test_backlog_context_contains_only_approved_specification(tmp_path):
     assert context["sections"]["requirements"].startswith("- Reutilizar")
 
 
+def test_backlog_context_includes_single_file_preferences(tmp_path):
+    service = ProductSpecificationService()
+    service.save(tmp_path, _sections())
+    service.approve(tmp_path)
+
+    context = json.loads(service.backlog_context(
+        tmp_path,
+        "Checkout",
+        story_format="job_story",
+        granularity="detailed",
+        epic_count=4,
+    ))
+
+    assert context["preferences"] == {
+        "story_format": "job_story",
+        "granularity": "detailed",
+        "epic_count": 4,
+        "single_markdown_file": True,
+    }
+
+
+def test_backlog_can_use_prd_as_source_without_approved_specification(tmp_path):
+    artifacts = tmp_path / "artifacts"
+    artifacts.mkdir()
+    (artifacts / "prd.md").write_text(
+        "# PRD\n\n## Requisitos\n\n- Consultar fornecedor\n",
+        encoding="utf-8",
+    )
+    service = ProductSpecificationService()
+
+    context = json.loads(service.backlog_context(tmp_path, "Busca", source="prd"))
+    backlog = service.generate_backlog(tmp_path, initiative_name="Busca", source="prd")
+
+    assert context["source"] == "prd"
+    assert "Consultar fornecedor" in context["sections"]["requirements"]
+    assert "PRD atual" in backlog.read_text(encoding="utf-8")
+
+
+def test_backlog_edit_and_approval_lifecycle(tmp_path):
+    service = ProductSpecificationService()
+    service.save(tmp_path, _sections())
+    service.approve(tmp_path)
+    service.generate_backlog(tmp_path, initiative_name="Checkout")
+    edited = """## Iniciativa: Checkout
+
+## Épico: Pagamento
+
+### História: Confirmar pagamento
+"""
+
+    service.save_backlog(tmp_path, edited, actor="pm@example.com")
+    draft = service.load(tmp_path)["artifacts"]["backlog"]
+    approved = service.approve_backlog(tmp_path, actor="pm@example.com")
+
+    assert draft["review_status"] == "draft"
+    assert service.load_backlog(tmp_path).startswith("## Iniciativa: Checkout")
+    assert approved["review_status"] == "approved"
+    assert approved["approved_by"] == "pm@example.com"
+
+
 def test_backlog_requires_approved_specification_and_requirements(tmp_path):
     service = ProductSpecificationService()
     service.save(tmp_path, _sections())

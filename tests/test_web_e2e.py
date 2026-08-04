@@ -296,14 +296,39 @@ class TestGuidedSpecification:
 
         backlog = client.post(
             f"/initiative/{init_id}/backlog/generate",
+            data={
+                "source": "specification",
+                "story_format": "user_story",
+                "granularity": "standard",
+                "epic_count": "0",
+                "ai_provider": "demo",
+            },
             follow_redirects=False,
         )
         assert backlog.status_code == 303
+        assert backlog.headers["location"].startswith(f"/initiative/{init_id}/backlog")
         path = (
             session_base / "workspace" / "initiatives" / init_id
             / "artifacts" / "backlog.md"
         )
         assert "SPEC-v1" in path.read_text(encoding="utf-8")
+
+        review = client.get(f"/initiative/{init_id}/backlog")
+        assert review.status_code == 200
+        assert "Criação e revisão do backlog" in review.text
+        assert "um único arquivo Markdown" in review.text
+
+        edited = client.post(
+            f"/initiative/{init_id}/backlog/save",
+            data={"content": "## Iniciativa: Checkout\n\n## Épico: Pagamento\n\n### História: Confirmar pagamento"},
+            follow_redirects=False,
+        )
+        assert "notice=backlog.saved" in edited.headers["location"]
+        approved_backlog = client.post(
+            f"/initiative/{init_id}/backlog/approve",
+            follow_redirects=False,
+        )
+        assert "notice=backlog.approved" in approved_backlog.headers["location"]
 
         page = client.get(f"/initiative/{init_id}/specification")
         assert page.status_code == 200
@@ -349,7 +374,7 @@ class TestGuidedSpecification:
             f"/initiative/{init_id}/backlog/generate",
             follow_redirects=False,
         )
-        assert "notice=spec.backlog_error" in blocked.headers["location"]
+        assert "notice=backlog.source_error" in blocked.headers["location"]
 
         deliverables = client.get(f"/initiative/{init_id}/deliverables")
         assert "BACKLOG · BETA" in deliverables.text
