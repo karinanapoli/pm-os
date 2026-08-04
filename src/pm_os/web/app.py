@@ -1663,6 +1663,7 @@ async def generate_specification_backlog(
 async def review_backlog(
     request: Request,
     initiative_name: str,
+    source: str = "",
     notice: str = "",
     notice_kind: str = "success",
 ):
@@ -1681,6 +1682,7 @@ async def review_backlog(
             backlog=backlog_content,
             backlog_artifact=(specification.get("artifacts") or {}).get("backlog", {}),
             prd_exists=(selected.path / "artifacts" / "prd.md").exists(),
+            selected_source=(source if source in {"prd", "specification"} else ""),
             available_ai_providers=_available_ai_providers(),
             active_ai_provider=config_manager.get("ai_provider", "ollama"),
             notice=notice,

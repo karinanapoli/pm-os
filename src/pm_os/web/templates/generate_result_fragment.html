@@ -137,6 +137,7 @@
 
         <div style="margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap;">
             <a href="/initiative/{{ result.initiative }}" class="btn btn-secondary btn-sm">{{ "generate.view_initiative"|t }}</a>
+            <a href="/initiative/{{ result.initiative }}/backlog?source=prd" class="btn btn-primary btn-sm">{{ "backlog.from_prd"|t }}</a>
             <a href="/initiative/{{ result.initiative }}/prd/download" class="btn btn-ghost btn-sm">⬇ {{ "generate.download_prd"|t }}</a>
         </div>
     </div>

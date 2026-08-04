@@ -1,6 +1,13 @@
 {% extends "base.html" %}
 {% block page_title %}{{ "backlog.title"|t }} · {{ initiative.name }}{% endblock %}
 
+{% block topbar_actions %}
+<div class="spec-mode-switch" aria-label="{{ 'spec.mode_label'|t }}">
+    <a href="/initiative/{{ initiative.name }}/backlog?source=prd" class="spec-mode-option {{ 'active' if selected_source == 'prd' else '' }}">{{ "backlog.mode_quick"|t }}</a>
+    <a href="/initiative/{{ initiative.name }}/backlog?source=specification" class="spec-mode-option {{ 'active' if selected_source != 'prd' else '' }}">{{ "backlog.mode_guided"|t }}</a>
+</div>
+{% endblock %}
+
 {% block content %}
 {% if notice %}
 <div class="alert alert-{{ notice_kind or 'success' }}" role="status">{{ notice|t }}</div>
@@ -49,11 +56,11 @@
                 <fieldset class="form-group">
                     <legend>{{ "backlog.source"|t }}</legend>
                     <label class="checkbox-label">
-                        <input type="radio" name="source" value="specification" {% if specification.status == 'approved' %}checked{% endif %} {% if specification.status != 'approved' %}disabled{% endif %}>
+                        <input type="radio" name="source" value="specification" {% if selected_source == 'specification' or (not selected_source and specification.status == 'approved') %}checked{% endif %} {% if specification.status != 'approved' %}disabled{% endif %}>
                         <span>{{ "backlog.source_specification"|t }}</span>
                     </label>
                     <label class="checkbox-label">
-                        <input type="radio" name="source" value="prd" {% if specification.status != 'approved' and prd_exists %}checked{% endif %} {% if not prd_exists %}disabled{% endif %}>
+                        <input type="radio" name="source" value="prd" {% if selected_source == 'prd' or (not selected_source and specification.status != 'approved' and prd_exists) %}checked{% endif %} {% if not prd_exists %}disabled{% endif %}>
                         <span>{{ "backlog.source_prd"|t }}</span>
                     </label>
                 </fieldset>

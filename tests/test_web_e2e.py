@@ -240,6 +240,26 @@ class TestInitiativeMap:
 
 
 class TestGuidedSpecification:
+    def test_quick_prd_offers_direct_backlog_journey(self, client, session_base):
+        init_id = _create_initiative(client, "Quick Backlog", "INT-QUICK-BACKLOG")
+        artifacts = (
+            session_base / "workspace" / "initiatives" / init_id / "artifacts"
+        )
+        artifacts.mkdir(exist_ok=True)
+        (artifacts / "prd.md").write_text(
+            "# PRD\n\n## Requisitos\n\n- Consultar fornecedor\n",
+            encoding="utf-8",
+        )
+
+        initiative = client.get(f"/initiative/{init_id}")
+        backlog = client.get(f"/initiative/{init_id}/backlog?source=prd")
+
+        assert f"/initiative/{init_id}/backlog?source=prd" in initiative.text
+        assert "Criar backlog deste PRD" in initiative.text
+        assert backlog.status_code == 200
+        assert "Modo rápido · PRD" in backlog.text
+        assert 'name="source" value="prd" checked' in backlog.text
+
     def test_guided_initiative_opens_specification_without_breaking_quick_mode(
         self, client, session_base
     ):

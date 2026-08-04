@@ -181,6 +181,7 @@
             <div class="prd-content markdown-body">{{ prd_content|markdown }}</div>
         </details>
         <div style="margin-top: 12px;">
+            <a href="/initiative/{{ initiative.name }}/backlog?source=prd" class="btn btn-primary btn-sm">{{ "backlog.from_prd"|t }}</a>
             <a href="/initiative/{{ initiative.name }}/prd/download" class="btn btn-ghost btn-sm">⬇ {{ "generate.download_prd"|t }}</a>
         </div>
     </div>
