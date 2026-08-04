@@ -299,7 +299,9 @@
                     <a href="/generate?initiative={{ initiative.name }}" class="btn btn-secondary btn-sm">{{ "spec.create_prd"|t }}</a>
                     {% if backlog_exists %}
                     <a href="/initiative/{{ initiative.name }}/backlog" class="btn btn-secondary btn-sm">{{ "backlog.review"|t }}</a>
+                    {% if backlog_artifact.review_status == "approved" %}
                     <a href="/initiative/{{ initiative.name }}/backlog/download" class="btn btn-ghost btn-sm">{{ "spec.download_backlog"|t }}</a>
+                    {% endif %}
                     {% endif %}
                     {% if not backlog_exists %}
                     <a href="/initiative/{{ initiative.name }}/backlog" class="btn btn-secondary btn-sm {% if specification.status != 'approved' %}disabled{% endif %}">{{ "spec.create_backlog"|t }}</a>

@@ -260,6 +260,21 @@ class TestGuidedSpecification:
         assert "Modo rápido · PRD" in backlog.text
         assert 'name="source" value="prd" checked' in backlog.text
 
+    def test_quick_prd_accepts_requirements_grouped_in_subsections(self, client, session_base):
+        init_id = _create_initiative(client, "Quick Nested Backlog", "INT-QUICK-NESTED")
+        artifacts = session_base / "workspace" / "initiatives" / init_id / "artifacts"
+        artifacts.mkdir(exist_ok=True)
+        (artifacts / "prd.md").write_text(
+            "# PRD\n\n## Requisitos Funcionais\n\n### Básicos\n\n- Consultar fornecedor\n",
+            encoding="utf-8",
+        )
+
+        page = client.get(f"/initiative/{init_id}/backlog?source=prd")
+
+        assert page.status_code == 200
+        assert 'name="source" value="prd" checked' in page.text
+        assert 'class="btn btn-ai" disabled' not in page.text
+
     def test_guided_initiative_opens_specification_without_breaking_quick_mode(
         self, client, session_base
     ):
@@ -337,6 +352,14 @@ class TestGuidedSpecification:
         assert review.status_code == 200
         assert "Criação e revisão do backlog" in review.text
         assert "um único arquivo Markdown" in review.text
+        assert '<option value="demo" selected>' in review.text
+        assert f'/initiative/{init_id}/backlog/download' not in review.text
+
+        blocked_download = client.get(
+            f"/initiative/{init_id}/backlog/download", follow_redirects=False
+        )
+        assert blocked_download.status_code == 303
+        assert "notice=backlog.download_requires_approval" in blocked_download.headers["location"]
 
         edited = client.post(
             f"/initiative/{init_id}/backlog/save",
@@ -362,6 +385,30 @@ class TestGuidedSpecification:
         assert "Backlog de implementação" in deliverables.text
         assert f'/initiative/{init_id}/prd/download' not in deliverables.text
         assert f'/initiative/{init_id}/backlog/download' in deliverables.text
+
+    def test_legacy_fallback_report_is_presented_with_one_actionable_warning(
+        self, client, session_base
+    ):
+        init_id = _create_initiative(client, "Legacy Validation", "INT-LEGACY-VALIDATION")
+        artifacts = session_base / "workspace" / "initiatives" / init_id / "artifacts"
+        artifacts.mkdir(exist_ok=True)
+        (artifacts / "prd.md").write_text("# PRD\n", encoding="utf-8")
+        repeated = (
+            "**Por que esta nota:** Avaliação estrutural de recuperação; "
+            "revise o conteúdo e valide novamente."
+        )
+        (artifacts / "prd-validation.md").write_text(
+            "# Relatório de Validação de PRD\n\n**Nota Geral:** 5.0/10\n\n"
+            "## Resumo\n\nResposta incompleta.\n\n## Detalhamento por Seção\n\n"
+            f"### Métricas\n\n{repeated}\n\n### Riscos\n\n{repeated}\n",
+            encoding="utf-8",
+        )
+
+        page = client.get(f"/initiative/{init_id}")
+
+        assert page.status_code == 200
+        assert page.text.count("Verificação estrutural — avaliação incompleta") == 1
+        assert "Avaliação estrutural de recuperação" not in page.text
 
     def test_records_decision_and_rejects_backlog_before_approval(self, client):
         init_id = _create_initiative(client, "Decision Flow", "INT-DECISION")
@@ -394,7 +441,7 @@ class TestGuidedSpecification:
             f"/initiative/{init_id}/backlog/generate",
             follow_redirects=False,
         )
-        assert "notice=backlog.source_error" in blocked.headers["location"]
+        assert "notice=backlog.specification_requires_approval" in blocked.headers["location"]
 
         deliverables = client.get(f"/initiative/{init_id}/deliverables")
         assert "BACKLOG · BETA" in deliverables.text

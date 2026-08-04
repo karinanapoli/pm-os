@@ -100,6 +100,30 @@ from pm_os.writers.markdown_writer import MarkdownWriter
 import logging
 _logger = logging.getLogger("pm_os")
 
+
+def _validation_report_for_display(content: str, lang: str) -> str:
+    """Collapse the repeated rationale produced by legacy fallback reports."""
+    legacy_rationales = (
+        "**Por que esta nota:** Avaliação estrutural de recuperação; revise o conteúdo e valide novamente.",
+        "**Why this score:** Structural recovery assessment; review the content and validate again.",
+    )
+    if not any(item in content for item in legacy_rationales):
+        return content
+    cleaned = content
+    for rationale in legacy_rationales:
+        cleaned = cleaned.replace(f"\n{rationale}\n", "\n")
+    warning = (
+        "> **Verificação estrutural — avaliação incompleta:** A IA não concluiu a avaliação. "
+        "As notas consideram apenas a presença e a organização das seções; revise o conteúdo e valide novamente."
+        if lang != "en"
+        else "> **Structural check — incomplete assessment:** AI did not complete the assessment. "
+        "Scores only consider section presence and organization; review the content and validate again."
+    )
+    summary_match = re.search(r"(^## (?:Resumo|Summary)\s*$)", cleaned, re.MULTILINE)
+    if summary_match:
+        return cleaned[:summary_match.start()] + warning + "\n\n" + cleaned[summary_match.start():]
+    return warning + "\n\n" + cleaned
+
 _gen_executor = ThreadPoolExecutor(max_workers=2)
 product_specification_service = ProductSpecificationService()
 
@@ -1281,7 +1305,9 @@ async def initiative_detail(
     validation_score = f"{score}/10" if score is not None else "-"
     if report_path.exists():
         try:
-            validation_report_content = report_path.read_text(encoding="utf-8")
+            validation_report_content = _validation_report_for_display(
+                report_path.read_text(encoding="utf-8"), _get_lang()
+            )
         except OSError:
             validation_report_content = ""
 
@@ -1611,6 +1637,14 @@ async def generate_specification_backlog(
             url=f"/initiative/{initiative_name}/backlog?notice=backlog.provider_error&notice_kind=error",
             status_code=303,
         )
+    source_ready, source_reason = product_specification_service.backlog_source_availability(
+        selected.path, source
+    )
+    if not source_ready:
+        return RedirectResponse(
+            url=f"/initiative/{initiative_name}/backlog?source={source}&notice={source_reason}&notice_kind=error",
+            status_code=303,
+        )
     try:
         context = product_specification_service.backlog_context(
             selected.path,
@@ -1635,6 +1669,7 @@ async def generate_specification_backlog(
             story_format=story_format,
             granularity=granularity,
             epic_count=epic_count,
+            ai_provider=chosen_provider,
         )
     except ValueError:
         _logger.exception("Backlog generation failed")
@@ -1652,6 +1687,7 @@ async def generate_specification_backlog(
             story_format=story_format,
             granularity=granularity,
             epic_count=epic_count,
+            ai_provider=chosen_provider,
         )
     return RedirectResponse(
         url=f"/initiative/{initiative_name}/backlog?notice=backlog.created",
@@ -1672,6 +1708,13 @@ async def review_backlog(
         return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
     specification = product_specification_service.load(selected.path)
     backlog_content = product_specification_service.load_backlog(selected.path)
+    backlog_artifact = (specification.get("artifacts") or {}).get("backlog", {})
+    specification_ready, specification_reason = product_specification_service.backlog_source_availability(
+        selected.path, "specification"
+    )
+    prd_ready, prd_reason = product_specification_service.backlog_source_availability(
+        selected.path, "prd"
+    )
     return templates.TemplateResponse(
         request,
         "initiative_backlog.html",
@@ -1680,9 +1723,13 @@ async def review_backlog(
             initiative=selected,
             specification=specification,
             backlog=backlog_content,
-            backlog_artifact=(specification.get("artifacts") or {}).get("backlog", {}),
+            backlog_artifact=backlog_artifact,
             prd_exists=(selected.path / "artifacts" / "prd.md").exists(),
-            selected_source=(source if source in {"prd", "specification"} else ""),
+            specification_ready=specification_ready,
+            specification_reason=specification_reason,
+            prd_ready=prd_ready,
+            prd_reason=prd_reason,
+            selected_source=(source if source in {"prd", "specification"} else backlog_artifact.get("source", "")),
             available_ai_providers=_available_ai_providers(),
             active_ai_provider=config_manager.get("ai_provider", "ollama"),
             notice=notice,
@@ -1742,6 +1789,13 @@ async def download_backlog(request: Request, initiative_name: str):
     path = selected.path / "artifacts" / "backlog.md"
     if not path.exists():
         return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    specification = product_specification_service.load(selected.path)
+    artifact = (specification.get("artifacts") or {}).get("backlog", {})
+    if artifact.get("review_status") != "approved":
+        return RedirectResponse(
+            url=f"/initiative/{initiative_name}/backlog?notice=backlog.download_requires_approval&notice_kind=error",
+            status_code=303,
+        )
     return FileResponse(
         str(path),
         media_type="text/markdown",
@@ -2148,7 +2202,9 @@ async def validate_page(request: Request, initiative_name: str):
     report_path = selected.path / "artifacts" / "prd-validation.md"
     if report_path.exists():
         try:
-            validation_report_content = report_path.read_text(encoding="utf-8")
+            validation_report_content = _validation_report_for_display(
+                report_path.read_text(encoding="utf-8"), _get_lang()
+            )
         except OSError:
             validation_report_content = ""
 

@@ -190,6 +190,7 @@ class ProductSpecificationService:
         story_format: str = "user_story",
         granularity: str = "standard",
         epic_count: int = 0,
+        ai_provider: str = "",
     ) -> Path:
         current = self.load(initiative_path)
         source_state = self._backlog_source_state(initiative_path, current, source)
@@ -220,6 +221,7 @@ class ProductSpecificationService:
             "story_format": story_format,
             "granularity": granularity,
             "epic_count": epic_count,
+            "ai_provider": ai_provider,
             "generated_at": self._now(),
             "generated_by": actor,
         }
@@ -413,6 +415,21 @@ class ProductSpecificationService:
             "sections": current["sections"],
             "marker": f"SPEC-v{current['version']}",
         }
+
+    def backlog_source_availability(self, initiative_path: Path, source: str) -> tuple[bool, str]:
+        """Return whether a source can generate a backlog and an actionable reason."""
+        current = self.load(initiative_path)
+        try:
+            source_state = self._backlog_source_state(initiative_path, current, source)
+        except ValueError:
+            if source == "specification" and current.get("status") != "approved":
+                return False, "backlog.specification_requires_approval"
+            if source == "prd":
+                return False, "backlog.prd_missing"
+            return False, "backlog.source_error"
+        if not self._items(source_state["sections"].get("requirements", "")):
+            return False, "backlog.requirements_missing"
+        return True, ""
 
     def save_backlog(self, initiative_path: Path, content: str, *, actor: str = "") -> Path:
         current = self.load(initiative_path)
@@ -707,7 +724,10 @@ class ProductSpecificationService:
         result: dict[str, list[str]] = {}
         current = ""
         for line in content.splitlines():
-            match = re.match(r"^#{2,3}\s+(.+?)\s*$", line)
+            # Level-three headings belong to their parent PRD section. Treating
+            # them as peers used to discard requirements grouped under
+            # subsections such as "Funcionalidades básicas".
+            match = re.match(r"^##\s+(.+?)\s*$", line)
             if match:
                 current = match.group(1).strip().casefold()
                 result.setdefault(current, [])

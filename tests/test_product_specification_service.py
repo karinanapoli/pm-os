@@ -136,6 +136,37 @@ def test_backlog_can_use_prd_as_source_without_approved_specification(tmp_path):
     assert "PRD atual" in backlog.read_text(encoding="utf-8")
 
 
+def test_prd_requirements_keep_content_grouped_under_level_three_headings(tmp_path):
+    artifacts = tmp_path / "artifacts"
+    artifacts.mkdir()
+    (artifacts / "prd.md").write_text(
+        "# PRD\n\n## Requisitos Funcionais\n\n### Funcionalidades básicas\n\n"
+        "- Consultar fornecedor\n\n### Funcionalidades avançadas\n\n"
+        "- Exportar relatório\n",
+        encoding="utf-8",
+    )
+    service = ProductSpecificationService()
+
+    ready, reason = service.backlog_source_availability(tmp_path, "prd")
+    context = json.loads(service.backlog_context(tmp_path, "Busca", source="prd"))
+
+    assert ready is True
+    assert reason == ""
+    assert "Consultar fornecedor" in context["sections"]["requirements"]
+    assert "Exportar relatório" in context["sections"]["requirements"]
+
+
+def test_backlog_source_availability_explains_missing_requirements(tmp_path):
+    artifacts = tmp_path / "artifacts"
+    artifacts.mkdir()
+    (artifacts / "prd.md").write_text("# PRD\n\n## Problema\n\nBusca lenta.\n", encoding="utf-8")
+
+    ready, reason = ProductSpecificationService().backlog_source_availability(tmp_path, "prd")
+
+    assert ready is False
+    assert reason == "backlog.requirements_missing"
+
+
 def test_backlog_edit_and_approval_lifecycle(tmp_path):
     service = ProductSpecificationService()
     service.save(tmp_path, _sections())

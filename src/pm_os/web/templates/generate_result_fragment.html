@@ -103,7 +103,7 @@
                             {{ "%.1f"|format(section.score) }}/10
                         </span>
                     </div>
-                    {% if section.rationale %}
+                    {% if section.rationale and not result.is_fallback %}
                     <div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;padding:10px 14px;background:rgba(255,255,255,0.03);border-radius:var(--radius);border-left:2px solid var(--accent);">
                         <strong style="color:var(--text);">{{ "validate.rationale"|t }}:</strong>
                         <p style="margin:4px 0 0 0;">{{ section.rationale }}</p>

@@ -51,50 +51,54 @@
         <span class="deliverable-type">MARKDOWN · 1 {{ "backlog.file"|t }}</span>
     </div>
     <div class="card-body">
-        <form method="POST" action="/initiative/{{ initiative.name }}/backlog/generate" class="form" data-loading="processing">
+        <form method="POST" action="/initiative/{{ initiative.name }}/backlog/generate" class="form" data-loading="processing" id="backlog-generate-form">
             <div class="spec-field-grid">
                 <fieldset class="form-group">
                     <legend>{{ "backlog.source"|t }}</legend>
                     <label class="checkbox-label">
-                        <input type="radio" name="source" value="specification" {% if selected_source == 'specification' or (not selected_source and specification.status == 'approved') %}checked{% endif %} {% if specification.status != 'approved' %}disabled{% endif %}>
+                        <input type="radio" name="source" value="specification" {% if selected_source == 'specification' or (not selected_source and specification_ready) %}checked{% endif %} {% if not specification_ready %}disabled{% endif %}>
                         <span>{{ "backlog.source_specification"|t }}</span>
                     </label>
                     <label class="checkbox-label">
-                        <input type="radio" name="source" value="prd" {% if selected_source == 'prd' or (not selected_source and specification.status != 'approved' and prd_exists) %}checked{% endif %} {% if not prd_exists %}disabled{% endif %}>
+                        <input type="radio" name="source" value="prd" {% if selected_source == 'prd' or (not selected_source and not specification_ready and prd_ready) %}checked{% endif %} {% if not prd_ready %}disabled{% endif %}>
                         <span>{{ "backlog.source_prd"|t }}</span>
                     </label>
+                    {% if selected_source == 'prd' and not prd_ready %}<div class="form-hint">{{ prd_reason|t }}</div>{% endif %}
+                    {% if selected_source != 'prd' and not specification_ready %}<div class="form-hint">{{ specification_reason|t }}</div>{% endif %}
                 </fieldset>
                 <div class="form-group">
                     <label for="story-format">{{ "backlog.story_format"|t }}</label>
                     <select id="story-format" name="story_format">
-                        <option value="user_story">User Story</option>
-                        <option value="job_story">Job Story</option>
-                        <option value="wwa">WWA</option>
+                        {% set saved_story_format = backlog_artifact.story_format or "user_story" %}
+                        <option value="user_story" {% if saved_story_format == "user_story" %}selected{% endif %}>User Story</option>
+                        <option value="job_story" {% if saved_story_format == "job_story" %}selected{% endif %}>Job Story</option>
+                        <option value="wwa" {% if saved_story_format == "wwa" %}selected{% endif %}>WWA</option>
                     </select>
                 </div>
                 <div class="form-group">
                     <label for="granularity">{{ "backlog.granularity"|t }}</label>
                     <select id="granularity" name="granularity">
-                        <option value="compact">{{ "backlog.granularity_compact"|t }}</option>
-                        <option value="standard" selected>{{ "backlog.granularity_standard"|t }}</option>
-                        <option value="detailed">{{ "backlog.granularity_detailed"|t }}</option>
+                        {% set saved_granularity = backlog_artifact.granularity or "standard" %}
+                        <option value="compact" {% if saved_granularity == "compact" %}selected{% endif %}>{{ "backlog.granularity_compact"|t }}</option>
+                        <option value="standard" {% if saved_granularity == "standard" %}selected{% endif %}>{{ "backlog.granularity_standard"|t }}</option>
+                        <option value="detailed" {% if saved_granularity == "detailed" %}selected{% endif %}>{{ "backlog.granularity_detailed"|t }}</option>
                     </select>
                 </div>
                 <div class="form-group">
                     <label for="epic-count">{{ "backlog.epic_count"|t }}</label>
-                    <input id="epic-count" name="epic_count" type="number" min="0" max="12" value="0">
+                    <input id="epic-count" name="epic_count" type="number" min="0" max="12" value="{{ backlog_artifact.epic_count or 0 }}">
                     <div class="form-hint">{{ "backlog.epic_count_help"|t }}</div>
                 </div>
                 <div class="form-group">
                     <label for="backlog-provider">{{ "spec.provider_label"|t }}</label>
                     <select id="backlog-provider" name="ai_provider">
                         {% for provider in available_ai_providers %}
-                        <option value="{{ provider.id }}" {% if provider.id == active_ai_provider %}selected{% endif %}>{{ provider.label }}</option>
+                        <option value="{{ provider.id }}" {% if provider.id == (backlog_artifact.ai_provider or active_ai_provider) %}selected{% endif %}>{{ provider.label }}</option>
                         {% endfor %}
                     </select>
                 </div>
             </div>
-            <button type="submit" class="btn btn-ai" {% if specification.status != 'approved' and not prd_exists %}disabled{% endif %}>
+            <button type="submit" class="btn btn-ai" id="backlog-generate-button" {% if (selected_source == 'prd' and not prd_ready) or (selected_source != 'prd' and not specification_ready) %}disabled{% endif %}>
                 {{ "backlog.generate"|t if not backlog else "backlog.regenerate"|t }}
             </button>
         </form>
@@ -109,7 +113,11 @@
             <p class="spec-caption">{{ "backlog.review_desc"|t }}</p>
         </div>
         <div class="spec-actions">
+            {% if backlog_artifact.review_status == "approved" %}
             <a href="/initiative/{{ initiative.name }}/backlog/download" class="btn btn-ghost btn-sm">{{ "spec.download_backlog"|t }}</a>
+            {% else %}
+            <span class="form-hint">{{ "backlog.download_requires_approval"|t }}</span>
+            {% endif %}
             {% if backlog_artifact.review_status != "approved" %}
             <form method="POST" action="/initiative/{{ initiative.name }}/backlog/approve">
                 <button class="btn btn-primary btn-sm">{{ "backlog.approve"|t }}</button>
@@ -136,4 +144,14 @@
     </div>
 </section>
 {% endif %}
+<script>
+(() => {
+    const form = document.getElementById('backlog-generate-form');
+    const button = document.getElementById('backlog-generate-button');
+    if (!form || !button) return;
+    form.querySelectorAll('input[name="source"]').forEach((radio) => {
+        radio.addEventListener('change', () => { button.disabled = !radio.checked || radio.disabled; });
+    });
+})();
+</script>
 {% endblock %}
