@@ -179,43 +179,35 @@ class ProductSpecificationService:
             return decision
         return None
 
-    def generate_backlog(self, initiative_path: Path, *, actor: str = "") -> Path:
+    def generate_backlog(
+        self,
+        initiative_path: Path,
+        *,
+        actor: str = "",
+        initiative_name: str = "",
+        generated_content: str = "",
+    ) -> Path:
         current = self.load(initiative_path)
         if current.get("status") != "approved":
             raise ValueError("Approve the specification before generating a backlog.")
 
         requirements = self._items(current["sections"].get("requirements", ""))
-        acceptance = self._items(current["sections"].get("acceptance_criteria", ""))
         if not requirements:
             raise ValueError("Add at least one requirement before generating a backlog.")
 
-        lines = [
-            "# Backlog",
-            "",
-            f"> Derivado da Especificação v{current['version']}.",
-            "",
-        ]
-        for index, requirement in enumerate(requirements, start=1):
-            criteria = acceptance[index - 1] if index <= len(acceptance) else (
-                "Critérios de aceite devem ser refinados com o time."
+        content = self._normalize_backlog(generated_content)
+        if not self._is_structured_backlog(content):
+            content = self._fallback_backlog(
+                current,
+                initiative_name or initiative_path.name,
             )
-            lines.extend([
-                f"## US-{index:03d} — {requirement}",
-                "",
-                f"**Objetivo:** {requirement}",
-                "",
-                "**Critérios de aceite:**",
-                f"- {criteria}",
-                "",
-                f"**Rastreabilidade:** SPEC-v{current['version']}",
-                "",
-            ])
+        content = self._with_traceability(content, current["version"])
 
         artifacts = initiative_path / "artifacts"
         artifacts.mkdir(parents=True, exist_ok=True)
         output = artifacts / "backlog.md"
         self._version_existing(output)
-        output.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
+        output.write_text(content.rstrip() + "\n", encoding="utf-8")
         current["artifacts"]["backlog"] = {
             "path": "artifacts/backlog.md",
             "derived_from_version": current["version"],
@@ -225,6 +217,157 @@ class ProductSpecificationService:
         }
         self._persist(initiative_path, current)
         return output
+
+    def backlog_context(self, initiative_path: Path, initiative_name: str = "") -> str:
+        """Serialize the approved specification for the backlog prompt."""
+        current = self.load(initiative_path)
+        if current.get("status") != "approved":
+            raise ValueError("Approve the specification before generating a backlog.")
+        if not self._items(current["sections"].get("requirements", "")):
+            raise ValueError("Add at least one requirement before generating a backlog.")
+        return json.dumps(
+            {
+                "initiative_name": initiative_name or initiative_path.name,
+                "specification_version": current["version"],
+                "sections": current["sections"],
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+
+    @staticmethod
+    def _normalize_backlog(content: str) -> str:
+        candidate = str(content or "").strip()
+        fenced = re.fullmatch(
+            r"```(?:markdown|md)?\s*(.*?)\s*```",
+            candidate,
+            re.DOTALL | re.IGNORECASE,
+        )
+        return fenced.group(1).strip() if fenced else candidate
+
+    @staticmethod
+    def _is_structured_backlog(content: str) -> bool:
+        initiative = re.search(r"^## (?:Iniciativa|Initiative):\s*\S", content, re.MULTILINE)
+        epic = re.search(r"^## (?:Épico|Epic):\s*\S", content, re.MULTILINE)
+        story = re.search(r"^### (?:História|Story):\s*\S", content, re.MULTILINE)
+        return bool(initiative and epic and story)
+
+    @staticmethod
+    def _with_traceability(content: str, version: int) -> str:
+        marker = f"SPEC-v{version}"
+        if marker in content:
+            return content
+        heading, separator, remainder = content.partition("\n")
+        if not separator:
+            return content
+        return f"{heading}\n\n> Rastreabilidade: {marker}.\n\n{remainder.lstrip()}"
+
+    def _fallback_backlog(self, current: dict, initiative_name: str) -> str:
+        """Keep backlog generation useful when an AI provider returns invalid output."""
+        sections = current["sections"]
+        requirements = self._items(sections.get("requirements", ""))
+        acceptance = self._items(sections.get("acceptance_criteria", ""))
+        metrics = self._items(sections.get("metrics", "")) or ["A definir"]
+        epic_name = "Entrega inicial"
+        story_names = [f"US-{index:03d} — {item}" for index, item in enumerate(requirements, 1)]
+        lines = [
+            f"## Iniciativa: {initiative_name}",
+            "",
+            f"**Objetivo de negócio:** {sections.get('outcome') or 'A definir'}",
+            "",
+            "**Alinhamento estratégico:** A definir",
+            "",
+            "**Métricas de sucesso**",
+            "",
+            "| Métrica | Baseline atual | Meta | Prazo |",
+            "|---|---|---|---|",
+        ]
+        lines.extend(f"| {metric} | A definir | A definir | A definir |" for metric in metrics)
+        lines.extend([
+            "",
+            "**Squads envolvidos:** A definir",
+            "",
+            "**Horizonte temporal:** A definir",
+            "",
+            "**Épicos que compõem esta iniciativa**",
+            "",
+            f"- [ ] {epic_name}",
+            "",
+            "**Fora do escopo desta iniciativa**",
+            "",
+            f"- {sections.get('out_of_scope') or 'A definir'}",
+            "",
+            "**Riscos e dependências macro**",
+            "",
+            f"- {sections.get('risks') or 'A definir'}",
+            f"- {sections.get('dependencies') or 'A definir'}",
+            "",
+            "**Status:** [ ] Em discovery  [x] Aprovada  [ ] Em desenvolvimento  [ ] Concluída",
+            "",
+            f"> Derivado da Especificação v{current['version']}.",
+            "",
+            f"## Épico: {epic_name}",
+            "",
+            f"**Iniciativa pai:** {initiative_name}",
+            "",
+            "**Squad responsável:** A definir | **PM:** A definir | **Tech Lead:** A definir | **Designer:** A definir",
+            "",
+            f"**Problema que resolve:** {sections.get('problem') or 'A definir'}",
+            "",
+            f"**Descrição:** {sections.get('scope') or 'A definir'}",
+            "",
+            "**Critério de conclusão do épico — Definition of Done**",
+            "",
+            f"- {sections.get('acceptance_criteria') or 'A definir'}",
+            "",
+            "**Métricas de acompanhamento**",
+            "",
+            *[f"- {metric}" for metric in metrics],
+            "",
+            "**Estimativa macro:** [ ] P  [ ] M  [ ] G",
+            "",
+            f"**Dependências:** {sections.get('dependencies') or 'Nenhuma identificada'}",
+            "",
+            "**Histórias que compõem este épico**",
+            "",
+            *[f"- [ ] {name}" for name in story_names],
+            "",
+            "**Status:** [x] Em refinamento  [ ] Pronto para dev  [ ] Em desenvolvimento  [ ] Concluído",
+            "",
+        ])
+        for index, requirement in enumerate(requirements, 1):
+            criterion = acceptance[index - 1] if index <= len(acceptance) else "A definir"
+            lines.extend([
+                f"### História: {story_names[index - 1]}",
+                "",
+                f"**Épico pai:** {epic_name}",
+                "",
+                "**Tipo:** [x] User Story  [ ] Job Story  [ ] WWA",
+                "",
+                f"> Como usuário, quero {requirement}, para que eu alcance o resultado esperado.",
+                "",
+                f"**Contexto e motivação:** {sections.get('problem') or 'A definir'}",
+                "",
+                "**Critérios de aceite**",
+                "",
+                f"1. {criterion}",
+                "2. A definir",
+                "3. A definir",
+                "",
+                "**Fora do escopo desta história**",
+                "",
+                f"- {sections.get('out_of_scope') or 'A definir'}",
+                "",
+                "**Notas de design:** A definir",
+                "",
+                f"**Notas técnicas:** {sections.get('constraints') or 'A definir'}",
+                "",
+                "**Prioridade:** [ ] P0 — crítico  [ ] P1  [ ] P2 | **Esforço:** [ ] P  [ ] M  [ ] G",
+                "",
+                "**Dependências:** Nenhuma identificada | **Requer spike?** [ ] Sim  [ ] Não",
+                "",
+            ])
+        return "\n".join(lines).rstrip()
 
     def register_prd(self, initiative_path: Path, *, actor: str = "") -> None:
         current = self.load(initiative_path)

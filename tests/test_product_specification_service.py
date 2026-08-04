@@ -54,9 +54,48 @@ def test_approval_and_backlog_keep_traceability(tmp_path):
     assert approved["status"] == "approved"
     assert approved["approved_version"] == 1
     content = backlog.read_text(encoding="utf-8")
+    assert content.startswith("## Iniciativa:")
+    assert "## Épico:" in content
+    assert "### História:" in content
     assert "US-001" in content
     assert "SPEC-v1" in content
     assert service.load(tmp_path)["artifacts"]["backlog"]["status"] == "current"
+
+
+def test_backlog_accepts_structured_ai_markdown_and_removes_fence(tmp_path):
+    service = ProductSpecificationService()
+    service.save(tmp_path, _sections())
+    service.approve(tmp_path)
+    generated = """```markdown
+## Iniciativa: Checkout
+
+## Épico: Endereço salvo
+
+### História: Reutilizar endereço
+```"""
+
+    backlog = service.generate_backlog(
+        tmp_path,
+        initiative_name="Checkout",
+        generated_content=generated,
+    )
+    content = backlog.read_text(encoding="utf-8")
+
+    assert content.startswith("## Iniciativa: Checkout")
+    assert "```" not in content
+    assert "SPEC-v1" in content
+
+
+def test_backlog_context_contains_only_approved_specification(tmp_path):
+    service = ProductSpecificationService()
+    service.save(tmp_path, _sections())
+    service.approve(tmp_path)
+
+    context = json.loads(service.backlog_context(tmp_path, "Checkout"))
+
+    assert context["initiative_name"] == "Checkout"
+    assert context["specification_version"] == 1
+    assert context["sections"]["requirements"].startswith("- Reutilizar")
 
 
 def test_backlog_requires_approved_specification_and_requirements(tmp_path):

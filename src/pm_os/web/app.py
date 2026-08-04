@@ -1592,14 +1592,34 @@ async def generate_specification_backlog(request: Request, initiative_name: str)
     if not selected:
         return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
     try:
+        context = product_specification_service.backlog_context(
+            selected.path,
+            selected.name,
+        )
+        prompt = PromptBuilder().build(
+            "create_backlog",
+            context,
+            lang=_get_lang(),
+        )
+        generated_content = _build_ai_client().generate(prompt)
         product_specification_service.generate_backlog(
             selected.path,
             actor=_get_session_user_email(request),
+            initiative_name=selected.name,
+            generated_content=generated_content,
         )
     except ValueError:
+        _logger.exception("Backlog generation failed")
         return RedirectResponse(
             url=f"/initiative/{initiative_name}/specification?notice=spec.backlog_error&notice_kind=error",
             status_code=303,
+        )
+    except (OllamaConnectionError, AIProviderError):
+        _logger.warning("AI provider unavailable; generating structured backlog fallback")
+        product_specification_service.generate_backlog(
+            selected.path,
+            actor=_get_session_user_email(request),
+            initiative_name=selected.name,
         )
     return RedirectResponse(
         url=f"/initiative/{initiative_name}/specification?notice=spec.backlog_created",
