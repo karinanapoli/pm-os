@@ -64,6 +64,7 @@ from pm_os.web.middleware import AuthMiddleware, CSRFMiddleware, NoCacheMiddlewa
 from pm_os.web.product_docs_service import ProductDocsService
 from pm_os.web.prd_validation_service import PRDValidationService
 from pm_os.web.generation_job_service import GenerationJobService
+from pm_os.web.initiative_chat_service import InitiativeChatService
 from pm_os.web.prd_generation_operation import (
     PRDGenerationOperation,
     PRDGenerationRequest,
@@ -99,6 +100,7 @@ from pm_os.web.signal_source_service import SignalSourceError, SignalSourceServi
 from pm_os.writers.markdown_writer import MarkdownWriter
 import logging
 _logger = logging.getLogger("pm_os")
+initiative_chat_service = InitiativeChatService()
 
 
 def _validation_report_for_display(content: str, lang: str) -> str:
@@ -2752,6 +2754,97 @@ async def delete_initiative(request: Request, initiative_name: str):
 
 
 # ─── Consult Documentation (Q&A) ───
+
+@app.get("/initiative/{initiative_name}/chat", response_class=HTMLResponse)
+async def initiative_chat_page(request: Request, initiative_name: str, notice: str = ""):
+    selected = _get_initiative_by_name(initiative_name, request)
+    if not selected:
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    return templates.TemplateResponse(
+        request,
+        "initiative_chat.html",
+        _ctx(
+            request,
+            initiative=selected,
+            messages=initiative_chat_service.load(selected.path),
+            error=None,
+            notice=notice,
+            mcp_count=len(_get_mcp_context_servers()),
+            available_ai_providers=_available_ai_providers(),
+            active_ai_provider=config_manager.get("ai_provider", "ollama"),
+        ),
+    )
+
+
+@app.post("/initiative/{initiative_name}/chat", response_class=HTMLResponse)
+async def ask_initiative_chat(
+    request: Request,
+    initiative_name: str,
+    question: str = Form(...),
+    use_product_docs: bool = Form(False),
+    use_mcp: bool = Form(False),
+    ai_provider: str = Form(""),
+):
+    selected = _get_initiative_by_name(initiative_name, request)
+    if not selected:
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    history = initiative_chat_service.load(selected.path)
+    error = None
+    if not question.strip():
+        error = _t("consult.empty_question", _get_lang())
+    else:
+        try:
+            service = ProductConsultationService(
+                ai_client=_build_ai_client(ai_provider),
+                initiative_repository=_repo(_get_session_squad(request)),
+                product_docs_context_loader=_product_docs_service(request).build_context,
+                mcp_context_loader=_fetch_mcp_context,
+            )
+            result = service.consult(
+                question=question,
+                initiative_names=[initiative_name],
+                use_product_docs=use_product_docs,
+                use_mcp=use_mcp,
+                lang=_get_lang(),
+                conversation=history,
+            )
+            history = initiative_chat_service.append_exchange(
+                selected.path,
+                question=question,
+                answer=result.answer,
+                actor=_get_session_user_email(request),
+                sources=result.initiatives,
+                mcp_used=result.mcp_used,
+            )
+        except (OllamaConnectionError, AIProviderError) as exc:
+            _logger.warning("Initiative assistant unavailable: %s", exc)
+            error = _t("error.ollama", _get_lang())
+    return templates.TemplateResponse(
+        request,
+        "initiative_chat.html",
+        _ctx(
+            request,
+            initiative=selected,
+            messages=history,
+            error=error,
+            notice="",
+            mcp_count=len(_get_mcp_context_servers()),
+            available_ai_providers=_available_ai_providers(),
+            active_ai_provider=ai_provider or config_manager.get("ai_provider", "ollama"),
+        ),
+    )
+
+
+@app.post("/initiative/{initiative_name}/chat/clear")
+async def clear_initiative_chat(request: Request, initiative_name: str):
+    selected = _get_initiative_by_name(initiative_name, request)
+    if not selected:
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    initiative_chat_service.clear(selected.path)
+    return RedirectResponse(
+        url=f"/initiative/{initiative_name}/chat?notice=chat.cleared",
+        status_code=303,
+    )
 
 @app.get("/consult", response_class=HTMLResponse)
 async def consult_page(request: Request):

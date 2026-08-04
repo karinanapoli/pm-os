@@ -79,3 +79,27 @@ def test_consultation_ignores_unavailable_optional_context():
     assert "Nenhum documento disponível." in ai.prompt
     assert result.initiatives == ["Missing"]
     assert result.references == []
+
+
+def test_consultation_includes_recent_chat_messages_as_context():
+    ai = FakeAIClient("Follow-up answer")
+    service = ProductConsultationService(
+        ai_client=ai,
+        initiative_repository=FakeRepository([]),
+        product_docs_context_loader=lambda: "",
+        mcp_context_loader=lambda: [],
+    )
+
+    service.consult(
+        question="And what is the main risk?",
+        initiative_names=[],
+        use_product_docs=False,
+        use_mcp=False,
+        conversation=[
+            {"role": "user", "content": "Summarize the initiative"},
+            {"role": "assistant", "content": "The initiative improves supplier search."},
+        ],
+    )
+
+    assert "Conversa anterior" in ai.prompt
+    assert "The initiative improves supplier search." in ai.prompt

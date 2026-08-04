@@ -315,6 +315,37 @@ class TestGuidedSpecification:
         assert response.status_code == 303
         assert "notice=backlog.upload_structure_error" in response.headers["location"]
 
+    def test_initiative_assistant_keeps_conversation_history(self, client, session_base):
+        init_id = _create_initiative(client, "Assistant Context", "INT-ASSISTANT")
+
+        page = client.get(f"/initiative/{init_id}/chat")
+        assert page.status_code == 200
+        assert "Assistente da iniciativa" in page.text
+        assert "Nenhuma ferramenta MCP altera dados" in page.text
+
+        response = client.post(
+            f"/initiative/{init_id}/chat",
+            data={
+                "question": "Quais são os principais riscos?",
+                "ai_provider": "demo",
+            },
+        )
+
+        assert response.status_code == 200
+        assert "Quais são os principais riscos?" in response.text
+        history_path = (
+            session_base / "workspace" / "initiatives" / init_id
+            / "artifacts" / "assistant-chat.json"
+        )
+        history = json.loads(history_path.read_text(encoding="utf-8"))
+        assert [item["role"] for item in history] == ["user", "assistant"]
+
+        cleared = client.post(
+            f"/initiative/{init_id}/chat/clear", follow_redirects=False
+        )
+        assert cleared.status_code == 303
+        assert not history_path.exists()
+
     def test_guided_initiative_opens_specification_without_breaking_quick_mode(
         self, client, session_base
     ):
