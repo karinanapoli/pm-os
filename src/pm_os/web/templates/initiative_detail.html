@@ -302,7 +302,8 @@
         </div>
         <div class="modal-actions">
             <button class="btn btn-ghost btn-sm" onclick="PMOS.closeModal('delete-doc')">{{ "archive.delete_cancel"|t }}</button>
-            <form id="deleteDocConfirm" method="POST" action="" style="display:inline;">
+            <form id="deleteDocConfirm" method="POST" action="" style="display:inline;" data-loading="deleting">
+                <input type="hidden" name="filename" id="deleteDocFilename" value="">
                 <button type="submit" class="btn btn-coral btn-sm" onclick="PMOS.closeModal('delete-doc')">{{ "archive.delete_confirm"|t }}</button>
             </form>
         </div>
@@ -317,7 +318,10 @@ document.addEventListener('DOMContentLoaded', function() {
         if (btn) {
             btn.addEventListener('click', function() {
                 var confirmForm = document.getElementById('deleteDocConfirm');
+                var filenameInput = form.querySelector('input[name="filename"]');
+                var confirmFilename = document.getElementById('deleteDocFilename');
                 confirmForm.action = form.action;
+                confirmFilename.value = filenameInput.value;
             });
         }
     });
