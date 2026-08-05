@@ -85,6 +85,32 @@ class MCPClient:
                 ) from exc
             raise MCPError(f"O servidor MCP respondeu com HTTP {exc.code}.") from exc
 
+    def call_tool(self, connection: dict, tool_name: str, arguments: dict) -> dict:
+        """Initialize one MCP session and execute one explicitly selected tool."""
+        session_id: Optional[str] = None
+        try:
+            result, session_id = self._call(connection, "initialize", {
+                "protocolVersion": PROTOCOL_VERSION,
+                "capabilities": {},
+                "clientInfo": {"name": "PM Studio", "version": "0.1.0"},
+            })
+            self._notify(connection, "notifications/initialized", session_id)
+            if not isinstance(result.get("capabilities"), dict):
+                raise MCPError("O servidor MCP não informou capacidades válidas.")
+            called, _ = self._call(
+                connection,
+                "tools/call",
+                {"name": tool_name, "arguments": arguments},
+                session_id,
+            )
+            return called
+        except urllib.error.HTTPError as exc:
+            if exc.code in {401, 403}:
+                raise MCPAuthorizationRequired(
+                    "O servidor exige autorização. Revise a autenticação da conexão."
+                ) from exc
+            raise MCPError(f"O servidor MCP respondeu com HTTP {exc.code}.") from exc
+
     def _headers(self, connection: dict, session_id: Optional[str] = None) -> dict[str, str]:
         headers = {
             "Accept": "application/json, text/event-stream",

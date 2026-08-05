@@ -350,10 +350,10 @@
                         <strong>HTTP</strong>
                         <span>{{ "mcp.http_desc"|t }}</span>
                     </label>
-                    <label class="mcp-choice">
-                        <input type="radio" name="transport" value="stdio" onchange="updateMcpForm()">
+                    <label class="mcp-choice" {% if not stdio_mcp_enabled %}title="{{ 'mcp.stdio_disabled'|t }}"{% endif %}>
+                        <input type="radio" name="transport" value="stdio" onchange="updateMcpForm()" {% if not stdio_mcp_enabled %}disabled{% endif %}>
                         <strong>stdio</strong>
-                        <span>{{ "mcp.stdio_desc"|t }}</span>
+                        <span>{% if stdio_mcp_enabled %}{{ "mcp.stdio_desc"|t }}{% else %}{{ "mcp.stdio_disabled"|t }}{% endif %}</span>
                     </label>
                 </div>
                 <input type="hidden" name="preset" value="custom">

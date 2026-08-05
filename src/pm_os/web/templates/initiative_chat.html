@@ -33,6 +33,9 @@
                 {% if message.role == 'assistant' and message.sources %}
                 <div class="form-hint" style="margin-top:10px;">{{ "chat.sources"|t }}: {{ message.sources|join(', ') }}</div>
                 {% endif %}
+                {% if message.role == 'assistant' and message.mcp_used %}
+                <div class="form-hint" style="margin-top:6px;">{{ "chat.mcp_used"|t }}: {{ message.mcp_used|join(', ') }}</div>
+                {% endif %}
             </article>
             {% endfor %}
         </div>
@@ -54,6 +57,25 @@
                     {% if mcp_count %}<label class="checkbox-label"><input type="checkbox" name="use_mcp" value="true"><span>{{ "chat.use_external"|t }} ({{ mcp_count }})</span></label>{% endif %}
                 </div>
             </div>
+            {% if mcp_tools %}
+            <fieldset class="card" style="padding:16px;margin:4px 0 16px;">
+                <legend style="padding:0 6px;font-weight:600;">{{ "chat.mcp_title"|t }}</legend>
+                <div class="form-group">
+                    <label for="chat-mcp-tool">{{ "chat.mcp_tool"|t }}</label>
+                    <select id="chat-mcp-tool" name="mcp_tool">
+                        <option value="">{{ "chat.mcp_none"|t }}</option>
+                        {% for tool in mcp_tools %}
+                        <option value="{{ tool.value }}">{{ tool.connection }} · {{ tool.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="chat-mcp-arguments">{{ "chat.mcp_arguments"|t }}</label>
+                    <textarea id="chat-mcp-arguments" name="mcp_arguments" rows="3" spellcheck="false">{}</textarea>
+                    <div class="form-hint">{{ "chat.mcp_arguments_hint"|t }}</div>
+                </div>
+            </fieldset>
+            {% endif %}
             <div class="form-hint">{{ "chat.read_only"|t }}</div>
             <button type="submit" class="btn btn-ai">{{ "chat.send"|t }}</button>
         </form>

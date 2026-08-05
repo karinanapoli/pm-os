@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block page_title %}{{ "backlog.export_title"|t }} · {{ initiative.name }}{% endblock %}
+{% block content %}
+{% if notice %}<div class="alert alert-{{ notice_kind or 'success' }}" role="status">{{ notice|t }}</div>{% endif %}
+<nav class="initiative-tabs" aria-label="{{ 'spec.navigation'|t }}">
+    <a href="/initiative/{{ initiative.name }}/backlog">{{ "backlog.tab"|t }}</a>
+    <a href="/initiative/{{ initiative.name }}/backlog/export" class="active" aria-current="page">{{ "backlog.export_tab"|t }}</a>
+</nav>
+<section class="page-header">
+    <div><p class="eyebrow">{{ initiative.name }}</p><h2>{{ "backlog.export_title"|t }}</h2><p>{{ "backlog.export_desc"|t }}</p></div>
+</section>
+<section class="card">
+    <div class="card-header"><div><h3>{{ "backlog.export_select"|t }}</h3><p class="spec-caption">{{ "backlog.export_select_help"|t }}</p></div></div>
+    <div class="card-body">
+        <form method="POST" action="/initiative/{{ initiative.name }}/backlog/export/prepare" class="form">
+            <div class="form-group"><label for="export-target">{{ "backlog.export_target"|t }}</label>
+                <select id="export-target" name="target">
+                    {% for target in targets %}<option value="{{ target }}">{{ ("backlog.export_target_" ~ target)|t }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="checkbox-group">
+                {% for item in items %}
+                <label class="checkbox-label"><input type="checkbox" name="item_ids" value="{{ item.id }}" checked><span><strong>{{ item.title }}</strong><br><small>{{ item.epic }}</small></span></label>
+                {% endfor %}
+            </div>
+            <button class="btn btn-primary" type="submit">{{ "backlog.export_prepare"|t }}</button>
+        </form>
+    </div>
+</section>
+{% if preview %}
+<section class="card" style="margin-top:16px;">
+    <div class="card-header"><div><h3>{{ "backlog.export_preview"|t }}</h3><p class="spec-caption">{{ preview.items|length }} {{ "backlog.export_items"|t }} · {{ preview.target }}</p></div></div>
+    <div class="card-body">
+        <pre style="max-height:480px;overflow:auto;white-space:pre-wrap;">{{ preview|tojson(indent=2) }}</pre>
+        {% if preview.status == "prepared" %}
+        <div class="learning-callout"><strong>{{ "backlog.export_confirm_title"|t }}</strong><span>{{ "backlog.export_confirm_help"|t }}</span></div>
+        <form method="POST" action="/initiative/{{ initiative.name }}/backlog/export/confirm">
+            <input type="hidden" name="preview_id" value="{{ preview.preview_id }}">
+            <button class="btn btn-primary" type="submit">{{ "backlog.export_confirm"|t }}</button>
+        </form>
+        {% else %}
+        <a class="btn btn-primary" href="/initiative/{{ initiative.name }}/backlog/export/download">{{ "backlog.export_download"|t }}</a>
+        {% endif %}
+    </div>
+</section>
+{% endif %}
+{% if preview.status == "confirmed" %}
+<section class="card" style="margin-top:16px;">
+    <div class="card-header"><div><h3>{{ "backlog.mcp_write_title"|t }}</h3><p class="spec-caption">{{ "backlog.mcp_write_help"|t }}</p></div></div>
+    <div class="card-body">
+        {% if write_tools %}
+        <form method="POST" action="/initiative/{{ initiative.name }}/backlog/export/mcp-write" class="form">
+            <div class="form-group"><label for="backlog-mcp-tool">{{ "backlog.mcp_write_tool"|t }}</label>
+                <select id="backlog-mcp-tool" name="mcp_tool">
+                    {% for tool in write_tools %}<option value="{{ tool.value }}">{{ tool.connection }} · {{ tool.name }}</option>{% endfor %}
+                </select>
+            </div>
+            <label class="checkbox-label"><input type="checkbox" name="confirm_write" value="yes"><span><strong>{{ "backlog.mcp_write_confirm"|t }}</strong><br><small>{{ "backlog.mcp_write_confirm_help"|t }}</small></span></label>
+            <button class="btn btn-primary" type="submit">{{ "backlog.mcp_write_action"|t }}</button>
+        </form>
+        {% else %}
+        <div class="learning-callout"><strong>{{ "backlog.mcp_write_unavailable"|t }}</strong><span>{{ "backlog.mcp_write_unavailable_help"|t }}</span></div>
+        {% endif %}
+        {% if write_receipt.executions %}
+        {% set latest = write_receipt.executions[-1] %}
+        <h4>{{ "backlog.mcp_write_result"|t }}</h4>
+        <ul class="source-list">
+            {% for item in latest.items %}<li><strong>{{ item.title }}</strong> — {{ ("backlog.mcp_status_" ~ item.status)|t }}</li>{% endfor %}
+        </ul>
+        {% endif %}
+    </div>
+</section>
+{% endif %}
+{% endblock %}

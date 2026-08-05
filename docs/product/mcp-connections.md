@@ -37,10 +37,24 @@ available tools. Registration and discovery do not authorize automatic writes.
 PM Studio records read-only or confirm-before-write intent, and it does not
 execute writing tools automatically.
 
+## Initiative assistant
+
+The initiative assistant lists discovered tools from enabled Streamable HTTP
+connections marked as `read_only`. For each message, the user explicitly
+selects one tool and provides an arguments object in JSON. PM Studio validates
+the connection and tool again on the server, executes one `tools/call`, limits
+the returned content, and labels it as untrusted external data before adding it
+to the AI context. The conversation history records the connection and tool
+that were used.
+
+Connections marked `confirm_writes`, disabled connections, stdio processes and
+tools absent from the stored discovery result cannot be called by the
+assistant. A confirmation journey for write tools remains future work.
+
 ## Current boundaries
 
 - MCP capability discovery is available for HTTP and stdio.
 - Existing legacy HTTP context sources remain compatible.
 - Generic discovered tools are not automatically injected into PRD generation.
-- OAuth browser flows and governed tool execution require separate product
-  journeys.
+- OAuth browser flows and governed write-tool execution require separate
+  product journeys.

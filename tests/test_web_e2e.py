@@ -298,7 +298,29 @@ class TestGuidedSpecification:
 
     def test_uses_uploaded_file_as_source_to_generate_backlog(self, client, session_base):
         init_id = _create_initiative(client, "Uploaded Source", "INT-UPLOADED-SOURCE")
-        content = "# Descoberta\n\nPrecisamos consultar fornecedores por CNPJ."
+        content = """# Descoberta — Alertas de ruptura de estoque
+
+## Problema
+Compradores descobrem a falta de produtos somente quando o estoque chega a zero.
+
+## Usuários
+Compradores e analistas de abastecimento.
+
+## Requisitos
+- Exibir produtos com risco de ruptura nos próximos sete dias.
+- Permitir filtros por categoria e centro de distribuição.
+- Registrar a decisão do comprador para cada alerta.
+- Notificar quando o risco de um produto mudar.
+- Manter o histórico das decisões tomadas.
+
+## Critérios de aceite
+- A lista deve carregar em até dois segundos.
+- Todo alerta deve mostrar produto, estoque atual e data estimada de ruptura.
+- A decisão salva deve permanecer disponível no histórico.
+
+## Fora do escopo
+Emissão automática de pedidos de compra.
+"""
 
         upload_page = client.get(f"/initiative/{init_id}/backlog?source=upload")
         assert 'name="source" value="upload" checked' in upload_page.text
@@ -334,6 +356,26 @@ class TestGuidedSpecification:
         assert state["artifacts"]["backlog"]["story_format"] == "automatic"
         assert state["artifacts"]["backlog_source"]["source_filename"] == "descoberta.md"
 
+        backlog_path = state_path.parent / "backlog.md"
+        backlog_content = backlog_path.read_text(encoding="utf-8")
+        assert backlog_content.startswith("## Iniciativa:")
+        assert "## Épico:" in backlog_content
+        assert "### História:" in backlog_content
+
+        approved = client.post(
+            f"/initiative/{init_id}/backlog/approve",
+            follow_redirects=False,
+        )
+        assert approved.status_code == 303
+        assert "notice=backlog.approved" in approved.headers["location"]
+
+        approved_page = client.get(f"/initiative/{init_id}/backlog")
+        assert f'/initiative/{init_id}/backlog/download' in approved_page.text
+
+        downloaded = client.get(f"/initiative/{init_id}/backlog/download")
+        assert downloaded.status_code == 200
+        assert downloaded.content.decode("utf-8") == backlog_content
+
     def test_rejects_invalid_uploaded_generation_source(self, client):
         init_id = _create_initiative(client, "Invalid Uploaded Source", "INT-INVALID-UPLOAD")
 
@@ -353,7 +395,7 @@ class TestGuidedSpecification:
         page = client.get(f"/initiative/{init_id}/chat")
         assert page.status_code == 200
         assert "Assistente da iniciativa" in page.text
-        assert "Nenhuma ferramenta MCP altera dados" in page.text
+        assert "não executa ferramentas de escrita automaticamente" in page.text
 
         response = client.post(
             f"/initiative/{init_id}/chat",
@@ -377,6 +419,58 @@ class TestGuidedSpecification:
         )
         assert cleared.status_code == 303
         assert not history_path.exists()
+
+    def test_initiative_assistant_calls_selected_read_only_mcp_tool(
+        self, client, session_base, monkeypatch
+    ):
+        from pm_os.web.app import config_manager, mcp_tool_service
+        from pm_os.web.mcp_tool_service import MCPToolResult
+
+        init_id = _create_initiative(client, "MCP Assistant", "INT-MCP-ASSISTANT")
+        connection = {
+            "id": "mcp-roadmap",
+            "name": "Roadmap",
+            "url": "https://mcp.example/mcp",
+            "type": "mcp",
+            "enabled": True,
+            "auth": {"type": "none", "secret": ""},
+            "policy": {"mode": "read_only", "allowed_tools": []},
+            "capabilities": {"tools": [{"name": "search", "description": "Search roadmap"}]},
+        }
+        config_manager.set("mcp_servers", [connection])
+        captured = {}
+
+        def execute(_connections, selection, arguments):
+            captured.update(selection=selection, arguments=arguments)
+            return MCPToolResult("Roadmap", "search", '{"items":["Risco de prazo"]}')
+
+        monkeypatch.setattr(mcp_tool_service, "execute", execute)
+
+        page = client.get(f"/initiative/{init_id}/chat")
+        assert "Chamar uma ferramenta MCP" in page.text
+        assert "Roadmap · search" in page.text
+
+        response = client.post(
+            f"/initiative/{init_id}/chat",
+            data={
+                "question": "Consulte o roadmap e resuma os riscos.",
+                "ai_provider": "demo",
+                "mcp_tool": "mcp-roadmap::search",
+                "mcp_arguments": '{"query":"riscos"}',
+            },
+        )
+
+        assert response.status_code == 200
+        assert captured == {
+            "selection": "mcp-roadmap::search",
+            "arguments": '{"query":"riscos"}',
+        }
+        history_path = (
+            session_base / "workspace" / "initiatives" / init_id
+            / "artifacts" / "assistant-chat.json"
+        )
+        history = json.loads(history_path.read_text(encoding="utf-8"))
+        assert history[-1]["mcp_used"] == ["Roadmap · search"]
 
     def test_guided_initiative_opens_specification_without_breaking_quick_mode(
         self, client, session_base
@@ -489,6 +583,31 @@ class TestGuidedSpecification:
         assert "Backlog de implementação" in deliverables.text
         assert f'/initiative/{init_id}/prd/download' not in deliverables.text
         assert f'/initiative/{init_id}/backlog/download' in deliverables.text
+
+        export_page = client.get(f"/initiative/{init_id}/backlog/export")
+        assert export_page.status_code == 200
+        assert "Exportar backlog" in export_page.text
+        item_ids = re.findall(r'name="item_ids" value="([a-f0-9]+)"', export_page.text)
+        assert item_ids
+
+        prepared = client.post(
+            f"/initiative/{init_id}/backlog/export/prepare",
+            data={"target": "github", "item_ids": item_ids},
+            follow_redirects=False,
+        )
+        assert "notice=backlog.export_prepared" in prepared.headers["location"]
+        preview_path = path.parent / "backlog-export-preview.json"
+        preview = json.loads(preview_path.read_text(encoding="utf-8"))
+
+        confirmed = client.post(
+            f"/initiative/{init_id}/backlog/export/confirm",
+            data={"preview_id": preview["preview_id"]},
+            follow_redirects=False,
+        )
+        assert "notice=backlog.export_confirmed" in confirmed.headers["location"]
+        download = client.get(f"/initiative/{init_id}/backlog/export/download")
+        assert download.status_code == 200
+        assert json.loads(download.content)["status"] == "confirmed"
 
     def test_legacy_fallback_report_is_presented_with_one_actionable_warning(
         self, client, session_base
@@ -681,6 +800,8 @@ class TestRouteAccessibility:
     def test_config_page(self, client):
         resp = client.get("/config")
         assert resp.status_code == 200
+        assert 'name="transport" value="stdio" onchange="updateMcpForm()" disabled' in resp.text
+        assert "desativadas por segurança" in resp.text
 
     def test_new_initiative_page(self, client):
         resp = client.get("/initiatives/new")
@@ -1411,9 +1532,13 @@ class TestAuth:
             "email": self.USER_EMAIL,
             "password": self.USER_PASS,
         })
-        resp = unauth_client.get("/logout", follow_redirects=False)
+        resp = unauth_client.post("/logout", follow_redirects=False)
         assert resp.status_code == 302
         assert resp.headers["location"] == "/login"
+
+        session_still_required = unauth_client.get("/", follow_redirects=False)
+        assert session_still_required.status_code == 302
+        assert session_still_required.headers["location"] == "/login"
 
 
 # ═══════════════════════════════════════════
@@ -1421,6 +1546,33 @@ class TestAuth:
 # ═══════════════════════════════════════════
 
 class TestConfiguration:
+    def test_non_admin_cannot_access_global_configuration(
+        self, unauth_client, session_base
+    ):
+        owner = "owner@pmstudio.app"
+        member = "member@pmstudio.app"
+        password = "secure1234"
+        cfg = json.loads((session_base / ".pm_os" / "config.json").read_text())
+        cfg["users"] = {
+            owner: hashlib.sha256(password.encode()).hexdigest(),
+            member: hashlib.sha256(password.encode()).hexdigest(),
+        }
+        cfg["installation_admins"] = [owner]
+        cfg["auth_bypass_localhost"] = False
+        (session_base / ".pm_os" / "config.json").write_text(json.dumps(cfg), encoding="utf-8")
+        from pm_os.web.app import config_manager
+        config_manager.set_all(cfg)
+
+        unauth_client.post("/login", data={"email": member, "password": password})
+
+        assert unauth_client.get("/config").status_code == 403
+        blocked_write = unauth_client.post("/config/mcp/add", data={
+            "name": "Blocked",
+            "url": "https://example.com/mcp",
+        })
+        assert blocked_write.status_code == 403
+        assert config_manager.get("mcp_servers") == []
+
     def test_save_config(self, client, session_base):
         resp = client.post("/config", data={
             "model": "gemma4:e2b",
@@ -1461,8 +1613,9 @@ class TestConfiguration:
         assert server["status"]["state"] == "authorization_required"
 
     def test_adds_generic_stdio_server_and_protects_environment(
-        self, client, session_base
+        self, client, session_base, monkeypatch
     ):
+        monkeypatch.setenv("PM_OS_ENABLE_STDIO_MCP", "1")
         response = client.post("/config/mcp/add", data={
             "name": "Local Files",
             "transport": "stdio",
@@ -1485,6 +1638,20 @@ class TestConfiguration:
             "@modelcontextprotocol/server-filesystem",
             "/tmp/docs",
         ]
+
+    def test_rejects_stdio_mcp_by_default(self, client, session_base, monkeypatch):
+        monkeypatch.delenv("PM_OS_ENABLE_STDIO_MCP", raising=False)
+
+        response = client.post("/config/mcp/add", data={
+            "name": "Unexpected command",
+            "transport": "stdio",
+            "command": "unexpected-command",
+        })
+
+        assert response.status_code == 200
+        assert "desativadas por segurança" in response.text
+        cfg = json.loads((session_base / ".pm_os" / "config.json").read_text())
+        assert cfg["mcp_servers"] == []
 
     def test_mcp_secret_is_encrypted_and_not_rendered(self, client, session_base):
         response = client.post("/config/mcp/add", data={

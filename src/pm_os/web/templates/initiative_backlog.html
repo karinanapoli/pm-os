@@ -128,6 +128,7 @@
         <div class="backlog-review-actions">
             {% if backlog_artifact.review_status == "approved" %}
             <a href="/initiative/{{ initiative.name }}/backlog/download" class="btn btn-ghost btn-sm">{{ "spec.download_backlog"|t }}</a>
+            <a href="/initiative/{{ initiative.name }}/backlog/export" class="btn btn-primary btn-sm">{{ "backlog.export_action"|t }}</a>
             {% else %}
             <span class="form-hint">{{ "backlog.download_requires_approval"|t }}</span>
             {% endif %}

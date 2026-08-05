@@ -96,3 +96,37 @@ def test_rejects_non_mcp_response():
             "url": "https://mcp.example/mcp",
             "auth": {"type": "none"},
         })
+
+
+def test_calls_explicit_tool_with_session_and_arguments():
+    calls = []
+
+    def requester(url, **kwargs):
+        payload = json.loads(kwargs["body"])
+        calls.append(payload)
+        if payload["method"] == "initialize":
+            return _response({
+                "jsonrpc": "2.0",
+                "id": payload["id"],
+                "result": {"capabilities": {"tools": {}}},
+            }, {"mcp-session-id": "session-2"})
+        if payload["method"] == "tools/call":
+            return _response({
+                "jsonrpc": "2.0",
+                "id": payload["id"],
+                "result": {"content": [{"type": "text", "text": "Found"}]},
+            })
+        return PublicHTTPResponse(b"", url, 202, {})
+
+    result = MCPClient(requester=requester).call_tool(
+        {"url": "https://mcp.example/mcp", "auth": {"type": "none"}},
+        "search",
+        {"query": "risks"},
+    )
+
+    assert calls[-1]["method"] == "tools/call"
+    assert calls[-1]["params"] == {
+        "name": "search",
+        "arguments": {"query": "risks"},
+    }
+    assert result["content"][0]["text"] == "Found"

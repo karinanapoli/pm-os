@@ -1,6 +1,9 @@
 import asyncio
 
-from pm_os.web.middleware import CSRFMiddleware, get_form_field
+from starlette.requests import Request
+from starlette.responses import HTMLResponse, Response
+
+from pm_os.web.middleware import CSRFMiddleware, NoCacheMiddleware, get_form_field
 
 
 def test_get_form_field_reads_urlencoded_and_multipart_tokens():
@@ -79,3 +82,39 @@ def test_csrf_middleware_passes_valid_body_to_application(monkeypatch):
 
     assert received_body == b"csrf_token=correct&name=PM"
     assert sent[0]["status"] == 204
+
+
+def test_security_headers_apply_to_html_and_downloads(monkeypatch):
+    monkeypatch.setenv("PM_OS_ENV", "production")
+
+    async def html_response(_request):
+        return HTMLResponse("ok")
+
+    async def download_response(_request):
+        return Response(b"content", media_type="text/markdown")
+
+    scope = {
+        "type": "http",
+        "method": "GET",
+        "scheme": "https",
+        "path": "/",
+        "raw_path": b"/",
+        "query_string": b"",
+        "headers": [],
+        "client": ("127.0.0.1", 1234),
+        "server": ("localhost", 443),
+    }
+    request = Request(scope)
+
+    html = asyncio.run(NoCacheMiddleware(html_response).dispatch(request, html_response))
+    download = asyncio.run(NoCacheMiddleware(download_response).dispatch(request, download_response))
+
+    for response in (html, download):
+        assert response.headers["X-Content-Type-Options"] == "nosniff"
+        assert response.headers["X-Frame-Options"] == "DENY"
+        assert response.headers["Referrer-Policy"] == "strict-origin-when-cross-origin"
+        assert response.headers["Permissions-Policy"] == "camera=(), microphone=(), geolocation=()"
+        assert response.headers["Cross-Origin-Opener-Policy"] == "same-origin"
+        assert response.headers["Strict-Transport-Security"].startswith("max-age=")
+    assert "Content-Security-Policy" in html.headers
+    assert "Content-Security-Policy" not in download.headers
