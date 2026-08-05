@@ -4,7 +4,8 @@
 {% block topbar_actions %}
 <div class="spec-mode-switch" aria-label="{{ 'spec.mode_label'|t }}">
     <a href="/initiative/{{ initiative.name }}/backlog?source=prd" class="spec-mode-option {{ 'active' if selected_source == 'prd' else '' }}">{{ "backlog.mode_quick"|t }}</a>
-    <a href="/initiative/{{ initiative.name }}/backlog?source=specification" class="spec-mode-option {{ 'active' if selected_source != 'prd' else '' }}">{{ "backlog.mode_guided"|t }}</a>
+    <a href="/initiative/{{ initiative.name }}/backlog?source=specification" class="spec-mode-option {{ 'active' if selected_source not in ['prd', 'upload'] else '' }}">{{ "backlog.mode_guided"|t }}</a>
+    <a href="/initiative/{{ initiative.name }}/backlog?source=upload" class="spec-mode-option {{ 'active' if selected_source == 'upload' else '' }}">{{ "backlog.mode_upload"|t }}</a>
 </div>
 {% endblock %}
 
@@ -52,7 +53,7 @@
         <span class="deliverable-type">MARKDOWN · 1 {{ "backlog.file"|t }}</span>
     </div>
     <div class="card-body">
-        <form method="POST" action="/initiative/{{ initiative.name }}/backlog/generate" class="form" data-loading="processing" id="backlog-generate-form">
+        <form method="POST" action="/initiative/{{ initiative.name }}/backlog/generate" enctype="multipart/form-data" class="form" data-loading="processing" id="backlog-generate-form">
             <div class="spec-field-grid">
                 <fieldset class="form-group">
                     <legend>{{ "backlog.source"|t }}</legend>
@@ -64,17 +65,28 @@
                         <input type="radio" name="source" value="prd" {% if selected_source == 'prd' or (not selected_source and not specification_ready and prd_ready) %}checked{% endif %} {% if not prd_ready %}disabled{% endif %}>
                         <span>{{ "backlog.source_prd"|t }}</span>
                     </label>
+                    <label class="checkbox-label">
+                        <input type="radio" name="source" value="upload" {% if selected_source == 'upload' %}checked{% endif %}>
+                        <span>{{ "backlog.upload.source"|t }}</span>
+                    </label>
+                    <div id="backlog-upload-source" {% if selected_source != 'upload' %}hidden{% endif %} style="margin-top:10px;">
+                        <label for="backlog-source-file">{{ "backlog.upload.file"|t }}</label>
+                        <input id="backlog-source-file" name="backlog_source_file" type="file" accept=".md,.txt,text/markdown,text/plain" onchange="PMOS.validateUploadFiles(this)">
+                        <div class="form-hint">{{ "backlog.upload.help"|t }}</div>
+                    </div>
                     {% if selected_source == 'prd' and not prd_ready %}<div class="form-hint">{{ prd_reason|t }}</div>{% endif %}
                     {% if selected_source != 'prd' and not specification_ready %}<div class="form-hint">{{ specification_reason|t }}</div>{% endif %}
                 </fieldset>
                 <div class="form-group">
                     <label for="story-format">{{ "backlog.story_format"|t }}</label>
                     <select id="story-format" name="story_format">
-                        {% set saved_story_format = backlog_artifact.story_format or "user_story" %}
+                        {% set saved_story_format = backlog_artifact.story_format or "automatic" %}
+                        <option value="automatic" {% if saved_story_format == "automatic" %}selected{% endif %}>{{ "backlog.story_format_automatic"|t }}</option>
                         <option value="user_story" {% if saved_story_format == "user_story" %}selected{% endif %}>User Story</option>
+                        <option value="technical_story" {% if saved_story_format == "technical_story" %}selected{% endif %}>Technical Story</option>
                         <option value="job_story" {% if saved_story_format == "job_story" %}selected{% endif %}>Job Story</option>
-                        <option value="wwa" {% if saved_story_format == "wwa" %}selected{% endif %}>WWA</option>
                     </select>
+                    <div class="form-hint">{{ "backlog.story_format_help"|t }}</div>
                 </div>
                 <div class="form-group">
                     <label for="granularity">{{ "backlog.granularity"|t }}</label>
@@ -99,29 +111,9 @@
                     </select>
                 </div>
             </div>
-            <button type="submit" class="btn btn-ai" id="backlog-generate-button" {% if (selected_source == 'prd' and not prd_ready) or (selected_source != 'prd' and not specification_ready) %}disabled{% endif %}>
+            <button type="submit" class="btn btn-ai" id="backlog-generate-button" {% if selected_source == 'upload' or (selected_source == 'prd' and not prd_ready) or (selected_source not in ['prd', 'upload'] and not specification_ready) %}disabled{% endif %}>
                 {{ "backlog.generate"|t if not backlog else "backlog.regenerate"|t }}
             </button>
-        </form>
-    </div>
-</section>
-
-<section class="card" style="margin-top: 16px;">
-    <div class="card-header">
-        <div>
-            <h3>{{ "backlog.upload_title"|t }}</h3>
-            <p class="spec-caption">{{ "backlog.upload_desc"|t }}</p>
-        </div>
-        <span class="deliverable-type">MARKDOWN · .MD</span>
-    </div>
-    <div class="card-body">
-        <form method="POST" action="/initiative/{{ initiative.name }}/backlog/upload" enctype="multipart/form-data" class="form" data-loading="processing">
-            <div class="form-group">
-                <label for="backlog-file">{{ "backlog.upload_file"|t }}</label>
-                <input id="backlog-file" name="backlog_file" type="file" accept=".md,text/markdown" required onchange="PMOS.validateUploadFiles(this)">
-                <div class="form-hint">{{ "backlog.upload_replace_help"|t }}</div>
-            </div>
-            <button type="submit" class="btn btn-secondary">{{ "backlog.upload_action"|t }}</button>
         </form>
     </div>
 </section>
@@ -169,10 +161,21 @@
 (() => {
     const form = document.getElementById('backlog-generate-form');
     const button = document.getElementById('backlog-generate-button');
+    const uploadArea = document.getElementById('backlog-upload-source');
+    const uploadInput = document.getElementById('backlog-source-file');
     if (!form || !button) return;
+    const updateSourceState = () => {
+        const selected = form.querySelector('input[name="source"]:checked');
+        const isUpload = selected && selected.value === 'upload';
+        uploadArea.hidden = !isUpload;
+        uploadInput.required = Boolean(isUpload);
+        button.disabled = !selected || selected.disabled || (isUpload && !uploadInput.files.length);
+    };
     form.querySelectorAll('input[name="source"]').forEach((radio) => {
-        radio.addEventListener('change', () => { button.disabled = !radio.checked || radio.disabled; });
+        radio.addEventListener('change', updateSourceState);
     });
+    uploadInput.addEventListener('change', updateSourceState);
+    updateSourceState();
 })();
 </script>
 {% endblock %}

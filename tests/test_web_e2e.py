@@ -275,24 +275,31 @@ class TestGuidedSpecification:
         assert 'name="source" value="prd" checked' in page.text
         assert 'class="btn btn-ai" disabled' not in page.text
 
-    def test_uploads_complete_backlog_into_review_flow(self, client, session_base):
-        init_id = _create_initiative(client, "Imported Backlog", "INT-IMPORTED-BACKLOG")
-        content = (
-            "## Iniciativa: Fornecedores\n\n"
-            "## Épico: Consulta\n\n"
-            "### História: Consultar fornecedor\n"
-        )
+    def test_uses_uploaded_file_as_source_to_generate_backlog(self, client, session_base):
+        init_id = _create_initiative(client, "Uploaded Source", "INT-UPLOADED-SOURCE")
+        content = "# Descoberta\n\nPrecisamos consultar fornecedores por CNPJ."
+
+        upload_page = client.get(f"/initiative/{init_id}/backlog?source=upload")
+        assert 'name="source" value="upload" checked' in upload_page.text
+        assert "Automático — recomendado" in upload_page.text
+        assert "backlog.upload." not in upload_page.text
 
         uploaded = client.post(
-            f"/initiative/{init_id}/backlog/upload",
-            files={"backlog_file": ("meu-backlog.md", content, "text/markdown")},
+            f"/initiative/{init_id}/backlog/generate",
+            data={
+                "source": "upload",
+                "story_format": "automatic",
+                "granularity": "standard",
+                "epic_count": "0",
+                "ai_provider": "demo",
+            },
+            files={"backlog_source_file": ("descoberta.md", content, "text/markdown")},
             follow_redirects=False,
         )
 
         assert uploaded.status_code == 303
-        assert "notice=backlog.uploaded" in uploaded.headers["location"]
+        assert "notice=backlog.created" in uploaded.headers["location"]
         page = client.get(f"/initiative/{init_id}/backlog")
-        assert "Consultar fornecedor" in page.text
         assert "Em revisão" in page.text
         assert f'/initiative/{init_id}/backlog/download' not in page.text
         state_path = (
@@ -301,19 +308,21 @@ class TestGuidedSpecification:
         )
         state = json.loads(state_path.read_text(encoding="utf-8"))
         assert state["artifacts"]["backlog"]["source"] == "upload"
-        assert state["artifacts"]["backlog"]["source_filename"] == "meu-backlog.md"
+        assert state["artifacts"]["backlog"]["story_format"] == "automatic"
+        assert state["artifacts"]["backlog_source"]["source_filename"] == "descoberta.md"
 
-    def test_rejects_uploaded_backlog_without_required_hierarchy(self, client):
-        init_id = _create_initiative(client, "Invalid Imported Backlog", "INT-INVALID-IMPORT")
+    def test_rejects_invalid_uploaded_generation_source(self, client):
+        init_id = _create_initiative(client, "Invalid Uploaded Source", "INT-INVALID-UPLOAD")
 
         response = client.post(
-            f"/initiative/{init_id}/backlog/upload",
-            files={"backlog_file": ("incompleto.md", "# Lista\n- tarefa", "text/markdown")},
+            f"/initiative/{init_id}/backlog/generate",
+            data={"source": "upload", "ai_provider": "demo"},
+            files={"backlog_source_file": ("fonte.pdf", b"invalid", "application/pdf")},
             follow_redirects=False,
         )
 
         assert response.status_code == 303
-        assert "notice=backlog.upload_structure_error" in response.headers["location"]
+        assert "notice=backlog.upload.type_error" in response.headers["location"]
 
     def test_initiative_assistant_keeps_conversation_history(self, client, session_base):
         init_id = _create_initiative(client, "Assistant Context", "INT-ASSISTANT")

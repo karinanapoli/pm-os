@@ -71,7 +71,7 @@ class FakeAIClient:
 
 **Épico pai:** Estruturação inicial
 
-**Tipo:** [x] User Story  [ ] Job Story  [ ] WWA
+**Tipo:** [x] User Story  [ ] Technical Story  [ ] Job Story
 
 > Como PM, quero visualizar um backlog estruturado, para que eu possa entender o formato antes de usar um provedor de IA.
 

@@ -1619,16 +1619,17 @@ async def generate_specification_backlog(
     request: Request,
     initiative_name: str,
     source: str = Form("specification"),
-    story_format: str = Form("user_story"),
+    story_format: str = Form("automatic"),
     granularity: str = Form("standard"),
     epic_count: int = Form(0),
     ai_provider: str = Form(""),
+    backlog_source_file: Optional[UploadFile] = File(None),
 ):
     selected = _get_initiative_by_name(initiative_name, request)
     if not selected:
         return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
-    if story_format not in {"user_story", "job_story", "wwa"}:
-        story_format = "user_story"
+    if story_format not in {"automatic", "user_story", "technical_story", "job_story"}:
+        story_format = "automatic"
     if granularity not in {"compact", "standard", "detailed"}:
         granularity = "standard"
     epic_count = max(0, min(12, epic_count))
@@ -1639,6 +1640,33 @@ async def generate_specification_backlog(
             url=f"/initiative/{initiative_name}/backlog?notice=backlog.provider_error&notice_kind=error",
             status_code=303,
         )
+    if source == "upload":
+        filename = safe_upload_filename(
+            backlog_source_file.filename if backlog_source_file else ""
+        )
+        if not filename or Path(filename).suffix.casefold() not in {".md", ".txt"}:
+            return RedirectResponse(
+                url=f"/initiative/{initiative_name}/backlog?source=upload&notice=backlog.upload.type_error&notice_kind=error",
+                status_code=303,
+            )
+        raw_content = await backlog_source_file.read(MAX_UPLOAD_FILE_BYTES + 1)
+        if len(raw_content) > MAX_UPLOAD_FILE_BYTES:
+            return RedirectResponse(
+                url=f"/initiative/{initiative_name}/backlog?source=upload&notice=backlog.upload.size_error&notice_kind=error",
+                status_code=303,
+            )
+        try:
+            product_specification_service.save_backlog_generation_source(
+                selected.path,
+                raw_content.decode("utf-8-sig"),
+                filename=filename,
+                actor=_get_session_user_email(request),
+            )
+        except (UnicodeDecodeError, ValueError):
+            return RedirectResponse(
+                url=f"/initiative/{initiative_name}/backlog?source=upload&notice=backlog.upload.content_error&notice_kind=error",
+                status_code=303,
+            )
     source_ready, source_reason = product_specification_service.backlog_source_availability(
         selected.path, source
     )
@@ -1731,7 +1759,7 @@ async def review_backlog(
             specification_reason=specification_reason,
             prd_ready=prd_ready,
             prd_reason=prd_reason,
-            selected_source=(source if source in {"prd", "specification"} else backlog_artifact.get("source", "")),
+            selected_source=(source if source in {"prd", "specification", "upload"} else backlog_artifact.get("source", "")),
             available_ai_providers=_available_ai_providers(),
             active_ai_provider=config_manager.get("ai_provider", "ollama"),
             notice=notice,
@@ -1758,46 +1786,6 @@ async def save_backlog(request: Request, initiative_name: str, content: str = Fo
         )
     return RedirectResponse(
         url=f"/initiative/{initiative_name}/backlog?notice=backlog.saved",
-        status_code=303,
-    )
-
-
-@app.post("/initiative/{initiative_name}/backlog/upload")
-async def upload_backlog(
-    request: Request,
-    initiative_name: str,
-    backlog_file: UploadFile = File(...),
-):
-    selected = _get_initiative_by_name(initiative_name, request)
-    if not selected:
-        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
-    filename = safe_upload_filename(backlog_file.filename or "")
-    if not filename or Path(filename).suffix.casefold() != ".md":
-        return RedirectResponse(
-            url=f"/initiative/{initiative_name}/backlog?notice=backlog.upload_type_error&notice_kind=error",
-            status_code=303,
-        )
-    raw_content = await backlog_file.read(MAX_UPLOAD_FILE_BYTES + 1)
-    if len(raw_content) > MAX_UPLOAD_FILE_BYTES:
-        return RedirectResponse(
-            url=f"/initiative/{initiative_name}/backlog?notice=backlog.upload_size_error&notice_kind=error",
-            status_code=303,
-        )
-    try:
-        content = raw_content.decode("utf-8-sig")
-        product_specification_service.import_backlog(
-            selected.path,
-            content,
-            filename=filename,
-            actor=_get_session_user_email(request),
-        )
-    except (UnicodeDecodeError, ValueError):
-        return RedirectResponse(
-            url=f"/initiative/{initiative_name}/backlog?notice=backlog.upload_structure_error&notice_kind=error",
-            status_code=303,
-        )
-    return RedirectResponse(
-        url=f"/initiative/{initiative_name}/backlog?notice=backlog.uploaded",
         status_code=303,
     )
 

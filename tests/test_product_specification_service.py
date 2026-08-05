@@ -189,21 +189,25 @@ def test_backlog_edit_and_approval_lifecycle(tmp_path):
     assert approved["approved_by"] == "pm@example.com"
 
 
-def test_imported_backlog_enters_review_and_preserves_source_filename(tmp_path):
+def test_uploaded_file_becomes_generation_source_and_preserves_filename(tmp_path):
     service = ProductSpecificationService()
 
-    output = service.import_backlog(
+    output = service.save_backlog_generation_source(
         tmp_path,
-        "## Iniciativa: Busca\n\n## Épico: Consulta\n\n### História: Buscar fornecedor",
-        filename="backlog-planejado.md",
+        "# Descoberta\n\nPrecisamos consultar fornecedores por CNPJ.",
+        filename="descoberta.md",
         actor="pm@example.com",
     )
 
     state = service.load(tmp_path)
     assert output.is_file()
-    assert state["artifacts"]["backlog"]["source"] == "upload"
-    assert state["artifacts"]["backlog"]["source_filename"] == "backlog-planejado.md"
-    assert state["artifacts"]["backlog"]["review_status"] == "draft"
+    assert state["artifacts"]["backlog_source"]["source_filename"] == "descoberta.md"
+    ready, reason = service.backlog_source_availability(tmp_path, "upload")
+    context = json.loads(service.backlog_context(tmp_path, source="upload"))
+    assert ready is True
+    assert reason == ""
+    assert "consultar fornecedores" in context["sections"]["requirements"]
+    assert context["preferences"]["story_format"] == "automatic"
 
 
 def test_backlog_requires_approved_specification_and_requirements(tmp_path):

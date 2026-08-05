@@ -187,7 +187,7 @@ class ProductSpecificationService:
         initiative_name: str = "",
         generated_content: str = "",
         source: str = "specification",
-        story_format: str = "user_story",
+        story_format: str = "automatic",
         granularity: str = "standard",
         epic_count: int = 0,
         ai_provider: str = "",
@@ -234,7 +234,7 @@ class ProductSpecificationService:
         initiative_name: str = "",
         *,
         source: str = "specification",
-        story_format: str = "user_story",
+        story_format: str = "automatic",
         granularity: str = "standard",
         epic_count: int = 0,
     ) -> str:
@@ -370,7 +370,7 @@ class ProductSpecificationService:
                 "",
                 f"**Épico pai:** {epic_name}",
                 "",
-                "**Tipo:** [x] User Story  [ ] Job Story  [ ] WWA",
+                "**Tipo:** [x] User Story  [ ] Technical Story  [ ] Job Story",
                 "",
                 f"> Como usuário, quero {requirement}, para que eu alcance o resultado esperado.",
                 "",
@@ -398,6 +398,19 @@ class ProductSpecificationService:
         return "\n".join(lines).rstrip()
 
     def _backlog_source_state(self, initiative_path: Path, current: dict, source: str) -> dict:
+        if source == "upload":
+            source_path = initiative_path / "artifacts" / "backlog-source.md"
+            if not source_path.is_file():
+                raise ValueError("Upload a source file before generating a backlog.")
+            content = source_path.read_text(encoding="utf-8")
+            sections = self._sections_from_markdown(content)
+            if not self._items(sections.get("requirements", "")):
+                sections["requirements"] = content
+            source_artifact = current.get("artifacts", {}).get("backlog_source", {})
+            return {
+                "sections": sections,
+                "marker": f"UPLOAD-{source_artifact.get('source_filename') or 'arquivo'}",
+            }
         if source == "prd":
             prd_path = initiative_path / "artifacts" / "prd.md"
             if not prd_path.is_file():
@@ -426,10 +439,37 @@ class ProductSpecificationService:
                 return False, "backlog.specification_requires_approval"
             if source == "prd":
                 return False, "backlog.prd_missing"
+            if source == "upload":
+                return False, "backlog.upload.source_required"
             return False, "backlog.source_error"
         if not self._items(source_state["sections"].get("requirements", "")):
             return False, "backlog.requirements_missing"
         return True, ""
+
+    def save_backlog_generation_source(
+        self,
+        initiative_path: Path,
+        content: str,
+        *,
+        filename: str,
+        actor: str = "",
+    ) -> Path:
+        normalized = content.strip()
+        if not normalized:
+            raise ValueError("The uploaded source is empty.")
+        current = self.load(initiative_path)
+        artifacts = initiative_path / "artifacts"
+        artifacts.mkdir(parents=True, exist_ok=True)
+        output = artifacts / "backlog-source.md"
+        output.write_text(normalized + "\n", encoding="utf-8")
+        current["artifacts"]["backlog_source"] = {
+            "path": "artifacts/backlog-source.md",
+            "source_filename": filename,
+            "uploaded_at": self._now(),
+            "uploaded_by": actor,
+        }
+        self._persist(initiative_path, current)
+        return output
 
     def save_backlog(self, initiative_path: Path, content: str, *, actor: str = "") -> Path:
         current = self.load(initiative_path)
@@ -449,37 +489,6 @@ class ProductSpecificationService:
             "updated_at": self._now(),
             "updated_by": actor,
         })
-        self._persist(initiative_path, current)
-        return output
-
-    def import_backlog(
-        self,
-        initiative_path: Path,
-        content: str,
-        *,
-        filename: str,
-        actor: str = "",
-    ) -> Path:
-        """Import a complete Markdown backlog into the normal review lifecycle."""
-        current = self.load(initiative_path)
-        normalized = self._normalize_backlog(content)
-        if not self._is_structured_backlog(normalized):
-            raise ValueError("Backlog must contain an Initiative, Epic, and Story.")
-        artifacts = initiative_path / "artifacts"
-        artifacts.mkdir(parents=True, exist_ok=True)
-        output = artifacts / "backlog.md"
-        self._version_existing(output)
-        output.write_text(normalized.rstrip() + "\n", encoding="utf-8")
-        current["artifacts"]["backlog"] = {
-            "path": "artifacts/backlog.md",
-            "derived_from_version": current.get("version", 0),
-            "status": "current",
-            "review_status": "draft",
-            "source": "upload",
-            "source_filename": filename,
-            "uploaded_at": self._now(),
-            "uploaded_by": actor,
-        }
         self._persist(initiative_path, current)
         return output
 

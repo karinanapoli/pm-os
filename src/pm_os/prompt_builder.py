@@ -168,8 +168,13 @@ Gere sempre:
    Designer), problema, descrição, Definition of Done, métricas, estimativa
    macro P/M/G, dependências, checklist de histórias e status.
 3. De 5 a 15 histórias independentes por épico, ordenadas primeiro por
-   dependência e depois por prioridade. Use "User Story" como padrão e escreva
-   "Como [tipo de usuário], quero [capacidade], para que [benefício]".
+   dependência e depois por prioridade. Para cada história, escolha entre User
+   Story, Technical Story e Job Story. Quando `story_format` for `automatic`,
+   escolha o tipo mais adequado individualmente: User Story para valor percebido
+   por uma persona, Job Story para uma necessidade disparada por uma situação e
+   Technical Story somente quando uma capacidade técnica for indispensável para
+   entregar ou proteger valor do produto. Se a preferência indicar um tipo
+   específico, aplique esse tipo a todas as histórias.
 4. Para cada história, inclua contexto e motivação, 3 a 5 critérios de
    aceite numerados e testáveis, fora do escopo, notas de design, notas
    técnicas, prioridade P0/P1/P2, esforço P/M/G, dependências e indicação de
@@ -182,7 +187,8 @@ Regras de qualidade:
 - Não invente limites numéricos. Use números apenas quando sustentados pela
   especificação; caso contrário, escreva "A definir".
 - Evite histórias técnicas puras e não transforme subtarefas internas ou QA em
-  histórias separadas.
+  histórias separadas. Technical Stories precisam declarar o resultado de
+  produto habilitado e critérios verificáveis, nunca apenas uma tarefa interna.
 - Não duplique requisitos entre histórias ou épicos.
 - Prefixe com "[SPIKE]" apenas histórias de investigação necessárias para
   resolver uma incerteza que bloqueie estimativa ou solução.
@@ -193,6 +199,16 @@ Formato obrigatório dos títulos:
 ## Iniciativa: [Nome]
 ## Épico: [Nome]
 ### História: [Título]
+
+Formato obrigatório de cada história:
+
+**Tipo:** [ ] User Story  [ ] Technical Story  [ ] Job Story
+
+- User Story: "Como [tipo de usuário], quero [capacidade], para que [benefício]".
+- Job Story: "Quando [situação], quero [motivação], para que [resultado]".
+- Technical Story: "Para [resultado de produto], precisamos [capacidade técnica], garantindo [critério verificável]".
+
+Marque com [x] somente o tipo escolhido.
 
 Retorne APENAS o backlog em Markdown, começando por "## Iniciativa". Não
 inclua introdução, explicações, comentários sobre o processo, documentos
@@ -217,13 +233,17 @@ the initiative, every epic, and every story; never split it across files.
 Always generate one Initiative with business and strategic context, measurable
 success, ownership, scope, risks and status; cohesive Epics with ownership,
 problem, description, Definition of Done, metrics, estimate, dependencies,
-story checklist and status; and 5 to 15 independent User Stories per Epic.
-Order stories by dependency and then priority. Every story must use "As a... I
-want... so that...", include context, 3 to 5 numbered and testable acceptance
+story checklist and status; and 5 to 15 independent stories per Epic. Choose
+User Story, Technical Story, or Job Story for every item. When story_format is
+automatic, decide per item: User Story for persona-visible value, Job Story for
+situation-triggered needs, and Technical Story only for technical capabilities
+required to deliver or protect product value. A specific preference applies to
+every story. Include context, 3 to 5 numbered and testable acceptance
 criteria, out of scope, design and technical notes, P0/P1/P2 priority, P/M/G
 effort, dependencies, and spike indication. Prefix a necessary investigation
 with "[SPIKE]". Keep each story to a deliverable unit of user or business value,
-ideally no more than three development days. Do not create pure technical,
+ideally no more than three development days. Technical Stories must state the
+product outcome they enable and verifiable criteria. Do not create pure technical,
 internal-task, or standalone QA stories, and do not duplicate requirements.
 
 Required heading format:
@@ -231,6 +251,13 @@ Required heading format:
 ## Initiative: [Name]
 ## Epic: [Name]
 ### Story: [Title]
+
+Every story must include:
+**Type:** [ ] User Story  [ ] Technical Story  [ ] Job Story
+Mark only the chosen type with [x]. Use "As a [user], I want [capability], so
+that [benefit]" for User Stories; "When [situation], I want [motivation], so
+that [outcome]" for Job Stories; and "To [product outcome], we need [technical
+capability], ensuring [verifiable criterion]" for Technical Stories.
 
 Return ONLY the Markdown backlog beginning with "## Initiative". Do not add an
 introduction, process commentary, consulted-document list, or trailing notes.
