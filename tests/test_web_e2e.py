@@ -257,7 +257,8 @@ class TestGuidedSpecification:
         assert f"/initiative/{init_id}/backlog?source=prd" in initiative.text
         assert "Criar backlog deste PRD" in initiative.text
         assert backlog.status_code == 200
-        assert "Usar PRD atual" in backlog.text
+        assert "PRD — modo rápido" in backlog.text
+        assert "backlog.source_" not in backlog.text
         assert 'name="source" value="prd" checked' in backlog.text
 
     def test_quick_prd_accepts_requirements_grouped_in_subsections(self, client, session_base):
@@ -274,8 +275,8 @@ class TestGuidedSpecification:
         assert page.status_code == 200
         assert 'name="source" value="prd" checked' in page.text
         assert 'class="btn btn-ai" disabled' not in page.text
-        assert "Usar PRD atual" in page.text
-        assert "Gere direto do PRD" in page.text
+        assert "PRD — modo rápido" in page.text
+        assert "Criação direta a partir do PRD atual" in page.text
 
         generated = client.post(
             f"/initiative/{init_id}/backlog/generate",
@@ -301,7 +302,7 @@ class TestGuidedSpecification:
 
         upload_page = client.get(f"/initiative/{init_id}/backlog?source=upload")
         assert 'name="source" value="upload" checked' in upload_page.text
-        assert "Usar arquivo de referência" in upload_page.text
+        assert "Novo arquivo" in upload_page.text
         assert "Escolher automaticamente — recomendado" in upload_page.text
         assert "Automático escolhe entre User, Technical e Job Story" in upload_page.text
         assert "backlog.upload." not in upload_page.text
