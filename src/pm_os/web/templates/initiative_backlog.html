@@ -53,40 +53,44 @@
         <span class="deliverable-type">MARKDOWN · 1 {{ "backlog.file"|t }}</span>
     </div>
     <div class="card-body">
-        <form method="POST" action="/initiative/{{ initiative.name }}/backlog/generate" enctype="multipart/form-data" class="form" data-loading="processing" id="backlog-generate-form">
-            <div class="spec-field-grid">
-                <fieldset class="form-group">
+        <form method="POST" action="/initiative/{{ initiative.name }}/backlog/generate" enctype="multipart/form-data" class="form backlog-config-form" data-loading="processing" id="backlog-generate-form">
+                <fieldset class="form-group backlog-source-fieldset">
                     <legend>{{ "backlog.source"|t }}</legend>
-                    <label class="checkbox-label">
+                    <p class="form-hint backlog-source-intro">{{ "backlog.source_help"|t }}</p>
+                    <div class="backlog-source-options">
+                    <label class="backlog-source-option">
                         <input type="radio" name="source" value="specification" {% if selected_source == 'specification' or (not selected_source and specification_ready) %}checked{% endif %} {% if not specification_ready %}disabled{% endif %}>
-                        <span>{{ "backlog.source_specification"|t }}</span>
+                        <span><strong>{{ "backlog.source_specification"|t }}</strong><small>{{ "backlog.source_specification_desc"|t }}</small></span>
                     </label>
-                    <label class="checkbox-label">
+                    <label class="backlog-source-option">
                         <input type="radio" name="source" value="prd" {% if selected_source == 'prd' or (not selected_source and not specification_ready and prd_ready) %}checked{% endif %} {% if not prd_ready %}disabled{% endif %}>
-                        <span>{{ "backlog.source_prd"|t }}</span>
+                        <span><strong>{{ "backlog.source_prd"|t }}</strong><small>{{ "backlog.source_prd_desc"|t }}</small></span>
                     </label>
-                    <label class="checkbox-label">
+                    <label class="backlog-source-option">
                         <input type="radio" name="source" value="upload" {% if selected_source == 'upload' %}checked{% endif %}>
-                        <span>{{ "backlog.upload.source"|t }}</span>
+                        <span><strong>{{ "backlog.source_file"|t }}</strong><small>{{ "backlog.source_file_desc"|t }}</small></span>
                     </label>
+                    </div>
                     <div id="backlog-upload-source" {% if selected_source != 'upload' %}hidden{% endif %} style="margin-top:10px;">
-                        <label for="backlog-source-file">{{ "backlog.upload.file"|t }}</label>
+                        <label for="backlog-source-file">{{ "backlog.source_file_label"|t }}</label>
                         <input id="backlog-source-file" name="backlog_source_file" type="file" accept=".md,.txt,text/markdown,text/plain" onchange="PMOS.validateUploadFiles(this)">
-                        <div class="form-hint">{{ "backlog.upload.help"|t }}</div>
+                        <div class="form-hint">{{ "backlog.source_file_help"|t }}</div>
                     </div>
                     {% if selected_source == 'prd' and not prd_ready %}<div class="form-hint">{{ prd_reason|t }}</div>{% endif %}
-                    {% if selected_source != 'prd' and not specification_ready %}<div class="form-hint">{{ specification_reason|t }}</div>{% endif %}
+                    {% if selected_source == 'specification' and not specification_ready %}<div class="form-hint">{{ specification_reason|t }}</div>{% endif %}
                 </fieldset>
+            <div class="spec-field-grid">
                 <div class="form-group">
                     <label for="story-format">{{ "backlog.story_format"|t }}</label>
                     <select id="story-format" name="story_format">
                         {% set saved_story_format = backlog_artifact.story_format or "automatic" %}
                         <option value="automatic" {% if saved_story_format == "automatic" %}selected{% endif %}>{{ "backlog.story_format_automatic"|t }}</option>
-                        <option value="user_story" {% if saved_story_format == "user_story" %}selected{% endif %}>User Story</option>
-                        <option value="technical_story" {% if saved_story_format == "technical_story" %}selected{% endif %}>Technical Story</option>
-                        <option value="job_story" {% if saved_story_format == "job_story" %}selected{% endif %}>Job Story</option>
+                        <option value="user_story" {% if saved_story_format == "user_story" %}selected{% endif %}>{{ "backlog.story_format_user"|t }}</option>
+                        <option value="technical_story" {% if saved_story_format == "technical_story" %}selected{% endif %}>{{ "backlog.story_format_technical"|t }}</option>
+                        <option value="job_story" {% if saved_story_format == "job_story" %}selected{% endif %}>{{ "backlog.story_format_job"|t }}</option>
                     </select>
                     <div class="form-hint">{{ "backlog.story_format_help"|t }}</div>
+                    <div class="form-hint">{{ "backlog.story_format_practices"|t }}</div>
                 </div>
                 <div class="form-group">
                     <label for="granularity">{{ "backlog.granularity"|t }}</label>

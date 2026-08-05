@@ -274,6 +274,26 @@ class TestGuidedSpecification:
         assert page.status_code == 200
         assert 'name="source" value="prd" checked' in page.text
         assert 'class="btn btn-ai" disabled' not in page.text
+        assert "Usar PRD atual" in page.text
+        assert "Caminho rápido para transformar os requisitos" in page.text
+
+        generated = client.post(
+            f"/initiative/{init_id}/backlog/generate",
+            data={
+                "source": "prd",
+                "story_format": "automatic",
+                "granularity": "standard",
+                "epic_count": "0",
+                "ai_provider": "demo",
+            },
+            follow_redirects=False,
+        )
+        assert generated.status_code == 303
+        assert "notice=backlog.created" in generated.headers["location"]
+        state_path = artifacts / "specification.json"
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+        assert state["artifacts"]["backlog"]["source"] == "prd"
+        assert state["artifacts"]["backlog"]["story_format"] == "automatic"
 
     def test_uses_uploaded_file_as_source_to_generate_backlog(self, client, session_base):
         init_id = _create_initiative(client, "Uploaded Source", "INT-UPLOADED-SOURCE")
@@ -281,7 +301,9 @@ class TestGuidedSpecification:
 
         upload_page = client.get(f"/initiative/{init_id}/backlog?source=upload")
         assert 'name="source" value="upload" checked' in upload_page.text
-        assert "Automático — recomendado" in upload_page.text
+        assert "Usar arquivo de referência" in upload_page.text
+        assert "Escolher automaticamente — recomendado" in upload_page.text
+        assert "Cada história deve entregar valor" in upload_page.text
         assert "backlog.upload." not in upload_page.text
 
         uploaded = client.post(
