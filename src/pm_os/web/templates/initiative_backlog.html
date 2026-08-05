@@ -15,7 +15,7 @@
     <a href="/initiative/{{ initiative.name }}/chat">{{ "chat.tab"|t }} <span class="spec-beta">Beta</span></a>
 </nav>
 
-<section class="page-header">
+<section class="page-header backlog-header">
     <div>
         <p class="eyebrow">{{ initiative.name }}</p>
         <h2>{{ "backlog.title"|t }}</h2>
@@ -52,15 +52,15 @@
                     <div class="backlog-source-options">
                     <label class="backlog-source-option">
                         <input type="radio" name="source" value="specification" {% if selected_source == 'specification' or (not selected_source and specification_ready) %}checked{% endif %} {% if not specification_ready %}disabled{% endif %}>
-                        <span><strong>{{ "backlog.source_specification"|t }}</strong><small>{{ "backlog.source_specification_desc"|t }}</small></span>
+                        <span class="backlog-source-copy"><strong>{{ "backlog.source_specification"|t }}</strong><small>{{ "backlog.source_specification_desc"|t }}</small></span>
                     </label>
                     <label class="backlog-source-option">
                         <input type="radio" name="source" value="prd" {% if selected_source == 'prd' or (not selected_source and not specification_ready and prd_ready) %}checked{% endif %} {% if not prd_ready %}disabled{% endif %}>
-                        <span><strong>{{ "backlog.source_prd"|t }}</strong><small>{{ "backlog.source_prd_desc"|t }}</small></span>
+                        <span class="backlog-source-copy"><strong>{{ "backlog.source_prd"|t }}</strong><small>{{ "backlog.source_prd_desc"|t }}</small></span>
                     </label>
                     <label class="backlog-source-option">
                         <input type="radio" name="source" value="upload" {% if selected_source == 'upload' %}checked{% endif %}>
-                        <span><strong>{{ "backlog.source_file"|t }}</strong><small>{{ "backlog.source_file_desc"|t }}</small></span>
+                        <span class="backlog-source-copy"><strong>{{ "backlog.source_file"|t }}</strong><small>{{ "backlog.source_file_desc"|t }}</small></span>
                     </label>
                     </div>
                     <div id="backlog-upload-source" {% if selected_source != 'upload' %}hidden{% endif %} style="margin-top:10px;">
@@ -75,11 +75,10 @@
                 <div class="form-group">
                     <label for="story-format">{{ "backlog.story_format"|t }}</label>
                     <select id="story-format" name="story_format">
-                        {% set saved_story_format = backlog_artifact.story_format or "automatic" %}
-                        <option value="automatic" {% if saved_story_format == "automatic" %}selected{% endif %}>{{ "backlog.story_format_automatic"|t }}</option>
-                        <option value="user_story" {% if saved_story_format == "user_story" %}selected{% endif %}>{{ "backlog.story_format_user"|t }}</option>
-                        <option value="technical_story" {% if saved_story_format == "technical_story" %}selected{% endif %}>{{ "backlog.story_format_technical"|t }}</option>
-                        <option value="job_story" {% if saved_story_format == "job_story" %}selected{% endif %}>{{ "backlog.story_format_job"|t }}</option>
+                        <option value="automatic" selected>{{ "backlog.story_format_automatic"|t }}</option>
+                        <option value="user_story">{{ "backlog.story_format_user"|t }}</option>
+                        <option value="technical_story">{{ "backlog.story_format_technical"|t }}</option>
+                        <option value="job_story">{{ "backlog.story_format_job"|t }}</option>
                     </select>
                     <div class="form-hint">{{ "backlog.story_format_help"|t }}</div>
                 </div>

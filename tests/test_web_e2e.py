@@ -455,6 +455,7 @@ class TestGuidedSpecification:
         assert review.status_code == 200
         assert "Criar backlog" in review.text
         assert "um único arquivo Markdown" in review.text
+        assert '<option value="automatic" selected>' in review.text
         assert '<option value="demo" selected>' in review.text
         assert f'/initiative/{init_id}/backlog/download' not in review.text
 
