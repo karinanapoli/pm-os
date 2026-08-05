@@ -51,16 +51,19 @@
                     <p class="form-hint backlog-source-intro">{{ "backlog.source_help"|t }}</p>
                     <div class="backlog-source-options">
                     <label class="backlog-source-option">
-                        <input type="radio" name="source" value="specification" {% if selected_source == 'specification' or (not selected_source and specification_ready) %}checked{% endif %} {% if not specification_ready %}disabled{% endif %}>
-                        <span class="backlog-source-copy"><strong>{{ "backlog.source_specification"|t }}</strong><small>{{ "backlog.source_specification_desc"|t }}</small></span>
+                        <input class="backlog-source-radio" type="radio" name="source" value="specification" {% if selected_source == 'specification' or (not selected_source and specification_ready) %}checked{% endif %} {% if not specification_ready %}disabled{% endif %}>
+                        <span class="backlog-source-indicator" aria-hidden="true"></span>
+                        <span class="backlog-source-copy"><span class="backlog-source-title">{{ "backlog.source_specification"|t }}</span><br><span class="backlog-source-description">{{ "backlog.source_specification_desc"|t }}</span></span>
                     </label>
                     <label class="backlog-source-option">
-                        <input type="radio" name="source" value="prd" {% if selected_source == 'prd' or (not selected_source and not specification_ready and prd_ready) %}checked{% endif %} {% if not prd_ready %}disabled{% endif %}>
-                        <span class="backlog-source-copy"><strong>{{ "backlog.source_prd"|t }}</strong><small>{{ "backlog.source_prd_desc"|t }}</small></span>
+                        <input class="backlog-source-radio" type="radio" name="source" value="prd" {% if selected_source == 'prd' or (not selected_source and not specification_ready and prd_ready) %}checked{% endif %} {% if not prd_ready %}disabled{% endif %}>
+                        <span class="backlog-source-indicator" aria-hidden="true"></span>
+                        <span class="backlog-source-copy"><span class="backlog-source-title">{{ "backlog.source_prd"|t }}</span><br><span class="backlog-source-description">{{ "backlog.source_prd_desc"|t }}</span></span>
                     </label>
                     <label class="backlog-source-option">
-                        <input type="radio" name="source" value="upload" {% if selected_source == 'upload' %}checked{% endif %}>
-                        <span class="backlog-source-copy"><strong>{{ "backlog.source_file"|t }}</strong><small>{{ "backlog.source_file_desc"|t }}</small></span>
+                        <input class="backlog-source-radio" type="radio" name="source" value="upload" {% if selected_source == 'upload' %}checked{% endif %}>
+                        <span class="backlog-source-indicator" aria-hidden="true"></span>
+                        <span class="backlog-source-copy"><span class="backlog-source-title">{{ "backlog.source_file"|t }}</span><br><span class="backlog-source-description">{{ "backlog.source_file_desc"|t }}</span></span>
                     </label>
                     </div>
                     <div id="backlog-upload-source" {% if selected_source != 'upload' %}hidden{% endif %} style="margin-top:10px;">
