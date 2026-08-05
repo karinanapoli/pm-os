@@ -258,7 +258,6 @@ class TestGuidedSpecification:
         assert "Criar backlog deste PRD" in initiative.text
         assert backlog.status_code == 200
         assert "Usar PRD atual" in backlog.text
-        assert "Caminho rápido" in backlog.text
         assert 'name="source" value="prd" checked' in backlog.text
 
     def test_quick_prd_accepts_requirements_grouped_in_subsections(self, client, session_base):
@@ -276,7 +275,7 @@ class TestGuidedSpecification:
         assert 'name="source" value="prd" checked' in page.text
         assert 'class="btn btn-ai" disabled' not in page.text
         assert "Usar PRD atual" in page.text
-        assert "Caminho rápido para transformar os requisitos" in page.text
+        assert "Gere direto do PRD" in page.text
 
         generated = client.post(
             f"/initiative/{init_id}/backlog/generate",
@@ -304,7 +303,7 @@ class TestGuidedSpecification:
         assert 'name="source" value="upload" checked' in upload_page.text
         assert "Usar arquivo de referência" in upload_page.text
         assert "Escolher automaticamente — recomendado" in upload_page.text
-        assert "Cada história deve entregar valor" in upload_page.text
+        assert "Automático escolhe entre User, Technical e Job Story" in upload_page.text
         assert "backlog.upload." not in upload_page.text
 
         uploaded = client.post(
@@ -453,7 +452,7 @@ class TestGuidedSpecification:
 
         review = client.get(f"/initiative/{init_id}/backlog")
         assert review.status_code == 200
-        assert "Criação e revisão do backlog" in review.text
+        assert "Criar backlog" in review.text
         assert "um único arquivo Markdown" in review.text
         assert '<option value="demo" selected>' in review.text
         assert f'/initiative/{init_id}/backlog/download' not in review.text

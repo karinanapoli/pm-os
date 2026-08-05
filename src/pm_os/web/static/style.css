@@ -453,7 +453,8 @@ body {
 .spec-span-2 { grid-column: 1 / -1; }
 .spec-editor textarea { min-height: 86px; resize: vertical; }
 
-.backlog-config-form { max-width: none; }
+.form.backlog-config-form,
+.form.backlog-edit-form { max-width: none; }
 .backlog-source-fieldset { padding: 0; border: 0; min-width: 0; }
 .backlog-source-fieldset legend { margin-bottom: 2px; font-size: 13px; font-weight: 700; color: var(--text-secondary); }
 .backlog-source-intro { margin-bottom: 12px; }
@@ -477,117 +478,11 @@ body {
 .backlog-source-option span { display: flex; flex-direction: column; gap: 5px; }
 .backlog-source-option strong { color: var(--text); font-size: 13px; line-height: 1.3; }
 .backlog-source-option small { color: var(--text-muted); font-size: 12px; font-weight: 400; line-height: 1.45; }
-.backlog-source-option > i {
-    display: grid;
-    place-items: center;
-    width: 28px;
-    height: 28px;
-    flex: 0 0 28px;
-    border-radius: 8px;
-    background: rgba(124,92,231,.12);
-    color: var(--primary-light);
-    font-size: 13px;
-    font-style: normal;
-}
-.backlog-source-option em { color: var(--warning); font-size: 10px; font-style: normal; line-height: 1.35; }
-
-.backlog-hero {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 24px;
-    margin-bottom: 24px;
-    padding: 24px;
-    border: 1px solid rgba(124,92,231,.18);
-    border-radius: var(--radius-lg);
-    background: radial-gradient(circle at 90% 0, rgba(34,184,217,.09), transparent 35%), linear-gradient(135deg, rgba(124,92,231,.1), rgba(20,17,31,.7));
-}
-.backlog-hero h2 { margin: 4px 0 8px; font-size: 26px; }
-.backlog-hero p { max-width: 680px; margin: 0; color: var(--text-secondary); font-size: 14px; line-height: 1.6; }
-.backlog-hero-meta { display: flex; align-items: center; gap: 10px; }
-
-.backlog-steps {
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    margin: 0 0 22px;
-    padding: 0;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    background: rgba(255,255,255,.015);
-    list-style: none;
-    overflow: hidden;
-}
-.backlog-steps li { display: flex; gap: 9px; min-width: 0; padding: 12px; border-right: 1px solid var(--border); }
-.backlog-steps li:last-child { border-right: 0; }
-.backlog-steps li > span { display: grid; place-items: center; width: 24px; height: 24px; flex: 0 0 24px; border-radius: 50%; background: rgba(255,255,255,.05); color: var(--text-muted); font-size: 11px; font-weight: 700; }
-.backlog-steps li div { display: flex; flex-direction: column; min-width: 0; }
-.backlog-steps strong { color: var(--text-muted); font-size: 11px; }
-.backlog-steps small { margin-top: 2px; overflow: hidden; color: var(--text-muted); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
-.backlog-steps li.current { background: rgba(124,92,231,.08); }
-.backlog-steps li.current > span { background: var(--primary); color: #fff; }
-.backlog-steps li.current strong { color: var(--text); }
-.backlog-steps li.done > span { background: rgba(16,185,129,.16); color: var(--success); }
-.backlog-steps li.done strong { color: var(--success); }
-
-.backlog-workspace { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 18px; align-items: start; }
-.backlog-config-card { margin: 0; overflow: hidden; }
-.backlog-section-heading { display: flex; align-items: flex-start; gap: 12px; padding: 18px 20px; border-bottom: 1px solid var(--border); }
-.backlog-section-heading h3, .backlog-review-header h3 { margin: 0 0 4px; font-size: 16px; }
-.backlog-section-heading p, .backlog-review-header p { margin: 0; color: var(--text-muted); font-size: 12px; line-height: 1.45; }
-.backlog-section-number { display: grid; place-items: center; width: 26px; height: 26px; flex: 0 0 26px; border-radius: 8px; background: rgba(124,92,231,.14); color: var(--primary-light); font-size: 12px; font-weight: 800; }
-.backlog-config-body { padding: 20px; }
-.backlog-divider { display: flex; align-items: center; gap: 10px; margin: 22px 0 16px; color: var(--text-muted); font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
-.backlog-divider::after { content: ""; height: 1px; flex: 1; background: var(--border); }
-
-.backlog-upload-panel { position: relative; margin-top: 12px; padding: 16px 16px 16px 48px; border: 1px dashed rgba(34,184,217,.35); border-radius: var(--radius); background: rgba(34,184,217,.05); }
-.backlog-upload-panel::before { content: "↑"; position: absolute; top: 16px; left: 17px; color: var(--ai-light); font-size: 20px; }
-.backlog-upload-panel label { margin: 0; color: var(--text); }
-.backlog-upload-panel input { position: absolute; inset: 0; z-index: 2; opacity: 0; cursor: pointer; }
-.backlog-upload-panel div { display: flex; flex-direction: column; gap: 3px; }
-.backlog-upload-panel strong { color: var(--ai-light); font-size: 12px; }
-.backlog-upload-panel span { color: var(--text-muted); font-size: 11px; }
-
-.backlog-quality-note { display: flex; gap: 10px; margin-top: 2px; padding: 12px 14px; border: 1px solid rgba(34,184,217,.2); border-radius: var(--radius); background: rgba(34,184,217,.05); }
-.backlog-quality-note > span { color: var(--ai-light); }
-.backlog-quality-note p { margin: 0; color: var(--text-secondary); font-size: 11px; line-height: 1.55; }
-.backlog-primary-action { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 18px -20px -20px; padding: 16px 20px; border-top: 1px solid var(--border); background: rgba(255,255,255,.015); }
-.backlog-primary-action > div { display: flex; flex-direction: column; gap: 3px; }
-.backlog-primary-action strong { color: var(--text); font-size: 12px; }
-.backlog-primary-action > div span { color: var(--text-muted); font-size: 10px; }
-.backlog-primary-action button { min-width: 190px; }
-
-.backlog-guide-card { position: sticky; top: 82px; padding: 20px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: linear-gradient(160deg, rgba(124,92,231,.08), var(--bg-card) 45%); }
-.backlog-guide-card h3 { margin: 6px 0 8px; font-size: 16px; }
-.backlog-guide-card > p { margin: 0 0 18px; color: var(--text-muted); font-size: 12px; line-height: 1.55; }
-.backlog-guide-card ul { display: flex; flex-direction: column; gap: 14px; margin: 0; padding: 0; list-style: none; }
-.backlog-guide-card li { display: flex; gap: 10px; }
-.backlog-guide-card li > span { display: grid; place-items: center; width: 24px; height: 24px; flex: 0 0 24px; border-radius: 7px; background: rgba(124,92,231,.12); color: var(--primary-light); font-size: 10px; font-weight: 800; }
-.backlog-guide-card li div { display: flex; flex-direction: column; gap: 3px; }
-.backlog-guide-card li strong { color: var(--text-secondary); font-size: 11px; }
-.backlog-guide-card li small { color: var(--text-muted); font-size: 10px; line-height: 1.4; }
-.backlog-guide-footer { display: flex; gap: 8px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); color: var(--success); font-size: 10px; line-height: 1.4; }
-
-.backlog-review-card { margin-top: 18px; overflow: hidden; }
-.backlog-review-header { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 18px 20px; border-bottom: 1px solid var(--border); }
-.backlog-review-header > div:first-child { display: flex; align-items: flex-start; gap: 12px; }
+.backlog-form-actions { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 4px; padding-top: 16px; border-top: 1px solid var(--border); }
+.backlog-form-actions > span { color: var(--text-muted); font-size: 11px; }
 .backlog-review-actions { display: flex; align-items: center; gap: 9px; }
 .backlog-review-actions form { margin: 0; }
-.backlog-review-state { display: inline-flex; align-items: center; gap: 6px; color: var(--warning); font-size: 11px; font-weight: 600; }
-.backlog-review-state i { width: 7px; height: 7px; border-radius: 50%; background: var(--warning); }
-.backlog-review-body { padding: 0; }
-.backlog-preview, .backlog-editor { border: 0; border-radius: 0; }
-.backlog-preview summary, .backlog-editor summary { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border-bottom: 1px solid var(--border); background: rgba(255,255,255,.02); }
-.backlog-preview summary span, .backlog-editor summary span { color: var(--text); font-size: 12px; font-weight: 700; }
-.backlog-preview summary small, .backlog-editor summary small { color: var(--text-muted); font-size: 10px; }
-.backlog-document { max-height: 680px; padding: 26px; overflow-y: auto; }
-.backlog-editor { margin-top: 0; border-top: 1px solid var(--border); }
-.backlog-edit-form { max-width: none; padding: 20px; }
-.backlog-edit-form textarea { min-height: 520px; font-family: var(--font-mono); font-size: 12px; line-height: 1.55; }
-
-.backlog-empty-state { display: flex; align-items: center; gap: 14px; margin-top: 18px; padding: 18px 20px; border: 1px dashed var(--border-light); border-radius: var(--radius); background: rgba(255,255,255,.015); }
-.backlog-empty-state > span { color: var(--primary-light); font-size: 25px; }
-.backlog-empty-state strong { color: var(--text-secondary); font-size: 12px; }
-.backlog-empty-state p { margin: 3px 0 0; color: var(--text-muted); font-size: 11px; }
+.backlog-edit-form textarea { min-height: 480px; font-family: var(--font-mono); font-size: 12px; line-height: 1.55; }
 
 .spec-actions {
     display: flex;
@@ -777,9 +672,6 @@ body {
 @media (max-width: 980px) {
     .spec-layout { grid-template-columns: 1fr; }
     .spec-sidebar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .backlog-workspace { grid-template-columns: 1fr; }
-    .backlog-guide-card { position: static; }
-    .backlog-guide-card ul { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 @media (max-width: 700px) {
@@ -796,21 +688,10 @@ body {
     .spec-sidebar,
     .experience-choice,
     .backlog-source-options { grid-template-columns: 1fr; }
-    .backlog-hero,
-    .backlog-primary-action,
-    .backlog-review-header { align-items: stretch; flex-direction: column; }
-    .backlog-hero-meta { justify-content: space-between; }
-    .backlog-steps { grid-template-columns: 1fr; }
-    .backlog-steps li { border-right: 0; border-bottom: 1px solid var(--border); }
-    .backlog-steps li:last-child { border-bottom: 0; }
-    .backlog-steps small { white-space: normal; }
-    .backlog-guide-card ul { grid-template-columns: 1fr; }
-    .backlog-primary-action button { width: 100%; }
+    .backlog-form-actions,
     .backlog-review-actions { align-items: stretch; flex-direction: column; }
+    .backlog-form-actions .btn,
     .backlog-review-actions .btn { width: 100%; }
-    .backlog-preview summary small,
-    .backlog-editor summary small { display: none; }
-    .backlog-document { padding: 18px; }
     .spec-span-2 { grid-column: auto; }
     .spec-actions { flex-direction: column-reverse; }
     .spec-prepare,
