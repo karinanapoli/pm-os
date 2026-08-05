@@ -257,7 +257,8 @@ class TestGuidedSpecification:
         assert f"/initiative/{init_id}/backlog?source=prd" in initiative.text
         assert "Criar backlog deste PRD" in initiative.text
         assert backlog.status_code == 200
-        assert "Modo rápido · PRD" in backlog.text
+        assert "Usar PRD atual" in backlog.text
+        assert "Caminho rápido" in backlog.text
         assert 'name="source" value="prd" checked' in backlog.text
 
     def test_quick_prd_accepts_requirements_grouped_in_subsections(self, client, session_base):

@@ -1,14 +1,6 @@
 {% extends "base.html" %}
 {% block page_title %}{{ "backlog.title"|t }} · {{ initiative.name }}{% endblock %}
 
-{% block topbar_actions %}
-<div class="spec-mode-switch" aria-label="{{ 'spec.mode_label'|t }}">
-    <a href="/initiative/{{ initiative.name }}/backlog?source=prd" class="spec-mode-option {{ 'active' if selected_source == 'prd' else '' }}">{{ "backlog.mode_quick"|t }}</a>
-    <a href="/initiative/{{ initiative.name }}/backlog?source=specification" class="spec-mode-option {{ 'active' if selected_source not in ['prd', 'upload'] else '' }}">{{ "backlog.mode_guided"|t }}</a>
-    <a href="/initiative/{{ initiative.name }}/backlog?source=upload" class="spec-mode-option {{ 'active' if selected_source == 'upload' else '' }}">{{ "backlog.mode_upload"|t }}</a>
-</div>
-{% endblock %}
-
 {% block content %}
 {% if notice %}
 <div class="alert alert-{{ notice_kind or 'success' }}" role="status">{{ notice|t }}</div>
@@ -23,62 +15,62 @@
     <a href="/initiative/{{ initiative.name }}/chat">{{ "chat.tab"|t }} <span class="spec-beta">Beta</span></a>
 </nav>
 
-<section class="page-header">
-    <div>
+<section class="backlog-hero">
+    <div class="backlog-hero-copy">
         <p class="eyebrow">{{ initiative.name }}</p>
         <h2>{{ "backlog.title"|t }}</h2>
         <p>{{ "backlog.desc"|t }}</p>
     </div>
-    {% if backlog %}
-    <span class="score score-{{ 'high' if backlog_artifact.review_status == 'approved' else 'mid' }}">
-        {{ ("backlog.status_" ~ (backlog_artifact.review_status or "draft"))|t }}
-    </span>
-    {% endif %}
+    <div class="backlog-hero-meta">
+        <span class="deliverable-type">MARKDOWN · {{ "backlog.single_file"|t }}</span>
+        {% if backlog %}
+        <span class="score score-{{ 'high' if backlog_artifact.review_status == 'approved' else 'mid' }}">
+            {{ ("backlog.status_" ~ (backlog_artifact.review_status or "draft"))|t }}
+        </span>
+        {% endif %}
+    </div>
 </section>
 
-<ol class="spec-flow" aria-label="{{ 'backlog.progress'|t }}">
-    <li class="{{ 'done' if backlog else 'current' }}">{{ "backlog.step_configure"|t }}</li>
-    <li class="{{ 'done' if backlog else '' }}">{{ "backlog.step_generate"|t }}</li>
-    <li class="{{ 'current' if backlog and backlog_artifact.review_status != 'approved' else 'done' if backlog else '' }}">{{ "backlog.step_review"|t }}</li>
-    <li class="{{ 'done' if backlog_artifact.review_status == 'approved' else '' }}">{{ "backlog.step_approve"|t }}</li>
-    <li class="{{ 'done' if backlog_artifact.review_status == 'approved' else '' }}">{{ "backlog.step_download"|t }}</li>
+<ol class="backlog-steps" aria-label="{{ 'backlog.progress'|t }}">
+    <li class="{{ 'done' if backlog else 'current' }}"><span>1</span><div><strong>{{ "backlog.step_configure"|t }}</strong><small>{{ "backlog.step_configure_desc"|t }}</small></div></li>
+    <li class="{{ 'done' if backlog else '' }}"><span>2</span><div><strong>{{ "backlog.step_generate"|t }}</strong><small>{{ "backlog.step_generate_desc"|t }}</small></div></li>
+    <li class="{{ 'current' if backlog and backlog_artifact.review_status != 'approved' else 'done' if backlog else '' }}"><span>3</span><div><strong>{{ "backlog.step_review"|t }}</strong><small>{{ "backlog.step_review_desc"|t }}</small></div></li>
+    <li class="{{ 'done' if backlog_artifact.review_status == 'approved' else '' }}"><span>4</span><div><strong>{{ "backlog.step_approve"|t }}</strong><small>{{ "backlog.step_approve_desc"|t }}</small></div></li>
+    <li class="{{ 'done' if backlog_artifact.review_status == 'approved' else '' }}"><span>5</span><div><strong>{{ "backlog.step_download"|t }}</strong><small>{{ "backlog.step_download_desc"|t }}</small></div></li>
 </ol>
 
-<section class="card">
-    <div class="card-header">
-        <div>
-            <h3>{{ "backlog.configure_title"|t }}</h3>
-            <p class="spec-caption">{{ "backlog.single_file_help"|t }}</p>
-        </div>
-        <span class="deliverable-type">MARKDOWN · 1 {{ "backlog.file"|t }}</span>
+<div class="backlog-workspace">
+<section class="card backlog-config-card">
+    <div class="backlog-section-heading">
+        <span class="backlog-section-number">1</span>
+        <div><h3>{{ "backlog.configure_title"|t }}</h3><p>{{ "backlog.configure_desc"|t }}</p></div>
     </div>
-    <div class="card-body">
+    <div class="card-body backlog-config-body">
         <form method="POST" action="/initiative/{{ initiative.name }}/backlog/generate" enctype="multipart/form-data" class="form backlog-config-form" data-loading="processing" id="backlog-generate-form">
                 <fieldset class="form-group backlog-source-fieldset">
                     <legend>{{ "backlog.source"|t }}</legend>
                     <p class="form-hint backlog-source-intro">{{ "backlog.source_help"|t }}</p>
                     <div class="backlog-source-options">
-                    <label class="backlog-source-option">
+                    <label class="backlog-source-option" data-source="specification">
                         <input type="radio" name="source" value="specification" {% if selected_source == 'specification' or (not selected_source and specification_ready) %}checked{% endif %} {% if not specification_ready %}disabled{% endif %}>
-                        <span><strong>{{ "backlog.source_specification"|t }}</strong><small>{{ "backlog.source_specification_desc"|t }}</small></span>
+                        <i aria-hidden="true">✓</i><span><strong>{{ "backlog.source_specification"|t }}</strong><small>{{ "backlog.source_specification_desc"|t }}</small>{% if not specification_ready %}<em>{{ specification_reason|t }}</em>{% endif %}</span>
                     </label>
-                    <label class="backlog-source-option">
+                    <label class="backlog-source-option" data-source="prd">
                         <input type="radio" name="source" value="prd" {% if selected_source == 'prd' or (not selected_source and not specification_ready and prd_ready) %}checked{% endif %} {% if not prd_ready %}disabled{% endif %}>
-                        <span><strong>{{ "backlog.source_prd"|t }}</strong><small>{{ "backlog.source_prd_desc"|t }}</small></span>
+                        <i aria-hidden="true">⚡</i><span><strong>{{ "backlog.source_prd"|t }}</strong><small>{{ "backlog.source_prd_desc"|t }}</small>{% if not prd_ready %}<em>{{ prd_reason|t }}</em>{% endif %}</span>
                     </label>
-                    <label class="backlog-source-option">
+                    <label class="backlog-source-option" data-source="upload">
                         <input type="radio" name="source" value="upload" {% if selected_source == 'upload' %}checked{% endif %}>
-                        <span><strong>{{ "backlog.source_file"|t }}</strong><small>{{ "backlog.source_file_desc"|t }}</small></span>
+                        <i aria-hidden="true">↑</i><span><strong>{{ "backlog.source_file"|t }}</strong><small>{{ "backlog.source_file_desc"|t }}</small></span>
                     </label>
                     </div>
-                    <div id="backlog-upload-source" {% if selected_source != 'upload' %}hidden{% endif %} style="margin-top:10px;">
+                    <div id="backlog-upload-source" class="backlog-upload-panel" {% if selected_source != 'upload' %}hidden{% endif %}>
                         <label for="backlog-source-file">{{ "backlog.source_file_label"|t }}</label>
                         <input id="backlog-source-file" name="backlog_source_file" type="file" accept=".md,.txt,text/markdown,text/plain" onchange="PMOS.validateUploadFiles(this)">
-                        <div class="form-hint">{{ "backlog.source_file_help"|t }}</div>
+                        <div><strong>{{ "backlog.source_file_drop"|t }}</strong><span id="backlog-file-name">{{ "backlog.source_file_help"|t }}</span></div>
                     </div>
-                    {% if selected_source == 'prd' and not prd_ready %}<div class="form-hint">{{ prd_reason|t }}</div>{% endif %}
-                    {% if selected_source == 'specification' and not specification_ready %}<div class="form-hint">{{ specification_reason|t }}</div>{% endif %}
                 </fieldset>
+            <div class="backlog-divider"><span>{{ "backlog.settings"|t }}</span></div>
             <div class="spec-field-grid">
                 <div class="form-group">
                     <label for="story-format">{{ "backlog.story_format"|t }}</label>
@@ -90,7 +82,6 @@
                         <option value="job_story" {% if saved_story_format == "job_story" %}selected{% endif %}>{{ "backlog.story_format_job"|t }}</option>
                     </select>
                     <div class="form-hint">{{ "backlog.story_format_help"|t }}</div>
-                    <div class="form-hint">{{ "backlog.story_format_practices"|t }}</div>
                 </div>
                 <div class="form-group">
                     <label for="granularity">{{ "backlog.granularity"|t }}</label>
@@ -115,25 +106,42 @@
                     </select>
                 </div>
             </div>
-            <button type="submit" class="btn btn-ai" id="backlog-generate-button" {% if selected_source == 'upload' or (selected_source == 'prd' and not prd_ready) or (selected_source not in ['prd', 'upload'] and not specification_ready) %}disabled{% endif %}>
-                {{ "backlog.generate"|t if not backlog else "backlog.regenerate"|t }}
-            </button>
+            <div class="backlog-quality-note"><span aria-hidden="true">✦</span><p>{{ "backlog.story_format_practices"|t }}</p></div>
+            <div class="backlog-primary-action">
+                <div><strong>{{ "backlog.ready_title"|t }}</strong><span>{{ "backlog.ready_desc"|t }}</span></div>
+                <button type="submit" class="btn btn-ai" id="backlog-generate-button" {% if selected_source == 'upload' or (selected_source == 'prd' and not prd_ready) or (selected_source not in ['prd', 'upload'] and not specification_ready) %}disabled{% endif %}>
+                    <span aria-hidden="true">✦</span> {{ "backlog.generate"|t if not backlog else "backlog.regenerate"|t }}
+                </button>
+            </div>
         </form>
     </div>
 </section>
 
+<aside class="backlog-guide-card">
+    <span class="deliverable-type">{{ "backlog.output_label"|t }}</span>
+    <h3>{{ "backlog.output_title"|t }}</h3>
+    <p>{{ "backlog.output_desc"|t }}</p>
+    <ul>
+        <li><span>1</span><div><strong>{{ "backlog.output_initiative"|t }}</strong><small>{{ "backlog.output_initiative_desc"|t }}</small></div></li>
+        <li><span>2</span><div><strong>{{ "backlog.output_epics"|t }}</strong><small>{{ "backlog.output_epics_desc"|t }}</small></div></li>
+        <li><span>3</span><div><strong>{{ "backlog.output_stories"|t }}</strong><small>{{ "backlog.output_stories_desc"|t }}</small></div></li>
+    </ul>
+    <div class="backlog-guide-footer"><span>✓</span>{{ "backlog.output_traceability"|t }}</div>
+</aside>
+</div>
+
 {% if backlog %}
-<section class="card" style="margin-top: 16px;">
-    <div class="card-header">
+<section class="card backlog-review-card">
+    <div class="backlog-review-header">
         <div>
-            <h3>{{ "backlog.review_title"|t }}</h3>
-            <p class="spec-caption">{{ "backlog.review_desc"|t }}</p>
+            <span class="backlog-section-number">2</span>
+            <div><h3>{{ "backlog.review_title"|t }}</h3><p>{{ "backlog.review_desc"|t }}</p></div>
         </div>
-        <div class="spec-actions">
+        <div class="backlog-review-actions">
             {% if backlog_artifact.review_status == "approved" %}
             <a href="/initiative/{{ initiative.name }}/backlog/download" class="btn btn-ghost btn-sm">{{ "spec.download_backlog"|t }}</a>
             {% else %}
-            <span class="form-hint">{{ "backlog.download_requires_approval"|t }}</span>
+            <span class="backlog-review-state"><i></i>{{ "backlog.status_draft"|t }}</span>
             {% endif %}
             {% if backlog_artifact.review_status != "approved" %}
             <form method="POST" action="/initiative/{{ initiative.name }}/backlog/approve">
@@ -142,14 +150,14 @@
             {% endif %}
         </div>
     </div>
-    <div class="card-body">
-        <details class="prd-preview" open>
-            <summary>{{ "backlog.preview"|t }}</summary>
-            <div class="prd-content markdown-body" style="max-height: 620px; overflow-y: auto;">{{ backlog|markdown }}</div>
+    <div class="card-body backlog-review-body">
+        <details class="prd-preview backlog-preview" open>
+            <summary><span>{{ "backlog.preview"|t }}</span><small>{{ "backlog.preview_help"|t }}</small></summary>
+            <div class="prd-content markdown-body backlog-document">{{ backlog|markdown }}</div>
         </details>
-        <details class="advanced-options" style="margin-top: 16px;">
-            <summary>{{ "backlog.edit"|t }}</summary>
-            <form method="POST" action="/initiative/{{ initiative.name }}/backlog/save" class="form" data-loading="saving">
+        <details class="advanced-options backlog-editor">
+            <summary><span>{{ "backlog.edit"|t }}</span><small>{{ "backlog.edit_summary"|t }}</small></summary>
+            <form method="POST" action="/initiative/{{ initiative.name }}/backlog/save" class="form backlog-edit-form" data-loading="saving">
                 <div class="form-group">
                     <label for="backlog-content">{{ "backlog.file_content"|t }}</label>
                     <textarea id="backlog-content" name="content" rows="28" spellcheck="false">{{ backlog }}</textarea>
@@ -160,6 +168,10 @@
         </details>
     </div>
 </section>
+{% else %}
+<section class="backlog-empty-state">
+    <span aria-hidden="true">☷</span><div><strong>{{ "backlog.empty_title"|t }}</strong><p>{{ "backlog.empty_desc"|t }}</p></div>
+</section>
 {% endif %}
 <script>
 (() => {
@@ -167,6 +179,7 @@
     const button = document.getElementById('backlog-generate-button');
     const uploadArea = document.getElementById('backlog-upload-source');
     const uploadInput = document.getElementById('backlog-source-file');
+    const fileName = document.getElementById('backlog-file-name');
     if (!form || !button) return;
     const updateSourceState = () => {
         const selected = form.querySelector('input[name="source"]:checked');
@@ -179,6 +192,9 @@
         radio.addEventListener('change', updateSourceState);
     });
     uploadInput.addEventListener('change', updateSourceState);
+    uploadInput.addEventListener('change', () => {
+        fileName.textContent = uploadInput.files.length ? uploadInput.files[0].name : {{ "backlog.source_file_help"|t|tojson }};
+    });
     updateSourceState();
 })();
 </script>
