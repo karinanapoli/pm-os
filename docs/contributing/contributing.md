@@ -7,7 +7,7 @@ também melhoram o PM Studio.
 ## Preparação
 
 1. Crie um fork e uma branch pequena.
-2. Instale Python 3.9 ou superior.
+2. Instale Python 3.10 ou superior.
 3. Execute `python -m venv .venv`.
 4. Ative o ambiente e rode `python -m pip install -e ".[dev]"`.
 5. Execute `pytest` antes e depois da mudança.

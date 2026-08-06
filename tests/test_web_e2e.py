@@ -164,6 +164,33 @@ class TestSignals:
         initiative_page = client.get(f"/initiative/{initiative_id}")
         assert "Abandono na etapa fiscal" in initiative_page.text
 
+    def test_delete_signal_requires_confirmation_route_and_removes_links(self, client):
+        initiative_id = _create_initiative(client, "Retenção", "INT-RETENCAO")
+        created = client.post(
+            "/signals",
+            data={
+                "title": "Queda de ativação",
+                "summary": "A ativação caiu na última semana.",
+                "source_type": "metric",
+                "strength": "strong",
+                "initiative_ids": initiative_id,
+            },
+            follow_redirects=False,
+        )
+        location = created.headers["location"]
+        signal_path = location.split("?", 1)[0]
+        detail = client.get(location)
+        assert 'id="modal-delete-signal"' in detail.text
+        assert f'action="{signal_path}/delete"' in detail.text
+
+        deleted = client.post(f"{signal_path}/delete", follow_redirects=False)
+        assert deleted.status_code == 303
+        assert deleted.headers["location"] == "/signals?notice=deleted"
+        assert "Queda de ativação" not in client.get("/signals").text
+        assert "Queda de ativação" not in client.get(f"/initiative/{initiative_id}").text
+        assert client.get(signal_path).status_code == 404
+        assert client.post(f"{signal_path}/delete").status_code == 404
+
     def test_upload_source_review_confirm_and_download(self, client):
         response = client.post(
             "/signals/extract",

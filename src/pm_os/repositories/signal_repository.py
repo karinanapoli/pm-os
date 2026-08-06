@@ -108,6 +108,18 @@ class SignalRepository:
         self._save(signal)
         return signal
 
+    def delete(self, signal_id: str) -> bool:
+        """Delete a signal only when it belongs to this repository scope."""
+        signal = self.get(signal_id)
+        if not signal:
+            return False
+        path = self.signals_path / f"{signal.signal_id}.yaml"
+        try:
+            path.unlink()
+        except FileNotFoundError:
+            return False
+        return True
+
     def _save(self, signal: Signal) -> None:
         self.signals_path.mkdir(parents=True, exist_ok=True)
         path = self.signals_path / f"{signal.signal_id}.yaml"

@@ -32,6 +32,11 @@ def test_signal_repository_creates_lists_and_links_by_scope(tmp_path):
     assert updated.initiative_ids == ["INT-A", "INT-B"]
     assert personal.get(signal.signal_id).initiative_ids == ["INT-A", "INT-B"]
 
+    assert squad.delete(signal.signal_id) is False
+    assert personal.delete(signal.signal_id) is True
+    assert personal.get(signal.signal_id) is None
+    assert personal.delete(signal.signal_id) is False
+
 
 def test_signal_repository_rejects_invalid_values(tmp_path):
     repository = SignalRepository(str(tmp_path / "signals"))
@@ -48,4 +53,3 @@ def test_signal_repository_rejects_invalid_values(tmp_path):
         assert "obrigatórios" in str(exc)
     else:
         raise AssertionError("Expected invalid signal to be rejected")
-

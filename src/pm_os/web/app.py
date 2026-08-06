@@ -1272,6 +1272,13 @@ async def update_signal_links(
     )
 
 
+@app.post("/signals/{signal_id}/delete")
+async def delete_signal(request: Request, signal_id: str):
+    if not _signal_repo(request).delete(signal_id):
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    return RedirectResponse(url="/signals?notice=deleted", status_code=303)
+
+
 @app.get("/initiative/{initiative_name}", response_class=HTMLResponse)
 async def initiative_detail(
     request: Request,

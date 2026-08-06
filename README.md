@@ -36,7 +36,7 @@ mantendo a pessoa responsável pelo produto no controle.
 
 ## Experimente em cinco minutos
 
-Requisitos: Python 3.9 ou superior.
+Requisitos: Python 3.10 ou superior.
 
 ```bash
 git clone https://github.com/karinanapoli/pm-os.git
