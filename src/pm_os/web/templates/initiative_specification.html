@@ -19,6 +19,7 @@
     <a href="/initiative/{{ initiative.name }}#context">{{ "spec.tab_evidence"|t }}</a>
     <a href="/initiative/{{ initiative.name }}/specification" class="active">{{ "spec.tab_specification"|t }} <span class="spec-beta">Beta</span></a>
     <a href="/initiative/{{ initiative.name }}/deliverables">{{ "spec.tab_deliverables"|t }}</a>
+    <a href="/initiative/{{ initiative.name }}/chat">{{ "chat.tab"|t }} <span class="spec-beta">Beta</span></a>
     <a href="#decisions">{{ "spec.tab_decisions"|t }}</a>
     <a href="#history">{{ "spec.tab_history"|t }}</a>
 </nav>
@@ -299,7 +300,9 @@
                     <a href="/generate?initiative={{ initiative.name }}" class="btn btn-secondary btn-sm">{{ "spec.create_prd"|t }}</a>
                     {% if backlog_exists %}
                     <a href="/initiative/{{ initiative.name }}/backlog" class="btn btn-secondary btn-sm">{{ "backlog.review"|t }}</a>
+                    {% if backlog_artifact.review_status == "approved" %}
                     <a href="/initiative/{{ initiative.name }}/backlog/download" class="btn btn-ghost btn-sm">{{ "spec.download_backlog"|t }}</a>
+                    {% endif %}
                     {% endif %}
                     {% if not backlog_exists %}
                     <a href="/initiative/{{ initiative.name }}/backlog" class="btn btn-secondary btn-sm {% if specification.status != 'approved' %}disabled{% endif %}">{{ "spec.create_backlog"|t }}</a>

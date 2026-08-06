@@ -1,5 +1,5 @@
 from dataclasses import asdict, dataclass
-from typing import Callable
+from typing import Callable, Optional
 
 from pm_os.citation_verifier import extract_source_ids, verify_citations
 from pm_os.context_builder import ContextBuilder
@@ -47,6 +47,7 @@ class ProductConsultationService:
         use_product_docs: bool,
         use_mcp: bool,
         lang: str = "en",
+        conversation: Optional[list[dict]] = None,
     ) -> ProductConsultationResult:
         context_parts = []
         for name in initiative_names:
@@ -73,6 +74,17 @@ class ProductConsultationService:
                     f"--- Contexto MCP: {item['name']} ---\n\n{item['content']}"
                 )
                 used_mcp.append(item["name"])
+
+        recent_messages = [
+            item for item in (conversation or [])[-6:]
+            if item.get("role") in {"user", "assistant"} and item.get("content")
+        ]
+        if recent_messages:
+            transcript = "\n".join(
+                f"{item['role']}: {str(item['content'])[:2000]}"
+                for item in recent_messages
+            )
+            context_parts.append(f"--- Conversa anterior ---\n\n{transcript}")
 
         context = (
             "\n\n".join(context_parts)

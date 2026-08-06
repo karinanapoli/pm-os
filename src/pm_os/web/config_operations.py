@@ -3,6 +3,7 @@
 from typing import Optional
 
 from pm_os.web.account_tokens import prune_expired, token_matches
+from pm_os.web.access_control import assign_initial_admin, remove_admin_and_transfer
 
 
 def rehash_user(config: dict, email: str, expected_hash: str, new_hash: str) -> bool:
@@ -51,11 +52,13 @@ def create_local_user(
     now: float,
 ) -> bool:
     users = config.get("users") or {}
+    had_users = bool(users)
     pending = prune_expired(config.get("pending_registrations") or {}, now)
     if email in users or email in pending:
         return False
     users[email] = password_hash
     config["users"] = users
+    assign_initial_admin(config, email, had_users)
     config["pending_registrations"] = pending
     config["onboarding_dismissed"] = False
     return True
@@ -92,9 +95,11 @@ def complete_verification(
         config["pending_registrations"] = pending_registrations
         return status
     users = config.get("users") or {}
+    had_users = bool(users)
     users[email] = pending["password_hash"]
     pending_registrations.pop(email, None)
     config["users"] = users
+    assign_initial_admin(config, email, had_users)
     config["pending_registrations"] = pending_registrations
     config["onboarding_dismissed"] = False
     return "verified"
@@ -172,6 +177,7 @@ def delete_user(config: dict, email: str) -> bool:
     existed = email in users
     users.pop(email, None)
     config["users"] = users
+    remove_admin_and_transfer(config, email)
     return existed
 
 

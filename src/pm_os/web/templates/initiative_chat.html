@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block page_title %}{{ "chat.title"|t }} · {{ initiative.name }}{% endblock %}
+
+{% block content %}
+{% if notice %}<div class="alert alert-success" role="status">{{ notice|t }}</div>{% endif %}
+<nav class="initiative-tabs" aria-label="{{ 'spec.navigation'|t }}">
+    <a href="/initiative/{{ initiative.name }}">{{ "spec.tab_overview"|t }}</a>
+    <a href="/initiative/{{ initiative.name }}/map">{{ "map.tab"|t }}</a>
+    <a href="/initiative/{{ initiative.name }}/specification">{{ "spec.tab_specification"|t }}</a>
+    <a href="/initiative/{{ initiative.name }}/deliverables">{{ "spec.tab_deliverables"|t }}</a>
+    <a href="/initiative/{{ initiative.name }}/backlog">{{ "backlog.tab"|t }}</a>
+    <a href="/initiative/{{ initiative.name }}/chat" class="active" aria-current="page">{{ "chat.tab"|t }} <span class="spec-beta">Beta</span></a>
+</nav>
+
+<section class="page-header">
+    <div><p class="eyebrow">{{ initiative.name }}</p><h2>{{ "chat.title"|t }}</h2><p>{{ "chat.desc"|t }}</p></div>
+    {% if messages %}
+    <form method="POST" action="/initiative/{{ initiative.name }}/chat/clear" onsubmit="return confirm('{{ 'chat.clear_confirm'|t }}')">
+        <button class="btn btn-ghost btn-sm">{{ "chat.clear"|t }}</button>
+    </form>
+    {% endif %}
+</section>
+
+<section class="card">
+    <div class="card-body">
+        <div aria-live="polite" style="display:flex;flex-direction:column;gap:14px;margin-bottom:20px;">
+            {% if not messages %}
+            <div class="learning-callout"><strong>{{ "chat.empty_title"|t }}</strong><span>{{ "chat.empty_desc"|t }}</span></div>
+            {% endif %}
+            {% for message in messages %}
+            <article style="max-width:86%;padding:14px 16px;border-radius:14px;align-self:{{ 'flex-end' if message.role == 'user' else 'flex-start' }};background:{{ 'var(--primary)' if message.role == 'user' else 'var(--surface-2)' }};color:{{ 'white' if message.role == 'user' else 'var(--text)' }};">
+                <div class="markdown-body">{{ message.content|markdown }}</div>
+                {% if message.role == 'assistant' and message.sources %}
+                <div class="form-hint" style="margin-top:10px;">{{ "chat.sources"|t }}: {{ message.sources|join(', ') }}</div>
+                {% endif %}
+                {% if message.role == 'assistant' and message.mcp_used %}
+                <div class="form-hint" style="margin-top:6px;">{{ "chat.mcp_used"|t }}: {{ message.mcp_used|join(', ') }}</div>
+                {% endif %}
+            </article>
+            {% endfor %}
+        </div>
+        {% if error %}<div class="alert alert-error" role="alert">{{ error }}</div>{% endif %}
+        <form method="POST" action="/initiative/{{ initiative.name }}/chat" class="form" data-loading="processing">
+            <div class="form-group">
+                <label for="chat-question">{{ "chat.question"|t }}</label>
+                <textarea id="chat-question" name="question" rows="3" required placeholder="{{ 'chat.placeholder'|t }}"></textarea>
+            </div>
+            <div class="spec-field-grid">
+                <div class="form-group">
+                    <label for="chat-provider">{{ "spec.provider_label"|t }}</label>
+                    <select id="chat-provider" name="ai_provider">
+                        {% for provider in available_ai_providers %}<option value="{{ provider.id }}" {% if provider.id == active_ai_provider %}selected{% endif %}>{{ provider.label }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-label"><input type="checkbox" name="use_product_docs" value="true"><span>{{ "consult.use_product_docs"|t }}</span></label>
+                    {% if mcp_count %}<label class="checkbox-label"><input type="checkbox" name="use_mcp" value="true"><span>{{ "chat.use_external"|t }} ({{ mcp_count }})</span></label>{% endif %}
+                </div>
+            </div>
+            {% if mcp_tools %}
+            <fieldset class="card" style="padding:16px;margin:4px 0 16px;">
+                <legend style="padding:0 6px;font-weight:600;">{{ "chat.mcp_title"|t }}</legend>
+                <div class="form-group">
+                    <label for="chat-mcp-tool">{{ "chat.mcp_tool"|t }}</label>
+                    <select id="chat-mcp-tool" name="mcp_tool">
+                        <option value="">{{ "chat.mcp_none"|t }}</option>
+                        {% for tool in mcp_tools %}
+                        <option value="{{ tool.value }}">{{ tool.connection }} · {{ tool.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="chat-mcp-arguments">{{ "chat.mcp_arguments"|t }}</label>
+                    <textarea id="chat-mcp-arguments" name="mcp_arguments" rows="3" spellcheck="false">{}</textarea>
+                    <div class="form-hint">{{ "chat.mcp_arguments_hint"|t }}</div>
+                </div>
+            </fieldset>
+            {% endif %}
+            <div class="form-hint">{{ "chat.read_only"|t }}</div>
+            <button type="submit" class="btn btn-ai">{{ "chat.send"|t }}</button>
+        </form>
+    </div>
+</section>
+{% endblock %}

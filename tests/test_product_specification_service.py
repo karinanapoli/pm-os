@@ -136,6 +136,37 @@ def test_backlog_can_use_prd_as_source_without_approved_specification(tmp_path):
     assert "PRD atual" in backlog.read_text(encoding="utf-8")
 
 
+def test_prd_requirements_keep_content_grouped_under_level_three_headings(tmp_path):
+    artifacts = tmp_path / "artifacts"
+    artifacts.mkdir()
+    (artifacts / "prd.md").write_text(
+        "# PRD\n\n## Requisitos Funcionais\n\n### Funcionalidades básicas\n\n"
+        "- Consultar fornecedor\n\n### Funcionalidades avançadas\n\n"
+        "- Exportar relatório\n",
+        encoding="utf-8",
+    )
+    service = ProductSpecificationService()
+
+    ready, reason = service.backlog_source_availability(tmp_path, "prd")
+    context = json.loads(service.backlog_context(tmp_path, "Busca", source="prd"))
+
+    assert ready is True
+    assert reason == ""
+    assert "Consultar fornecedor" in context["sections"]["requirements"]
+    assert "Exportar relatório" in context["sections"]["requirements"]
+
+
+def test_backlog_source_availability_explains_missing_requirements(tmp_path):
+    artifacts = tmp_path / "artifacts"
+    artifacts.mkdir()
+    (artifacts / "prd.md").write_text("# PRD\n\n## Problema\n\nBusca lenta.\n", encoding="utf-8")
+
+    ready, reason = ProductSpecificationService().backlog_source_availability(tmp_path, "prd")
+
+    assert ready is False
+    assert reason == "backlog.requirements_missing"
+
+
 def test_backlog_edit_and_approval_lifecycle(tmp_path):
     service = ProductSpecificationService()
     service.save(tmp_path, _sections())
@@ -156,6 +187,27 @@ def test_backlog_edit_and_approval_lifecycle(tmp_path):
     assert service.load_backlog(tmp_path).startswith("## Iniciativa: Checkout")
     assert approved["review_status"] == "approved"
     assert approved["approved_by"] == "pm@example.com"
+
+
+def test_uploaded_file_becomes_generation_source_and_preserves_filename(tmp_path):
+    service = ProductSpecificationService()
+
+    output = service.save_backlog_generation_source(
+        tmp_path,
+        "# Descoberta\n\nPrecisamos consultar fornecedores por CNPJ.",
+        filename="descoberta.md",
+        actor="pm@example.com",
+    )
+
+    state = service.load(tmp_path)
+    assert output.is_file()
+    assert state["artifacts"]["backlog_source"]["source_filename"] == "descoberta.md"
+    ready, reason = service.backlog_source_availability(tmp_path, "upload")
+    context = json.loads(service.backlog_context(tmp_path, source="upload"))
+    assert ready is True
+    assert reason == ""
+    assert "consultar fornecedores" in context["sections"]["requirements"]
+    assert context["preferences"]["story_format"] == "automatic"
 
 
 def test_backlog_requires_approved_specification_and_requirements(tmp_path):

@@ -50,13 +50,12 @@ PM Studio evolution happens through incremental capabilities, reusing a common a
 | Cross-Initiative Decision Memory | ✅ Completed | Sprint 012 |
 | Decision Review Conditions and Lifecycle | ✅ Completed | Sprint 012 |
 | Initiative Traceability Map | ✅ Completed | Sprint 013 |
-| OKRs | 🟡 Planned | Sprint 005 |
-| AI Prototyping | 🟡 Planned | Sprint 006 |
-| Security Score | 🟡 Planned | Sprint 006 |
-| Metrics Integration | 🔵 Backlog | Sprint 007 |
-| Competitive Analysis | 🔵 Backlog | Sprint 007 |
-| Auto Release Notes | 🔵 Backlog | Sprint 008 |
-| Experiment Plans | 🔵 Backlog | Sprint 008 |
+| Governed Backlog Export Package | 🧪 Beta | Sprint 014 |
+| External Backlog Write via MCP | 🧪 Beta | Sprint 015 |
+| Experiment Memory | 🔵 Backlog | Sprint 016 |
+| Initiative Attention Radar | 🔵 Backlog | Sprint 017 |
+| Discovery Inbox | 🔵 Backlog | Sprint 018 |
+| AI Workflow Observability | 🔵 Backlog | Sprint 019 |
 | Vector Store | ⚪ Future | TBD |
 | Knowledge Graph | ⚪ Future | TBD |
 
@@ -64,7 +63,42 @@ PM Studio evolution happens through incremental capabilities, reusing a common a
 
 # Current Focus
 
-## Sprint 013 — Initiative Map
+## Sprint 015 — External Backlog Write via MCP
+
+### Delivered
+
+- Explicit selection of a write-capable MCP tool after package confirmation.
+- Write policy opt-in through `confirm_writes`; read-only connections stay excluded.
+- Stable item envelope with an idempotency key for every story.
+- Duplicate prevention across retries of the same package, connection, and tool.
+- Per-item created, failed, or duplicate-skipped results in a local receipt.
+- Partial failures do not replay stories already created successfully.
+
+### Safety boundary
+
+- Preparing and confirming the package never writes to an external system.
+- The final action requires a separate explicit user confirmation.
+- Remote deletion or rollback requires a target-specific contract.
+
+## Previous focus — Sprint 014
+
+### Delivered
+
+- Story-level selection from an approved backlog.
+- Target contracts for GitHub Issues, Linear, Plane, and generic consumers.
+- Exact payload preview before confirmation.
+- Portable JSON package generated only after explicit confirmation.
+- Audit trail for preparation and confirmation events.
+- Server-side validation of approval, selected IDs, target, and preview identity.
+
+### Safety boundary
+
+- Sprint 014 does not mutate an external system.
+- The confirmed package is the stable contract for the next MCP write adapter.
+- External writes will require idempotency, duplicate detection, per-item
+  results, and compensating actions.
+
+## Previous focus — Sprint 013
 
 ### Delivered
 
@@ -162,8 +196,9 @@ PM Studio evolution happens through incremental capabilities, reusing a common a
 
 ### Next
 
-- Complete backlog creation, review, editing, prioritization, and export journey.
-- Preview and governed export of backlog items to external systems.
+- Normalize external identifiers returned by target-specific MCP adapters.
+- Detect sync drift without changing the source backlog automatically.
+- Add controlled retry for failed items and target-specific compensation.
 - Structured latency and reliability telemetry.
 - Route-module extraction as the web composition root evolves.
 

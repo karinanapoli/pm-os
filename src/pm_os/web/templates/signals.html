@@ -6,7 +6,7 @@
 {% endblock %}
 {% block content %}
 {% if notice %}
-<div class="alert alert-success" role="status">{{ "signals.saved"|t }}</div>
+<div class="alert alert-success" role="status">{{ ("signals.deleted" if notice == "deleted" else "signals.saved")|t }}</div>
 {% endif %}
 {% if error %}
 <div class="alert alert-error" role="alert">{{ error }}</div>

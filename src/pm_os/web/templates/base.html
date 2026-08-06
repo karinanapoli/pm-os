@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css?v=20260731-prd-context">
+    <link rel="stylesheet" href="/static/style.css?v=20260805-backlog-source-selector">
     <link rel="stylesheet" href="/static/tour.css">
 </head>
 <body>
@@ -91,10 +91,10 @@
                     <span class="nav-icon">📄</span>
                     <span>{{ "product_docs.title"|t }}</span>
                 </a>
-                <a href="/config" class="nav-item {% if request.url.path == '/config' %}active{% endif %}">
+                {% if is_installation_admin %}<a href="/config" class="nav-item {% if request.url.path == '/config' %}active{% endif %}">
                     <span class="nav-icon">✦</span>
                     <span>{{ "nav.settings"|t }}</span>
-                </a>
+                </a>{% endif %}
             </nav>
 
             <div class="sidebar-footer">
@@ -102,7 +102,10 @@
                     {% if user_email %}
                     <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: var(--text-muted); padding: 0 4px;">
                         <span>{{ user_email }}</span>
-                        <a href="/logout" style="font-size: 11px; color: var(--text-muted); text-decoration: none; padding: 2px 8px; border-radius: 4px; transition: all 0.2s ease;" onmouseover="this.style.background='rgba(239,68,68,0.15)'; this.style.color='#ef4444';" onmouseout="this.style.background='transparent'; this.style.color='var(--text-muted)';">{{ "login.logout"|t }}</a>
+                        <form method="post" action="/logout" style="margin: 0;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                            <button type="submit" class="link-button" style="font-size: 11px; color: var(--text-muted); padding: 2px 8px;">{{ "login.logout"|t }}</button>
+                        </form>
                     </div>
                     {% endif %}
                     <div style="display: flex; align-items: center; justify-content: space-between;">

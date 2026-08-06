@@ -2,6 +2,7 @@
 {% block page_title %}{{ "signals.detail"|t }}{% endblock %}
 {% block topbar_actions %}
 <a href="/signals" class="btn btn-ghost btn-sm">{{ "signals.back"|t }}</a>
+<button type="button" class="btn btn-ghost btn-sm" style="color: var(--danger);" onclick="PMOS.openModal('delete-signal')">{{ "signals.delete"|t }}</button>
 {% endblock %}
 {% block content %}
 {% if notice %}
@@ -58,5 +59,19 @@
             </form>
         </div>
     </aside>
+</div>
+
+<div class="modal-overlay" id="modal-delete-signal">
+    <div class="modal modal-sm" role="dialog" aria-modal="true" aria-labelledby="delete-signal-title">
+        <div class="modal-icon-box coral">✕</div>
+        <div class="modal-title" id="delete-signal-title">{{ "signals.delete_title"|t }}</div>
+        <div class="modal-desc">{{ "signals.delete_desc"|t }}<br><span class="seal seal-permanent">{{ "signals.delete_warning"|t }}</span></div>
+        <div class="modal-actions">
+            <button type="button" class="btn btn-ghost btn-sm" onclick="PMOS.closeModal('delete-signal')">{{ "signals.delete_cancel"|t }}</button>
+            <form method="POST" action="/signals/{{ signal.signal_id }}/delete">
+                <button type="submit" class="btn btn-coral btn-sm">{{ "signals.delete_confirm"|t }}</button>
+            </form>
+        </div>
+    </div>
 </div>
 {% endblock %}

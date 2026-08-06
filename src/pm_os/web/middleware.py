@@ -108,16 +108,19 @@ def get_form_field(body_bytes: bytes, headers: dict, field: str) -> str:
 
 
 class NoCacheMiddleware(BaseHTTPMiddleware):
-    """Apply browser security and no-cache headers to HTML responses."""
+    """Apply browser security headers and disable caching for HTML responses."""
 
     async def dispatch(self, request, call_next):
         response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
         if response.headers.get("content-type", "").startswith("text/html"):
             response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
             response.headers["Pragma"] = "no-cache"
             response.headers["Expires"] = "Thu, 01 Jan 1970 00:00:00 GMT"
-            response.headers["X-Content-Type-Options"] = "nosniff"
-            response.headers["X-Frame-Options"] = "DENY"
             response.headers["Content-Security-Policy"] = (
                 "default-src 'self'; "
                 "script-src 'self' 'unsafe-inline'; "
@@ -127,6 +130,8 @@ class NoCacheMiddleware(BaseHTTPMiddleware):
                 "connect-src 'self'; "
                 "frame-ancestors 'none';"
             )
+        if os.environ.get("PM_OS_ENV") == "production" and request.url.scheme == "https":
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         return response
 
 

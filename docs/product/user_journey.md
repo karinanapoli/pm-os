@@ -1,367 +1,103 @@
-# User Journey
+# PM Studio — User Journey
 
-## Status
+## Purpose
 
-Draft
+PM Studio transforms scattered product information into traceable context,
+decisions, and deliverables. It supports Product Managers without replacing
+their judgment.
 
----
+## Entry points
 
-# Objective
+The user can start in either mode:
 
-This document describes how a Product Manager uses PM Studio from the moment a new initiative emerges to the generation of all project artifacts.
+- **Quick mode**: add context and generate a PRD or backlog with minimal setup;
+- **Guided mode**: build and approve a structured specification before deriving
+  deliverables.
 
-This document does not describe the technical implementation.
+Both modes use the same initiative workspace and preserve traceability.
 
-It describes the experience we want to provide.
+## Current journey
 
-All architecture decisions must respect this journey.
+### 1. Create an initiative
 
----
+The initiative establishes the scope for sources, signals, decisions,
+specification, PRD, backlog, and assistant history. It may belong to a personal
+workspace or a squad.
 
-# The PM Studio Philosophy
+### 2. Add evidence
 
-PM Studio does not exist to generate PRDs.
+The PM uploads Markdown, TXT, or PDF sources, links signals, and optionally uses
+Product Docs or external read-only sources. Every source receives a stable ID so
+generated claims can be traced back to evidence.
 
-PM Studio exists to transform scattered knowledge into reusable context.
+### 3. Build context
 
-Documents are just a consequence.
+PM Studio previews selected sources, confidentiality, size, and destination
+before an external AI provider receives content. Demo mode remains local and
+deterministic.
 
-The real asset is the context.
+### 4. Define the product
 
----
+In guided mode, the PM reviews problem, users, evidence, outcome, metrics,
+scope, requirements, risks, open questions, and acceptance criteria. Saving
+creates a version; approval is an explicit human action.
 
-# The Current Problem
+### 5. Record decisions
 
-Today a Product Manager leaves a meeting with information scattered across multiple places.
+Important decisions include rationale, owner, status, and a **revisit if**
+condition. The Decision Memory exposes them across initiatives without
+duplicating the source of truth.
 
-For example:
+### 6. Generate deliverables
 
-- personal notes;
-- meeting recording;
-- transcription;
-- Slack conversation;
-- technical documents;
-- RFCs;
-- diagrams;
-- Figma;
-- Jira;
-- emails;
-- presentations.
+The approved context can produce a PRD and a structured backlog. Derived
+artifacts record their source version and become stale when the specification
+changes.
 
-Even before starting to write a PRD, the PM needs to spend hours consolidating all this information.
+### 7. Review and approve
 
-The biggest problem is not writing documents.
+Generated content remains editable. Editing sends the artifact back to review;
+approval enables the final download.
 
-The biggest problem is organizing knowledge.
+### 8. Prepare a governed backlog export
 
----
+For an approved backlog, the PM selects stories, chooses a target contract
+(GitHub Issues, Linear, Plane, or generic), reviews the exact payload, and
+confirms a portable JSON package. Preparation and confirmation are recorded in
+an audit trail. External systems are not changed silently.
 
-# Our Hypothesis
+### 9. Create items through a write-enabled MCP connection
 
-We believe Product Managers do not need a prompt generator.
+After package confirmation, the PM selects an MCP tool whose policy explicitly
+allows confirmed writes, confirms the external action, and reviews the result
+for each story. Repeating the same batch skips stories already created; failed
+stories remain visible for controlled retry.
 
-They need a system capable of organizing knowledge, building context, and reusing that context throughout the entire lifecycle of an initiative.
+### 10. Consult the initiative assistant
 
----
+The assistant answers from initiative context and conversation history. The PM
+may explicitly call a discovered MCP read tool with JSON arguments. Tool output
+is bounded, labeled as untrusted external data, and recorded in the history.
+Write tools are never executed automatically.
 
-# The User Journey
+### 11. Monitor traceability
 
-## Stage 1 — A new initiative emerges
+The Initiative Map connects context, definition, decisions, and deliverables.
+The dashboard and timeline expose attention points without replacing product
+judgment.
 
-It all starts when a new initiative appears.
+## Next journey extension
 
-Examples:
+The next safe step is normalizing external identifiers, detecting drift, and
+adding target-specific retry and compensation contracts without silently
+changing the source backlog.
 
-- New Security Dashboard
-- AI for Customer Support
-- B2B Marketplace
-- MFA System
-- PIX Integration
-
-At this point, the user is not yet thinking about writing a PRD.
-
-They just know a new initiative has begun.
-
----
-
-## Stage 2 — Create an initiative Workspace
-
-The PM creates a Workspace for this initiative.
-
-Example:
-
-```text
-features/
-
-    dashboard-seguranca/
-```
-
-This Workspace becomes the place where all knowledge will be stored.
-
-There is no context yet.
-
-There is no PRD yet.
-
-There is only an initiative.
-
----
-
-## Stage 3 — Add materials
-
-The user simply adds everything they have about that initiative.
-
-Examples:
-
-```text
-meeting.mp3
-
-transcription.md
-
-notes.md
-
-figma.pdf
-
-architecture.png
-
-jira.md
-
-rfc.md
-
-slack.md
-
-email.md
-
-research.pdf
-```
-
-The PM does not need to decide what is important.
-
-They just add the materials.
-
----
-
-## Stage 4 — Context building
-
-PM Studio analyzes all available materials.
-
-It identifies:
-
-- objectives;
-- problems;
-- decisions;
-- stakeholders;
-- requirements;
-- constraints;
-- risks;
-- related documents;
-- existing knowledge.
-
-At the end of this stage, the system creates a consolidated context.
-
-This context becomes the official source of knowledge for the initiative.
-
-It is not a prompt.
-
-It is a system asset.
-
----
-
-## Stage 5 — Execute Workflows
-
-With the consolidated context, any workflow can be executed.
-
-Examples:
-
-- Create PRD
-- Validate PRD
-- Create RFC
-- Create Backlog
-- Create Roadmap
-- Create Executive Summary
-- Create Security Review
-- Create AI Review
-- Create Release Notes
-
-All workflows reuse exactly the same context.
-
-The user does not need to explain the initiative again.
-
----
-
-## Stage 5.5 — Automatic Quality Validation
-
-Right after generating a PRD, the system **automatically validates its quality**.
-
-No extra command needed.
-
-The validation evaluates:
-
-- **Metrics** — Are they specific, measurable, and time-bound?
-- **Risks** — Do they have mitigation plans?
-- **Scope** — Is it well-defined? Any contradictions?
-- **Requirements** — Are they clear and testable?
-- **Structure** — Are all required sections present?
-- **Coherence** — Does the PRD tell a consistent story?
-
-The result is a **validation report** saved alongside the PRD:
-
-```text
-artifacts/
-├── prd.md
-└── prd-validation.md
-```
-
-The PM sees a summary right in the terminal:
-
-```
-PRD quality score: 6.0/10
-  ⚠ Metrics: 4.0 — not SMART
-  ⚠ Risks: 5.0 — missing mitigation
-  ✅ Scope: 8.0
-```
-
-This stage turns quality from subjective opinion into an **observable metric**.
-The PM knows where to focus before even reading the full document.
-
----
-
-## Stage 6 — Review
-
-The PM opens the validation report first.
-
-They see exactly which sections need attention:
-
-- Low metric score → refine success criteria.
-- Low risk score → add mitigation plans.
-- Scope contradiction → fix before socializing.
-
-Then they review the PRD itself with the report as a guide.
-
-They can:
-
-- edit;
-- complement;
-- approve;
-- reject;
-- request a new version.
-
-The goal is not to replace the Product Manager.
-
-The goal is to accelerate the construction of high-quality artifacts.
-
----
-
-## Stage 7 — Continuous evolution
-
-As the initiative evolves, new materials can be added to the Workspace.
-
-For example:
-
-- new meetings;
-- new RFCs;
-- new decisions;
-- new diagrams;
-- new requirements.
-
-The context is continuously updated.
-
-Future artifacts always use the most recent version of this knowledge.
-
----
-
-# The Role of Context
-
-Context is the main asset of PM Studio.
-
-It represents all consolidated knowledge about an initiative.
-
-Workflows only consume this context.
-
-Prompts only guide the model.
-
-Context determines the quality of the response.
-
----
-
-# The Role of Workflows
-
-Workflows represent actions a Product Manager wants to execute.
-
-Examples:
-
-- Create PRD
-- Create Backlog
-- Create RFC
-- Create Story Map
-- Create Release Plan
-
-Each workflow uses the same context but produces different artifacts.
-
----
-
-# The Role of AI
-
-AI is not the product.
-
-It is just a system dependency.
-
-PM Studio remains responsible for:
-
-- organizing knowledge;
-- building context;
-- defining prompts;
-- orchestrating workflows;
-- generating artifacts.
-
-The AI model is just the mechanism responsible for text generation.
-
----
-
-# Desired Experience
-
-In the future, the ideal experience will be simple.
-
-The user could write something like:
-
-> "Create a PRD for this initiative."
-
-The system generates the PRD and **automatically validates its quality**, showing the score.
-
-The user could also ask:
-
-> "Validate the PRD for INT-0001."
-
-To get a fresh quality report on demand.
-
-Or:
-
-> "Update the backlog based on the last meeting."
-
-Or:
-
-> "Generate an executive summary for the board."
-
-Or:
-
-> "What's the quality status of all my initiatives?"
-
-And the Workspace Scanner would reply with scores for every PRD.
-
-PM Studio will be responsible for finding the correct context, consolidating the necessary information, and executing the appropriate workflow.
-
-The user will not need to worry about prompts, models, or context engineering.
-
----
-
-# Reinforced Principles
-
-This journey reinforces some of the fundamental principles of PM Studio:
+## Experience principles
 
 - Context is more important than prompts.
-- Knowledge belongs to the initiative.
-- Workflows represent business objectives.
-- AI is a dependency, not the product.
-- The PM remains responsible for decisions.
-- PM Studio accelerates artifact production without replacing critical thinking.
-- **Quality is not subjective** — every artifact gets a validation score.
-- **Validation is automatic** — the system checks quality so the PM doesn't have to.
+- Workflows deliver outcomes; prompts remain implementation details.
+- Facts, inferences, and recommendations must remain distinguishable.
+- Human approval precedes consequential actions.
+- External writes require preview, authorization, audit, and recovery.
+- Documentation is produced as part of the work.
+- AI is replaceable; initiative knowledge remains portable.

@@ -91,13 +91,12 @@ Each component executes only one responsibility.
 
 ---
 
-# Current Example
+# Current Examples
 
-Currently PM Studio has one implemented capability:
-
-```text
-CreatePRDWorkflow
-```
+PM Studio combines core workflows and focused application services. Implemented
+capabilities include PRD creation and validation, guided specification,
+traceable backlog generation, signal extraction, consultation, MCP tool calls,
+and governed backlog export preparation.
 
 Its flow is:
 
@@ -238,18 +237,10 @@ All Workflows follow these principles:
 
 # Evolution
 
-The next planned Workflows will reuse exactly the same architecture.
-
-Among them:
-
-- Create Backlog
-- Create Roadmap
-- Create RFC
-- Executive Summary
-- AI Review
-- Security Review
-
-Adding a new capability should require only creating a new Workflow and its specific templates, reusing existing components.
+New capabilities should be implemented as cohesive workflows or application
+services behind explicit contracts. The web layer composes them; it must not
+own product rules. The next workflow boundary is confirmed backlog export to an
+external system with idempotency, per-item audit, and compensation.
 
 ---
 

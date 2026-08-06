@@ -33,6 +33,7 @@
     <a href="#context">{{ "spec.tab_evidence"|t }}</a>
     <a href="/initiative/{{ initiative.name }}/specification">{{ "spec.tab_specification"|t }} <span class="spec-beta">Beta</span></a>
     <a href="/initiative/{{ initiative.name }}/deliverables">{{ "spec.tab_deliverables"|t }}</a>
+    <a href="/initiative/{{ initiative.name }}/chat">{{ "chat.tab"|t }} <span class="spec-beta">Beta</span></a>
     <a href="/initiative/{{ initiative.name }}/specification#decisions">{{ "spec.tab_decisions"|t }}</a>
     <a href="/initiative/{{ initiative.name }}/specification#history">{{ "spec.tab_history"|t }}</a>
 </nav>
@@ -181,6 +182,7 @@
             <div class="prd-content markdown-body">{{ prd_content|markdown }}</div>
         </details>
         <div style="margin-top: 12px;">
+            <a href="/initiative/{{ initiative.name }}/backlog?source=prd" class="btn btn-primary btn-sm">{{ "backlog.from_prd"|t }}</a>
             <a href="/initiative/{{ initiative.name }}/prd/download" class="btn btn-ghost btn-sm">⬇ {{ "generate.download_prd"|t }}</a>
         </div>
     </div>

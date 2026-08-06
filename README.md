@@ -13,6 +13,10 @@ mantendo a pessoa responsável pelo produto no controle.
 - Iniciativas com documentos de contexto e histórico de artefatos.
 - Especificação de produto guiada, versionada e opcional.
 - Decisões, aprovação e backlog rastreável sem remover o fluxo rápido de PRD.
+- Exportação governada do backlog com seleção, preview, confirmação e pacote
+  portátil para GitHub Issues, Linear e Plane.
+- Criação governada dos itens via ferramentas MCP habilitadas para escrita,
+  com confirmação explícita, idempotência e resultado por história.
 - Memória transversal de decisões com estado e condição explícita
   **“revisitar se”**.
 - Mapa da Iniciativa conectando sinais, fontes, especificação, decisões e
@@ -32,7 +36,7 @@ mantendo a pessoa responsável pelo produto no controle.
 
 ## Experimente em cinco minutos
 
-Requisitos: Python 3.9 ou superior.
+Requisitos: Python 3.10 ou superior.
 
 ```bash
 git clone https://github.com/karinanapoli/pm-os.git
@@ -122,6 +126,11 @@ O cadastro testa e descobre capacidades, mas não executa ferramentas de escrita
 automaticamente. Variáveis de ambiente e credenciais são criptografadas no
 arquivo de configuração. Consulte
 [Conexões MCP](docs/product/mcp-connections.md).
+
+No Assistente da iniciativa, ferramentas MCP HTTP descobertas e marcadas como
+somente leitura podem ser chamadas explicitamente por mensagem. Resultados são
+limitados, tratados como dados externos não confiáveis e registrados no
+histórico da conversa.
 
 ## Desenvolvimento
 

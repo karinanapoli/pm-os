@@ -12,6 +12,7 @@
     <a href="/initiative/{{ initiative.name }}#context">{{ "spec.tab_evidence"|t }}</a>
     <a href="/initiative/{{ initiative.name }}/specification">{{ "spec.tab_specification"|t }} <span class="spec-beta">Beta</span></a>
     <a href="/initiative/{{ initiative.name }}/deliverables" class="active" aria-current="page">{{ "spec.tab_deliverables"|t }}</a>
+    <a href="/initiative/{{ initiative.name }}/chat">{{ "chat.tab"|t }} <span class="spec-beta">Beta</span></a>
     <a href="/initiative/{{ initiative.name }}/specification#decisions">{{ "spec.tab_decisions"|t }}</a>
     <a href="/initiative/{{ initiative.name }}/specification#history">{{ "spec.tab_history"|t }}</a>
 </nav>
@@ -80,7 +81,9 @@
                 {% endif %}
                 {% if backlog_exists %}
                 <a href="/initiative/{{ initiative.name }}/backlog" class="btn btn-primary btn-sm">{{ "backlog.review"|t }}</a>
+                {% if backlog_artifact.review_status == "approved" %}
                 <a href="/initiative/{{ initiative.name }}/backlog/download" class="btn btn-ghost btn-sm">{{ "spec.download_backlog"|t }}</a>
+                {% endif %}
                 {% endif %}
             </div>
         </div>
