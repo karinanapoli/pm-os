@@ -728,6 +728,32 @@ Emissão automática de pedidos de compra.
         assert specification["sections"]["requirements"]
         assert specification["status"] == "draft"
 
+    def test_prepare_specification_reports_unusable_ai_response_without_empty_version(
+        self, client, session_base, monkeypatch
+    ):
+        class EmptyAI:
+            def generate(self, prompt):
+                return "Não consegui estruturar a resposta."
+
+        monkeypatch.setattr(
+            "pm_os.web.app._build_ai_client",
+            lambda provider_override="": EmptyAI(),
+        )
+        init_id = _create_initiative(client, "Empty AI", "INT-EMPTY-AI")
+        response = client.post(
+            f"/initiative/{init_id}/specification/prepare",
+            data={"ai_provider": "demo"},
+            follow_redirects=False,
+        )
+
+        assert response.status_code == 303
+        assert "notice=spec.prepare_empty_response" in response.headers["location"]
+        state_path = (
+            session_base / "workspace" / "initiatives" / init_id
+            / "artifacts" / "specification.json"
+        )
+        assert not state_path.exists()
+
 
 @pytest.mark.skipif(
     os.getenv("PM_OS_RUN_OLLAMA_E2E") != "1",

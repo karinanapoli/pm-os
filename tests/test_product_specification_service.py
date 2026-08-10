@@ -381,3 +381,17 @@ Organizar contexto.
 """
     result = service.prepare_from_generated(other, demo)
     assert result["sections"]["problem"] == "Informações dispersas."
+
+
+def test_ai_proposal_extracts_embedded_json_and_rejects_empty_content(tmp_path):
+    service = ProductSpecificationService()
+    result = service.prepare_from_generated(
+        tmp_path,
+        'Aqui está a proposta:\n{"problem": "Checkout interrompido", "users": "Clientes mobile"}\nFim.',
+    )
+    assert result["sections"]["problem"] == "Checkout interrompido"
+
+    empty_path = tmp_path / "empty"
+    with pytest.raises(ValueError):
+        service.prepare_from_generated(empty_path, "Resposta sem estrutura utilizável.")
+    assert not (empty_path / "artifacts" / "specification.json").exists()

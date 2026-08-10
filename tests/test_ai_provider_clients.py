@@ -271,6 +271,25 @@ def test_ollama_supports_a_shorter_limit_for_specific_tasks(monkeypatch):
     assert captured["payload"]["options"]["num_predict"] == 320
 
 
+def test_ollama_structured_generation_sends_schema_and_deterministic_options(monkeypatch):
+    captured = {}
+
+    def fake_urlopen(request, timeout):
+        captured["payload"] = json.loads(request.data.decode("utf-8"))
+        return FakeOllamaResponse(b'{"response": "{\\"problem\\": \\"Example\\"}"}')
+
+    monkeypatch.setattr(
+        "pm_os.infrastructure.ai.clients.ollama_client.urllib.request.urlopen",
+        fake_urlopen,
+    )
+
+    OllamaClient().generate_structured("Prepare", ("problem", "users"))
+
+    assert captured["payload"]["format"]["required"] == ["problem", "users"]
+    assert captured["payload"]["format"]["properties"]["problem"] == {"type": "string"}
+    assert captured["payload"]["options"] == {"num_predict": 4096, "temperature": 0}
+
+
 @pytest.mark.parametrize(
     "payload",
     [b"not json", b"{}", b'{"response": ""}'],

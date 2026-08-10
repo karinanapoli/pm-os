@@ -40,7 +40,12 @@ class OllamaClient:
     def generate(self, prompt: str) -> str:
         return self.generate_with_limit(prompt, self.max_tokens)
 
-    def generate_with_limit(self, prompt: str, max_tokens: int) -> str:
+    def generate_with_limit(
+        self,
+        prompt: str,
+        max_tokens: int,
+        response_format: object = None,
+    ) -> str:
         url = f"{self.base_url}/api/generate"
 
         payload = {
@@ -49,6 +54,9 @@ class OllamaClient:
             "stream": False,
             "options": {"num_predict": max(128, max_tokens)},
         }
+        if response_format is not None:
+            payload["format"] = response_format
+            payload["options"]["temperature"] = 0
 
         request = urllib.request.Request(
             url=url,
@@ -80,3 +88,21 @@ class OllamaClient:
         if not isinstance(content, str) or not content.strip():
             raise OllamaResponseError()
         return content
+
+    def generate_structured(
+        self,
+        prompt: str,
+        fields: tuple[str, ...],
+        max_tokens: int = 4096,
+    ) -> str:
+        """Generate a deterministic JSON object for a known string schema."""
+        schema = {
+            "type": "object",
+            "properties": {
+                field: {"type": "string"}
+                for field in fields
+            },
+            "required": list(fields),
+            "additionalProperties": False,
+        }
+        return self.generate_with_limit(prompt, max_tokens, schema)

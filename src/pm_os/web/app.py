@@ -1504,7 +1504,12 @@ async def prepare_specification_from_context(
             context,
             lang=_get_lang(),
         )
-        generated = _build_ai_client(chosen_provider).generate(prompt)
+        ai_client = _build_ai_client(chosen_provider)
+        generated = (
+            ai_client.generate_structured(prompt, SPECIFICATION_FIELDS)
+            if isinstance(ai_client, OllamaClient)
+            else ai_client.generate(prompt)
+        )
         product_specification_service.prepare_from_generated(
             selected.path,
             generated,
@@ -1513,6 +1518,10 @@ async def prepare_specification_from_context(
         )
     except OllamaConnectionError:
         notice = "spec.prepare_ollama_error"
+        notice_kind = "error"
+    except ValueError:
+        _logger.exception("AI response did not contain a usable specification")
+        notice = "spec.prepare_empty_response"
         notice_kind = "error"
     except AIProviderError:
         _logger.exception("AI provider failed while preparing specification")
