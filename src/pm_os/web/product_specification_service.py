@@ -556,6 +556,8 @@ class ProductSpecificationService:
     ) -> dict:
         """Merge an AI proposal into blank fields, preserving PM corrections."""
         proposed = self._parse_generated_sections(generated_content)
+        if not any(str(value).strip() for value in proposed.values()):
+            raise ValueError("The AI response did not contain usable specification fields.")
         current = self.load(initiative_path)
         merged = {}
         for field in SPECIFICATION_FIELDS:
@@ -582,13 +584,29 @@ class ProductSpecificationService:
         try:
             parsed = json.loads(candidate)
         except json.JSONDecodeError:
-            return self._sections_from_markdown(content)
+            parsed = self._first_json_object(candidate)
+            if parsed is None:
+                return self._sections_from_markdown(content)
         if not isinstance(parsed, dict):
             return {field: "" for field in SPECIFICATION_FIELDS}
         return {
             field: self._string_value(parsed.get(field, ""))
             for field in SPECIFICATION_FIELDS
         }
+
+    @staticmethod
+    def _first_json_object(content: str) -> Optional[dict]:
+        decoder = json.JSONDecoder()
+        for position, character in enumerate(content):
+            if character != "{":
+                continue
+            try:
+                value, _ = decoder.raw_decode(content[position:])
+            except json.JSONDecodeError:
+                continue
+            if isinstance(value, dict):
+                return value
+        return None
 
     @staticmethod
     def _string_value(value: object) -> str:
