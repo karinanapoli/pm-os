@@ -156,6 +156,26 @@ def test_prd_requirements_keep_content_grouped_under_level_three_headings(tmp_pa
     assert "Exportar relatório" in context["sections"]["requirements"]
 
 
+def test_prd_with_bold_section_titles_is_available_as_backlog_source(tmp_path):
+    artifacts = tmp_path / "artifacts"
+    artifacts.mkdir()
+    (artifacts / "prd.md").write_text(
+        "# PRD\n\n**Problema**\n\nCarrinhos são perdidos.\n\n"
+        "**Requisitos funcionais**\n\n1. Preservar o carrinho.\n2. Retomar o checkout.\n\n"
+        "**Riscos**\n\n- Preço desatualizado.\n",
+        encoding="utf-8",
+    )
+    service = ProductSpecificationService()
+
+    ready, reason = service.backlog_source_availability(tmp_path, "prd")
+    context = json.loads(service.backlog_context(tmp_path, "Checkout", source="prd"))
+
+    assert ready is True
+    assert reason == ""
+    assert "Preservar o carrinho" in context["sections"]["requirements"]
+    assert "Preço desatualizado" in context["sections"]["risks"]
+
+
 def test_backlog_source_availability_explains_missing_requirements(tmp_path):
     artifacts = tmp_path / "artifacts"
     artifacts.mkdir()

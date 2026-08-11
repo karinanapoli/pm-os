@@ -323,6 +323,28 @@ class TestGuidedSpecification:
         assert state["artifacts"]["backlog"]["source"] == "prd"
         assert state["artifacts"]["backlog"]["story_format"] == "automatic"
 
+    def test_quick_prd_accepts_bold_section_titles_and_explains_draft_specification(
+        self, client, session_base
+    ):
+        init_id = _create_initiative(client, "Bold PRD", "INT-BOLD-PRD")
+        artifacts = session_base / "workspace" / "initiatives" / init_id / "artifacts"
+        artifacts.mkdir(exist_ok=True)
+        (artifacts / "prd.md").write_text(
+            "# PRD\n\n**Problema**\nCarrinho perdido.\n\n"
+            "**Requisitos funcionais**\n- Recuperar carrinho\n",
+            encoding="utf-8",
+        )
+
+        page = client.get(f"/initiative/{init_id}/backlog?source=prd")
+
+        assert page.status_code == 200
+        assert 'name="source" value="prd" checked' in page.text
+        assert 'name="source" value="prd" checked disabled' not in page.text
+        assert (
+            "Aprove uma versão da especificação antes de usá-la como fonte do backlog."
+            in page.text
+        )
+
     def test_uses_uploaded_file_as_source_to_generate_backlog(self, client, session_base):
         init_id = _create_initiative(client, "Uploaded Source", "INT-UPLOADED-SOURCE")
         content = """# Descoberta — Alertas de ruptura de estoque

@@ -786,6 +786,11 @@ class ProductSpecificationService:
             # them as peers used to discard requirements grouped under
             # subsections such as "Funcionalidades básicas".
             match = re.match(r"^##\s+(.+?)\s*$", line)
+            if not match:
+                # Smaller models often render PRD section titles as standalone
+                # bold lines instead of Markdown headings. They still define a
+                # valid section boundary and must remain usable as backlog input.
+                match = re.match(r"^\s*\*\*(.+?)\*\*\s*:?[\s]*$", line)
             if match:
                 current = match.group(1).strip().casefold()
                 result.setdefault(current, [])
