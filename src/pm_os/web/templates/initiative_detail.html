@@ -3,6 +3,7 @@
 
 {% block topbar_actions %}
 <div style="display: flex; gap: 8px;">
+    <a href="/initiative/{{ initiative.name }}/chat" class="btn btn-secondary btn-sm">{{ "chat.tab"|t }} <span class="spec-beta">Beta</span></a>
     <a href="/generate?initiative={{ initiative.name }}" class="btn btn-ai btn-sm">◇ {{ "nav.generate_prd"|t }}</a>
     {% if prd_exists %}
     <a href="/validate/{{ initiative.name }}" class="btn btn-secondary btn-sm">✓ {{ "validate.title"|t }}</a>
@@ -27,16 +28,7 @@
 </div>
 {% endif %}
 
-<nav class="initiative-tabs" aria-label="{{ 'spec.navigation'|t }}">
-    <a href="/initiative/{{ initiative.name }}" class="active">{{ "spec.tab_overview"|t }}</a>
-    <a href="/initiative/{{ initiative.name }}/map">{{ "map.tab"|t }}</a>
-    <a href="#context">{{ "spec.tab_evidence"|t }}</a>
-    <a href="/initiative/{{ initiative.name }}/specification">{{ "spec.tab_specification"|t }} <span class="spec-beta">Beta</span></a>
-    <a href="/initiative/{{ initiative.name }}/deliverables">{{ "spec.tab_deliverables"|t }}</a>
-    <a href="/initiative/{{ initiative.name }}/chat">{{ "chat.tab"|t }} <span class="spec-beta">Beta</span></a>
-    <a href="/initiative/{{ initiative.name }}/specification#decisions">{{ "spec.tab_decisions"|t }}</a>
-    <a href="/initiative/{{ initiative.name }}/specification#history">{{ "spec.tab_history"|t }}</a>
-</nav>
+{% set active_tab = "overview" %}{% include "_initiative_tabs.html" %}
 
 <div class="stats-row">
     <div class="stat-card">
@@ -57,6 +49,11 @@
         <div class="stat-label">{{ "initiative.detail.validation_score"|t }}</div>
         <span class="stat-value">{{ validation_score }}</span>
     </div>
+    <a class="stat-card" href="/initiative/{{ initiative.name }}/security" style="text-decoration:none;">
+        <div class="stat-label">{{ "security.score"|t }}</div>
+        <span class="stat-value">{{ security_assessment.score }}/10</span>
+        <span class="stat-hint">{{ ("security.band." ~ security_assessment.band)|t }}</span>
+    </a>
 </div>
 
 <div class="card initiative-signals-card">
@@ -105,7 +102,7 @@
                     <span class="doc-size">{{ doc.size }}</span>
                     <form method="POST" action="/initiative/{{ initiative.name }}/delete-doc" style="display:inline;" data-loading="deleting" id="deleteDocForm-{{ loop.index0 }}">
                         <input type="hidden" name="filename" value="{{ doc.name }}">
-                        <button type="button" class="doc-delete" title="Delete" onclick="PMOS.openModal('delete-doc')">✕</button>
+                        <button type="button" class="doc-delete" aria-label="{{ 'archive.delete_confirm'|t }}: {{ doc.name }}" onclick="PMOS.openModal('delete-doc')"><span aria-hidden="true">✕</span></button>
                     </form>
                 </div>
             </div>
@@ -277,16 +274,16 @@
 </div>
 {% endif %}
 
-<div class="modal-overlay" id="modal-archive">
-    <div class="modal modal-sm">
-        <div class="modal-icon-box amber">🗄</div>
-        <div class="modal-title">{{ "archive.modal_title"|t }}</div>
-        <div class="modal-desc">
+<div class="modal-overlay" id="modal-archive" aria-hidden="true">
+    <div class="modal modal-sm" role="dialog" aria-modal="true" aria-labelledby="archive-modal-title" aria-describedby="archive-modal-desc" tabindex="-1">
+        <div class="modal-icon-box amber" aria-hidden="true">🗄</div>
+        <div class="modal-title" id="archive-modal-title">{{ "archive.modal_title"|t }}</div>
+        <div class="modal-desc" id="archive-modal-desc">
             {{ "archive.modal_desc"|t }}
             <br><span class="seal seal-reversible">{{ "archive.modal_seal"|t }}</span>
         </div>
         <div class="modal-actions">
-            <button class="btn btn-ghost btn-sm" onclick="PMOS.closeModal('archive')">{{ "archive.modal_cancel"|t }}</button>
+            <button class="btn btn-ghost btn-sm" data-modal-initial-focus onclick="PMOS.closeModal('archive')">{{ "archive.modal_cancel"|t }}</button>
             <form method="POST" action="/initiative/{{ initiative.name }}/delete" style="display:inline;">
                 <button type="submit" class="btn btn-amber btn-sm" onclick="PMOS.closeModal('archive')">{{ "archive.modal_confirm"|t }}</button>
             </form>
@@ -294,16 +291,16 @@
     </div>
 </div>
 
-<div class="modal-overlay" id="modal-delete-doc">
-    <div class="modal modal-sm">
-        <div class="modal-icon-box coral">✕</div>
-        <div class="modal-title">{{ "archive.delete_title"|t }}</div>
-        <div class="modal-desc">
+<div class="modal-overlay" id="modal-delete-doc" aria-hidden="true">
+    <div class="modal modal-sm" role="dialog" aria-modal="true" aria-labelledby="delete-modal-title" aria-describedby="delete-modal-desc" tabindex="-1">
+        <div class="modal-icon-box coral" aria-hidden="true">✕</div>
+        <div class="modal-title" id="delete-modal-title">{{ "archive.delete_title"|t }}</div>
+        <div class="modal-desc" id="delete-modal-desc">
             {{ "archive.delete_desc"|t }}
             <br><span class="seal seal-permanent">{{ "archive.delete_seal"|t }}</span>
         </div>
         <div class="modal-actions">
-            <button class="btn btn-ghost btn-sm" onclick="PMOS.closeModal('delete-doc')">{{ "archive.delete_cancel"|t }}</button>
+            <button class="btn btn-ghost btn-sm" data-modal-initial-focus onclick="PMOS.closeModal('delete-doc')">{{ "archive.delete_cancel"|t }}</button>
             <form id="deleteDocConfirm" method="POST" action="" style="display:inline;" data-loading="deleting">
                 <input type="hidden" name="filename" id="deleteDocFilename" value="">
                 <button type="submit" class="btn btn-coral btn-sm" onclick="PMOS.closeModal('delete-doc')">{{ "archive.delete_confirm"|t }}</button>

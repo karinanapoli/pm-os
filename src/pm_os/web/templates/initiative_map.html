@@ -4,13 +4,7 @@
 <a href="/initiative/{{ initiative.name }}" class="btn btn-ghost btn-sm">{{ "map.back"|t }}</a>
 {% endblock %}
 {% block content %}
-<nav class="initiative-tabs" aria-label="{{ 'spec.navigation'|t }}">
-    <a href="/initiative/{{ initiative.name }}">{{ "spec.tab_overview"|t }}</a>
-    <a href="/initiative/{{ initiative.name }}/map" class="active">{{ "map.tab"|t }}</a>
-    <a href="/initiative/{{ initiative.name }}/specification">{{ "spec.tab_specification"|t }}</a>
-    <a href="/initiative/{{ initiative.name }}/deliverables">{{ "spec.tab_deliverables"|t }}</a>
-    <a href="/initiative/{{ initiative.name }}/chat">{{ "chat.tab"|t }} <span class="spec-beta">Beta</span></a>
-</nav>
+{% set active_tab = "overview" %}{% include "_initiative_tabs.html" %}
 
 <section class="map-hero">
     <span class="eyebrow">{{ "map.eyebrow"|t }}</span>

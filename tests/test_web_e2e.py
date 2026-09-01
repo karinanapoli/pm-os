@@ -2401,7 +2401,7 @@ class TestGenerateLinks:
         init_id = _create_initiative(client)
         resp = client.get(f"/initiative/{init_id}")
         assert resp.status_code == 200
-        assert "Gerar requisitos" in resp.text or "Generate" in resp.text
+        assert "Gerar PRD" in resp.text or "Generate PRD" in resp.text
 
 
 class TestSquadCRUD:

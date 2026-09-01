@@ -54,15 +54,15 @@
     --shadow-glow: 0 0 40px rgba(110, 86, 217, 0.15);
     --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.5);
 
-    --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-    --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    --font-mono: ui-monospace, 'SFMono-Regular', Consolas, monospace;
 }
 
 /* ── Reset & Base ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 [hidden] { display: none !important; }
 
-html { font-size: 15px; }
+html { font-size: 16px; }
 
 body {
     font-family: var(--font);
@@ -297,15 +297,18 @@ body {
     margin-bottom: 22px;
     overflow-x: auto;
     border-bottom: 1px solid var(--border);
+    scrollbar-width: thin;
+    scroll-snap-type: x proximity;
 }
 
 .initiative-tabs a {
     padding: 10px 1px;
     border-bottom: 2px solid transparent;
     color: var(--text-muted);
-    font-size: 13px;
+    font-size: 14px;
     text-decoration: none;
     white-space: nowrap;
+    scroll-snap-align: start;
 }
 
 .initiative-tabs a.active {
@@ -1022,6 +1025,13 @@ body {
     transform: translateY(-1px);
 }
 
+.stat-hint {
+    display: block;
+    margin-top: 4px;
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
 .stat-card-archived {
     background: transparent;
     border-style: dashed;
@@ -1394,7 +1404,7 @@ body {
     background: rgba(239,90,111,0.22);
 }
 
-.btn-sm { padding: 6px 12px; font-size: 12px; }
+.btn-sm { padding: 7px 12px; font-size: 13px; min-height: 36px; }
 .btn-lg { padding: 12px 24px; font-size: 15px; }
 
 .btn:disabled {
@@ -1562,9 +1572,16 @@ body {
 }
 
 .form-hint {
-    font-size: 12px;
+    font-size: 13px;
     color: var(--text-muted);
     margin-top: 4px;
+}
+
+.doc-delete,
+.toast-undo,
+.mobile-menu-toggle {
+    min-width: 36px;
+    min-height: 36px;
 }
 
 .checkbox-label {

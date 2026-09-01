@@ -13,16 +13,7 @@
 <div class="alert alert-{{ notice_kind or 'success' }}" role="status">{{ notice|t }}</div>
 {% endif %}
 
-<nav class="initiative-tabs" aria-label="{{ 'spec.navigation'|t }}">
-    <a href="/initiative/{{ initiative.name }}">{{ "spec.tab_overview"|t }}</a>
-    <a href="/initiative/{{ initiative.name }}/map">{{ "map.tab"|t }}</a>
-    <a href="/initiative/{{ initiative.name }}#context">{{ "spec.tab_evidence"|t }}</a>
-    <a href="/initiative/{{ initiative.name }}/specification" class="active">{{ "spec.tab_specification"|t }} <span class="spec-beta">Beta</span></a>
-    <a href="/initiative/{{ initiative.name }}/deliverables">{{ "spec.tab_deliverables"|t }}</a>
-    <a href="/initiative/{{ initiative.name }}/chat">{{ "chat.tab"|t }} <span class="spec-beta">Beta</span></a>
-    <a href="#decisions">{{ "spec.tab_decisions"|t }}</a>
-    <a href="#history">{{ "spec.tab_history"|t }}</a>
-</nav>
+{% set active_tab = "definition" %}{% include "_initiative_tabs.html" %}
 
 <ol class="spec-flow" aria-label="{{ 'spec.progress'|t }}">
     <li class="done">{{ "spec.step_evidence"|t }}</li>
@@ -71,7 +62,7 @@
 
 <div class="spec-layout">
     <div>
-        <form method="POST" action="/initiative/{{ initiative.name }}/specification" class="card spec-editor" data-loading="saving">
+        <form method="POST" action="/initiative/{{ initiative.name }}/specification" class="card spec-editor" data-loading="saving" data-unsaved-guard>
             <div class="card-header">
                 <div>
                     <h3>{{ "spec.editor_title"|t }}</h3>
