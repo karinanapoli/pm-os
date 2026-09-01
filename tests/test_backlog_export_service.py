@@ -19,6 +19,15 @@ BACKLOG = """## Iniciativa: Checkout
 - Mensagem orienta nova tentativa.
 """
 
+ENGLISH_BACKLOG = """## Initiative: Checkout
+
+## Epic: Payments
+
+### Story: Confirm payment
+**Parent epic**: Payments
+- Confirms in two seconds.
+"""
+
 
 def _approved_initiative(tmp_path):
     artifacts = tmp_path / "artifacts"
@@ -73,3 +82,11 @@ def test_blocks_unapproved_empty_and_tampered_exports(tmp_path):
     )
     with pytest.raises(ValueError, match="no longer valid"):
         service.confirm(tmp_path, preview_id="tampered", actor="pm@example.com")
+
+
+def test_recognizes_english_backlog_headings():
+    items = BacklogExportService().items(ENGLISH_BACKLOG)
+
+    assert len(items) == 1
+    assert items[0]["title"] == "Confirm payment"
+    assert items[0]["epic"] == "Payments"

@@ -544,7 +544,7 @@ Emissão automática de pedidos de compra.
         ).read_text()
         assert "experience_mode: quick" in metadata
 
-    def test_saves_approves_and_generates_traceable_backlog(self, client, session_base):
+    def test_saves_approves_and_generates_traceable_backlog(self, client, session_base, monkeypatch):
         init_id = _create_initiative(client, "Guided Checkout", "INT-GUIDED")
         sections = {
             "problem": "Abandono no checkout.",
@@ -636,24 +636,33 @@ Emissão automática de pedidos de compra.
         export_page = client.get(f"/initiative/{init_id}/backlog/export")
         assert export_page.status_code == 200
         assert "Exportar backlog" in export_page.text
+        assert 'name="csrf_token"' in export_page.text
+        assert "Etapas da exportação" in export_page.text
+        csrf_token = re.search(
+            r'name="csrf_token" value="([^"]+)"', export_page.text
+        ).group(1)
         item_ids = re.findall(r'name="item_ids" value="([a-f0-9]+)"', export_page.text)
         assert item_ids
 
+        # Exercise the same CSRF enforcement used outside the test environment.
+        monkeypatch.setenv("PM_OS_ENV", "development")
         prepared = client.post(
             f"/initiative/{init_id}/backlog/export/prepare",
-            data={"target": "github", "item_ids": item_ids},
+            data={"target": "github", "item_ids": item_ids, "csrf_token": csrf_token},
             follow_redirects=False,
         )
         assert "notice=backlog.export_prepared" in prepared.headers["location"]
+        assert prepared.headers["location"].endswith("#export-preview")
         preview_path = path.parent / "backlog-export-preview.json"
         preview = json.loads(preview_path.read_text(encoding="utf-8"))
 
         confirmed = client.post(
             f"/initiative/{init_id}/backlog/export/confirm",
-            data={"preview_id": preview["preview_id"]},
+            data={"preview_id": preview["preview_id"], "csrf_token": csrf_token},
             follow_redirects=False,
         )
         assert "notice=backlog.export_confirmed" in confirmed.headers["location"]
+        assert confirmed.headers["location"].endswith("#export-result")
         download = client.get(f"/initiative/{init_id}/backlog/export/download")
         assert download.status_code == 200
         assert json.loads(download.content)["status"] == "confirmed"
