@@ -74,3 +74,18 @@ def test_identical_submission_does_not_duplicate_history(tmp_path):
     assert len(first["history"]) == 1
     assert len(second["history"]) == 1
     assert second["updated_at"] == first["updated_at"]
+
+
+def test_ai_provenance_is_persisted(tmp_path):
+    service = SecurityAssessmentService()
+    saved = service.save(tmp_path, {"data_privacy": {
+        "status": "planned",
+        "evidence": "Data map described [SRC-1].",
+        "origin": "ai",
+        "confidence": "high",
+        "source_ids": "SRC-1",
+    }})
+
+    assert saved["answers"]["data_privacy"]["origin"] == "ai"
+    assert saved["answers"]["data_privacy"]["source_ids"] == "SRC-1"
+    assert saved["ai_generated_count"] == 1

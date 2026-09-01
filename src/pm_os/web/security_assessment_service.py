@@ -31,6 +31,7 @@ class SecurityAssessmentService:
         return {
             "status": "not_assessed", "risk": "medium", "evidence": "",
             "action": "", "owner": "", "due_date": "", "not_applicable_reason": "",
+            "origin": "", "confidence": "", "source_ids": "",
         }
 
     def load(self, initiative_path: Path) -> dict:
@@ -125,9 +126,11 @@ class SecurityAssessmentService:
         band = "critical" if score <= 3 else "mitigation" if score <= 6 else "validation" if score <= 8 else "verified"
         pending = [key for key, item in answers.items() if item["status"] in {"not_assessed", "planned"}]
         evidence_count = sum(bool(item["evidence"]) for item in applicable)
+        ai_generated_count = sum(item.get("origin") == "ai" for item in answers.values())
         return {
             "answers": answers, "score": score, "band": band, "pending": pending,
             "critical_blockers": critical_blockers, "evidence_count": evidence_count,
+            "ai_generated_count": ai_generated_count,
             "applicable_count": len(applicable), "updated_at": updated_at,
             "updated_by": updated_by, "history": history,
         }

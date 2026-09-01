@@ -2506,3 +2506,43 @@ class TestSquadCRUD:
 
         assert "default" not in (web_app.config_manager.get("squads") or {})
         assert "default" in web_app.config_manager.get("retired_squad_names")
+
+
+class TestSecurityAIAssessment:
+    def test_security_page_explains_material_based_generation(self, client):
+        initiative_id = _create_initiative(client, "Security AI", "INT-SECURITY-AI")
+
+        response = client.get(f"/initiative/{initiative_id}/security")
+
+        assert response.status_code == 200
+        assert "A IA prepara esta seção com o contexto da iniciativa" in response.text
+        assert "Avaliar com IA" in response.text
+
+    def test_ai_generation_populates_grounded_draft(self, client, monkeypatch):
+        initiative_id = _create_initiative(client, "Security AI", "INT-SECURITY-AI")
+
+        class ContextAwareAI:
+            def generate(self, prompt):
+                source_id = re.search(r'<<<SOURCE id="([^"]+)"', prompt).group(1)
+                return json.dumps({"answers": {"data_privacy": {
+                    "status": "planned",
+                    "risk": "high",
+                    "evidence": f"Contexto de dados identificado [{source_id}].",
+                    "action": "Documentar retenção.",
+                    "not_applicable_reason": "",
+                    "confidence": "high",
+                    "source_ids": [source_id],
+                }}})
+
+        import pm_os.web.app as web_app
+        monkeypatch.setattr(web_app, "_build_ai_client", lambda provider: ContextAwareAI())
+
+        response = client.post(
+            f"/initiative/{initiative_id}/security/generate",
+            data={"ai_provider": "ollama"},
+        )
+
+        assert response.status_code == 200
+        assert "Avaliação preliminar gerada" in response.text
+        assert "Sugerido pela IA" in response.text
+        assert "Contexto de dados identificado" in response.text
