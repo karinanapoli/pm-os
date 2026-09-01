@@ -107,6 +107,10 @@ from pm_os.web.security_assessment_service import (
     SecurityAssessmentValidationError,
     SecurityAssessmentService,
 )
+from pm_os.web.security_assessment_ai_service import (
+    SecurityAssessmentAIService,
+    SecurityAssessmentGenerationError,
+)
 from pm_os.writers.markdown_writer import MarkdownWriter
 import logging
 _logger = logging.getLogger("pm_os")
@@ -115,6 +119,7 @@ mcp_tool_service = MCPToolService()
 backlog_export_service = BacklogExportService()
 backlog_mcp_write_service = BacklogMCPWriteService()
 security_assessment_service = SecurityAssessmentService()
+security_assessment_ai_service = SecurityAssessmentAIService()
 
 
 def _validation_report_for_display(content: str, lang: str) -> str:
@@ -1448,11 +1453,47 @@ async def initiative_map(request: Request, initiative_name: str):
     )
 
 
+def _build_security_assessment_context(selected: Initiative, request: Request) -> str:
+    """Combine initiative sources, artifacts, and linked signals with stable IDs."""
+    blocks = []
+    source_context = ContextBuilder().build(selected).strip()
+    if source_context:
+        if "<<<SOURCE id=" not in source_context:
+            source_context = (
+                '<<<SOURCE id="CTX-INITIATIVE" name="Initiative context" '
+                'type="context" confidentiality="internal" author="unknown" modified="unknown">>>\n'
+                f"{source_context}\n<<<END SOURCE id=\"CTX-INITIATIVE\">>>"
+            )
+        blocks.append(source_context)
+    for artifact_id, filename in (
+        ("ART-PRD", "prd.md"),
+        ("ART-SPECIFICATION", "product-specification.json"),
+    ):
+        path = selected.path / "artifacts" / filename
+        if path.is_file():
+            try:
+                content = path.read_text(encoding="utf-8")[:100_000]
+            except OSError:
+                continue
+            blocks.append(
+                f'<<<ARTIFACT id="{artifact_id}" name="{filename}">>>\n'
+                f"{content}\n<<<END ARTIFACT id=\"{artifact_id}\">>>"
+            )
+    for signal in _signal_repo(request).list(selected.name):
+        blocks.append(
+            f'<<<SIGNAL id="{signal.signal_id}" type="{signal.source_type}" '
+            f'strength="{signal.strength}">>>\n{signal.title}\n{signal.summary}\n'
+            f'<<<END SIGNAL id="{signal.signal_id}">>>'
+        )
+    return "\n\n".join(blocks)
+
+
 @app.get("/initiative/{initiative_name}/security", response_class=HTMLResponse)
 async def initiative_security(
     request: Request,
     initiative_name: str,
     notice: str = "",
+    notice_kind: str = "success",
 ):
     selected = _get_initiative_by_name(initiative_name, request)
     if not selected:
@@ -1466,7 +1507,66 @@ async def initiative_security(
             assessment=security_assessment_service.load(selected.path),
             dimensions=SECURITY_DIMENSIONS,
             notice=notice,
+            notice_kind=notice_kind,
+            available_ai_providers=_available_ai_providers(),
+            active_ai_provider=config_manager.get("ai_provider", "ollama"),
         ),
+    )
+
+
+@app.post("/initiative/{initiative_name}/security/generate")
+async def generate_initiative_security(
+    request: Request,
+    initiative_name: str,
+    ai_provider: str = Form(""),
+):
+    selected = _get_initiative_by_name(initiative_name, request)
+    if not selected:
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    allowed_providers = {provider["id"] for provider in _available_ai_providers()}
+    chosen_provider = ai_provider or config_manager.get("ai_provider", "ollama")
+    if chosen_provider not in allowed_providers or chosen_provider == "demo":
+        notice = "security.ai_provider_unavailable"
+        kind = "error"
+    else:
+        context = _build_security_assessment_context(selected, request)
+        try:
+            generated = security_assessment_ai_service.generate(
+                _build_ai_client(chosen_provider),
+                context,
+                security_assessment_service.load(selected.path),
+                lang=_get_lang(),
+            )
+            security_assessment_service.save(
+                selected.path,
+                generated["answers"],
+                actor=_get_session_user_email(request),
+            )
+            create_change_tracker().update_manifest(str(selected.path))
+        except SecurityAssessmentGenerationError as error:
+            notice = (
+                "security.ai_no_context"
+                if str(error) == "empty_context"
+                else "security.ai_invalid_response"
+            )
+            kind = "error"
+        except OllamaConnectionError:
+            notice = "security.ai_ollama_error"
+            kind = "error"
+        except AIProviderError:
+            _logger.exception("AI provider failed during security assessment")
+            notice = "security.ai_provider_error"
+            kind = "error"
+        except Exception:
+            _logger.exception("Security assessment generation failed")
+            notice = "security.ai_provider_error"
+            kind = "error"
+        else:
+            notice = "security.ai_generated"
+            kind = "success"
+    return RedirectResponse(
+        url=(f"/initiative/{initiative_name}/security?notice={notice}&notice_kind={kind}"),
+        status_code=303,
     )
 
 
@@ -1485,9 +1585,22 @@ async def save_initiative_security(request: Request, initiative_name: str):
             "owner": str(form.get(f"{key}_owner", "")),
             "due_date": str(form.get(f"{key}_due_date", "")),
             "not_applicable_reason": str(form.get(f"{key}_not_applicable_reason", "")),
+            "origin": str(form.get(f"{key}_origin", "")),
+            "confidence": str(form.get(f"{key}_confidence", "")),
+            "source_ids": str(form.get(f"{key}_source_ids", "")),
         }
         for key in SECURITY_DIMENSIONS
     }
+    current_answers = security_assessment_service.load(selected.path)["answers"]
+    reviewed_fields = (
+        "status", "risk", "evidence", "action", "not_applicable_reason",
+    )
+    for key, answer in submitted.items():
+        current = current_answers.get(key) or {}
+        if any(answer[field] != current.get(field, "") for field in reviewed_fields):
+            answer["origin"] = "manual"
+            answer["confidence"] = ""
+            answer["source_ids"] = ""
     try:
         security_assessment_service.save(
             selected.path,

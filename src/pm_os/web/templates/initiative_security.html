@@ -6,7 +6,7 @@
 {% block content %}
 {% set active_tab = "security" %}{% include "_initiative_tabs.html" %}
 
-{% if notice %}<div class="alert alert-success" role="status">{{ notice|t }}</div>{% endif %}
+{% if notice %}<div class="alert alert-{{ 'error' if notice_kind == 'error' else 'success' }}" role="{{ 'alert' if notice_kind == 'error' else 'status' }}">{{ notice|t }}</div>{% endif %}
 {% if error %}<div class="alert alert-error" role="alert">{{ error }}</div>{% endif %}
 
 <section class="card security-hero">
@@ -20,6 +20,27 @@
             <strong>{{ assessment.score }}</strong><span>/10</span>
             <small>{{ ("security.band." ~ assessment.band)|t }}</small>
         </div>
+    </div>
+</section>
+
+<section class="card security-ai-panel" aria-labelledby="security-ai-title">
+    <div class="card-body security-ai-content">
+        <div>
+            <p class="eyebrow">{{ "security.ai.eyebrow"|t }}</p>
+            <h3 id="security-ai-title">{{ "security.ai.title"|t }}</h3>
+            <p>{{ "security.ai.desc"|t }}</p>
+            <p class="form-hint">{{ "security.ai.sources"|t }}</p>
+        </div>
+        <form method="POST" action="/initiative/{{ initiative.name }}/security/generate" data-loading="generating" data-prevent-duplicate>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <label for="security_ai_provider">{{ "security.ai.provider"|t }}</label>
+            <select id="security_ai_provider" name="ai_provider">
+            {% for provider in available_ai_providers %}
+                <option value="{{ provider.id }}" {% if provider.id == active_ai_provider %}selected{% endif %}>{{ provider.label }}</option>
+            {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-primary">{{ "security.ai.generate"|t }}</button>
+        </form>
     </div>
 </section>
 
@@ -40,10 +61,16 @@
                 <div>
                     <h3>{{ ("security.dimension." ~ dimension)|t }}</h3>
                     <p class="spec-caption">{{ ("security.question." ~ dimension)|t }}</p>
+                    {% if answer.origin == "ai" %}
+                    <p class="security-ai-origin"><span class="badge">{{ "security.ai.suggested"|t }}</span>{% if answer.confidence %} {{ ("security.ai.confidence." ~ answer.confidence)|t }}{% endif %}{% if answer.source_ids %} · {{ "security.ai.based_on"|t }} {{ answer.source_ids|replace(",", ", ") }}{% endif %}</p>
+                    {% endif %}
                 </div>
                 <span class="badge security-status-{{ answer.status }}">{{ ("security.status." ~ answer.status)|t }}</span>
             </div>
             <div class="card-body">
+                <input type="hidden" name="{{ dimension }}_origin" value="{{ answer.origin }}">
+                <input type="hidden" name="{{ dimension }}_confidence" value="{{ answer.confidence }}">
+                <input type="hidden" name="{{ dimension }}_source_ids" value="{{ answer.source_ids }}">
                 <div class="form-group">
                     <label for="{{ dimension }}_status">{{ "security.field.status"|t }}</label>
                     <select id="{{ dimension }}_status" name="{{ dimension }}_status">
@@ -93,6 +120,6 @@
 {% endif %}
 
 <style>
-.security-summary{display:flex;align-items:center;justify-content:space-between;gap:24px}.security-summary h2{margin:4px 0 8px}.security-summary p{margin:0;color:var(--text-secondary);max-width:700px}.security-score{min-width:150px;text-align:center;padding:18px;border-radius:16px;background:linear-gradient(135deg,rgba(124,92,231,.18),rgba(0,204,255,.12));border:1px solid rgba(124,92,231,.3)}.security-score strong{font-size:38px}.security-score span{color:var(--text-muted)}.security-score small{display:block;margin-top:4px;color:var(--text-secondary)}.security-meta{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:-10px 0 18px;color:var(--text-muted);font-size:13px}.security-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.security-dimension{margin:0}.security-dimension .card-header{align-items:flex-start}.security-dimension .spec-caption{max-width:480px}.security-owner-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.security-actions{position:sticky;bottom:16px;margin-top:20px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;background:var(--bg-card);border:1px solid var(--border-light);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);z-index:5}.security-status-verified{color:#5ee6a8}.security-status-implemented{color:#67d8ff}.security-status-planned{color:#f5c76b}.security-status-not_assessed{color:var(--text-muted)}.security-history{margin-top:22px}.security-history ol{list-style:none;display:grid;gap:8px}.security-history li{display:flex;justify-content:space-between;gap:12px;padding:10px;border-bottom:1px solid var(--border)}.security-history span{color:var(--text-muted)}@media(max-width:800px){.security-grid,.security-owner-grid{grid-template-columns:1fr}.security-summary{align-items:flex-start;flex-direction:column}.security-score{width:100%}}
+.security-summary{display:flex;align-items:center;justify-content:space-between;gap:24px}.security-summary h2{margin:4px 0 8px}.security-summary p{margin:0;color:var(--text-secondary);max-width:700px}.security-score{min-width:150px;text-align:center;padding:18px;border-radius:16px;background:linear-gradient(135deg,rgba(124,92,231,.18),rgba(0,204,255,.12));border:1px solid rgba(124,92,231,.3)}.security-score strong{font-size:38px}.security-score span{color:var(--text-muted)}.security-score small{display:block;margin-top:4px;color:var(--text-secondary)}.security-ai-panel{border-color:rgba(0,204,255,.28)}.security-ai-content{display:flex;align-items:flex-end;justify-content:space-between;gap:24px}.security-ai-content h3{margin:4px 0 8px}.security-ai-content p{max-width:760px}.security-ai-content form{display:grid;grid-template-columns:minmax(190px,1fr) auto;gap:8px;min-width:390px}.security-ai-content form label{grid-column:1/-1}.security-ai-origin{font-size:12px;color:var(--text-muted);margin-top:8px}.security-meta{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:-10px 0 18px;color:var(--text-muted);font-size:13px}.security-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.security-dimension{margin:0}.security-dimension .card-header{align-items:flex-start}.security-dimension .spec-caption{max-width:480px}.security-owner-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.security-actions{position:sticky;bottom:16px;margin-top:20px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;background:var(--bg-card);border:1px solid var(--border-light);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);z-index:5}.security-status-verified{color:#5ee6a8}.security-status-implemented{color:#67d8ff}.security-status-planned{color:#f5c76b}.security-status-not_assessed{color:var(--text-muted)}.security-history{margin-top:22px}.security-history ol{list-style:none;display:grid;gap:8px}.security-history li{display:flex;justify-content:space-between;gap:12px;padding:10px;border-bottom:1px solid var(--border)}.security-history span{color:var(--text-muted)}@media(max-width:800px){.security-grid,.security-owner-grid{grid-template-columns:1fr}.security-summary,.security-ai-content{align-items:flex-start;flex-direction:column}.security-score{width:100%}.security-ai-content form{min-width:0;width:100%;grid-template-columns:1fr}.security-ai-content form label{grid-column:auto}}
 </style>
 {% endblock %}
