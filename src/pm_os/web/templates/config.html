@@ -17,17 +17,17 @@
 
 <div class="card">
     {# ─── Tab Navigation ─── #}
-    <div class="tab-bar" style="display:flex;border-bottom:1px solid var(--border);padding:0 20px;">
-        <button class="tab-btn active" data-tab="general" type="button" onclick="switchTab('general')">{{ "config.tab_general"|t }}</button>
-        <button class="tab-btn" data-tab="providers" type="button" onclick="switchTab('providers')">{{ "config.tab_providers"|t }}</button>
-        <button class="tab-btn" data-tab="mcp" type="button" onclick="switchTab('mcp')">{{ "config.tab_mcp"|t }}</button>
-        <button class="tab-btn" data-tab="plugins" type="button" onclick="switchTab('plugins')">{{ "config.tab_plugins"|t }}</button>
+    <div class="tab-bar" role="tablist" aria-label="{{ 'nav.settings'|t }}" style="display:flex;border-bottom:1px solid var(--border);padding:0 20px;">
+        <button class="tab-btn active" id="control-general" role="tab" aria-selected="true" aria-controls="tab-general" tabindex="0" data-tab="general" type="button" onclick="switchTab('general')">{{ "config.tab_general"|t }}</button>
+        <button class="tab-btn" id="control-providers" role="tab" aria-selected="false" aria-controls="tab-providers" tabindex="-1" data-tab="providers" type="button" onclick="switchTab('providers')">{{ "config.tab_providers"|t }}</button>
+        <button class="tab-btn" id="control-mcp" role="tab" aria-selected="false" aria-controls="tab-mcp" tabindex="-1" data-tab="mcp" type="button" onclick="switchTab('mcp')">{{ "config.tab_mcp"|t }}</button>
+        <button class="tab-btn" id="control-plugins" role="tab" aria-selected="false" aria-controls="tab-plugins" tabindex="-1" data-tab="plugins" type="button" onclick="switchTab('plugins')">{{ "config.tab_plugins"|t }}</button>
     </div>
 
     {# Single form — all tabs inside so no fields are lost on save #}
-    <form method="POST" action="/config" class="form" data-loading="saving" id="configForm">
+    <form method="POST" action="/config" class="form" data-loading="saving" data-unsaved-guard id="configForm">
         {# ─── Tab: Geral ─── #}
-        <div class="tab-panel active" id="tab-general">
+        <div class="tab-panel active" id="tab-general" role="tabpanel" aria-labelledby="control-general">
             <div class="card-body">
                 <div class="form-group">
                     <label for="lang">{{ "config.language"|t }}</label>
@@ -106,7 +106,7 @@
         </div>
 
         {# ─── Tab: Providers ─── #}
-        <div class="tab-panel" id="tab-providers">
+        <div class="tab-panel" id="tab-providers" role="tabpanel" aria-labelledby="control-providers">
             <div class="card-body">
                 <div class="learning-callout">
                     <strong>{{ "config.ai_guide_title"|t }}</strong>
@@ -331,7 +331,7 @@
             {% endif %}
         </div>
     </div>
-    <div class="tab-panel" id="tab-mcp">
+    <div class="tab-panel" id="tab-mcp" role="tabpanel" aria-labelledby="control-mcp">
         <div class="card-body">
             <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 20px;">
                 {{ "mcp.desc"|t }}
@@ -479,7 +479,7 @@
     </div>
 
     {# ─── Tab: Plugins ─── #}
-    <div class="tab-panel" id="tab-plugins">
+    <div class="tab-panel" id="tab-plugins" role="tabpanel" aria-labelledby="control-plugins">
         <div class="card-body">
             <div class="empty-state" style="text-align:center;padding:40px 20px;">
                 <div style="font-size: 40px; margin-bottom: 16px;">🧩</div>
@@ -533,12 +533,26 @@ function toggleProviderFields() {
 
 function switchTab(name) {
     document.querySelectorAll('.tab-btn').forEach(function(btn) {
-        btn.classList.toggle('active', btn.dataset.tab === name);
+        var selected = btn.dataset.tab === name;
+        btn.classList.toggle('active', selected);
+        btn.setAttribute('aria-selected', selected ? 'true' : 'false');
+        btn.setAttribute('tabindex', selected ? '0' : '-1');
     });
     document.querySelectorAll('.tab-panel').forEach(function(panel) {
         panel.classList.toggle('active', panel.id === 'tab-' + name);
     });
 }
+
+document.querySelector('.tab-bar').addEventListener('keydown', function(event) {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    var tabs = Array.from(this.querySelectorAll('[role="tab"]'));
+    var current = tabs.indexOf(document.activeElement);
+    var next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 :
+        (current + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+    event.preventDefault();
+    tabs[next].focus();
+    switchTab(tabs[next].dataset.tab);
+});
 
 document.addEventListener('DOMContentLoaded', function() {
     toggleProviderFields();

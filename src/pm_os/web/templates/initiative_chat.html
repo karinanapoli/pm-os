@@ -3,14 +3,7 @@
 
 {% block content %}
 {% if notice %}<div class="alert alert-success" role="status">{{ notice|t }}</div>{% endif %}
-<nav class="initiative-tabs" aria-label="{{ 'spec.navigation'|t }}">
-    <a href="/initiative/{{ initiative.name }}">{{ "spec.tab_overview"|t }}</a>
-    <a href="/initiative/{{ initiative.name }}/map">{{ "map.tab"|t }}</a>
-    <a href="/initiative/{{ initiative.name }}/specification">{{ "spec.tab_specification"|t }}</a>
-    <a href="/initiative/{{ initiative.name }}/deliverables">{{ "spec.tab_deliverables"|t }}</a>
-    <a href="/initiative/{{ initiative.name }}/backlog">{{ "backlog.tab"|t }}</a>
-    <a href="/initiative/{{ initiative.name }}/chat" class="active" aria-current="page">{{ "chat.tab"|t }} <span class="spec-beta">Beta</span></a>
-</nav>
+{% include "_initiative_tabs.html" %}
 
 <section class="page-header">
     <div><p class="eyebrow">{{ initiative.name }}</p><h2>{{ "chat.title"|t }}</h2><p>{{ "chat.desc"|t }}</p></div>

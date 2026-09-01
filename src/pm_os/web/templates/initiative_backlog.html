@@ -6,14 +6,7 @@
 <div class="alert alert-{{ notice_kind or 'success' }}" role="status">{{ notice|t }}</div>
 {% endif %}
 
-<nav class="initiative-tabs" aria-label="{{ 'spec.navigation'|t }}">
-    <a href="/initiative/{{ initiative.name }}">{{ "spec.tab_overview"|t }}</a>
-    <a href="/initiative/{{ initiative.name }}/map">{{ "map.tab"|t }}</a>
-    <a href="/initiative/{{ initiative.name }}/specification">{{ "spec.tab_specification"|t }} <span class="spec-beta">Beta</span></a>
-    <a href="/initiative/{{ initiative.name }}/deliverables">{{ "spec.tab_deliverables"|t }}</a>
-    <a href="/initiative/{{ initiative.name }}/backlog" class="active" aria-current="page">{{ "backlog.tab"|t }}</a>
-    <a href="/initiative/{{ initiative.name }}/chat">{{ "chat.tab"|t }} <span class="spec-beta">Beta</span></a>
-</nav>
+{% set active_tab = "deliverables" %}{% include "_initiative_tabs.html" %}
 
 <section class="page-header backlog-header">
     <div>

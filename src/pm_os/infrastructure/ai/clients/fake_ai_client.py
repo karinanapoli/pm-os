@@ -95,6 +95,59 @@ class FakeAIClient:
 
 **Dependências:** Nenhuma identificada | **Requer spike?** [ ] Sim  [x] Não
 """
+        if "Create a complete PRD" in prompt:
+            return f"""# Demo PRD
+
+> This document was created in Demo mode. No content was sent to an external AI.
+
+## Overview
+
+An example of how PM Studio turns context into a structured artifact.
+
+## Problem
+
+Product information becomes scattered and difficult to reuse.
+
+## Objectives
+
+- Centralize an initiative's context.
+- Make decisions and open questions visible.
+- Demonstrate the complete flow without requiring an API key.
+
+## Out of scope
+
+- Replacing critical analysis by the person responsible for the product.
+
+## Requirements
+
+1. Keep context documents organized by initiative.
+2. Generate reviewable artifacts.
+3. Clearly identify illustrative results.
+
+## Success metrics
+
+- First initiative created in under five minutes.
+- The user understands the difference between context, prompt, and result.
+
+## Risks
+
+- Demo content is illustrative and does not interpret uploaded context.
+
+## Security by Design
+
+- What data is processed, stored, shared, and deleted? **To be defined.**
+- Who can access each datum and operation? **To be defined.**
+- What threats, misuse, fraud, or abuse cases apply? **To be defined.**
+- How are data, secrets, and audit logs protected? **To be defined.**
+- What privacy, retention, consent, or compliance obligations apply? **To be defined.**
+- How will vulnerabilities and incidents be handled? **To be defined.**
+
+## Open questions
+
+- Which provider and model suit the desired privacy level?
+
+_Demonstrated prompt size: {len(prompt)} characters._
+"""
         return f"""# PRD demonstrativo
 
 > Este documento foi criado no modo Demo. Nenhum conteúdo foi enviado para uma IA externa.
@@ -131,6 +184,15 @@ Informações de produto ficam dispersas e difíceis de reutilizar.
 ## Riscos
 
 - O conteúdo deste modo é ilustrativo e não interpreta o contexto enviado.
+
+## Security by Design
+
+- Quais dados serão processados, armazenados, compartilhados e excluídos? **A definir.**
+- Quem pode acessar cada dado e operação? **A definir.**
+- Quais ameaças, usos indevidos, fraudes ou abusos se aplicam? **A definir.**
+- Como dados, segredos e registros de auditoria serão protegidos? **A definir.**
+- Quais obrigações de privacidade, retenção, consentimento ou conformidade se aplicam? **A definir.**
+- Como vulnerabilidades e incidentes serão tratados? **A definir.**
 
 ## Perguntas em aberto
 

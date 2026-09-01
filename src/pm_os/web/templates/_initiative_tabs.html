@@ -1,0 +1,7 @@
+<nav class="initiative-tabs" aria-label="{{ 'spec.navigation'|t }}">
+    <a href="/initiative/{{ initiative.name }}" {% if active_tab == "overview" %}class="active" aria-current="page"{% endif %}>{{ "spec.tab_overview"|t }}</a>
+    <a href="/initiative/{{ initiative.name }}#context" {% if active_tab == "context" %}class="active" aria-current="page"{% endif %}>{{ "spec.tab_evidence"|t }}</a>
+    <a href="/initiative/{{ initiative.name }}/specification" {% if active_tab == "definition" %}class="active" aria-current="page"{% endif %}>{{ "spec.tab_specification"|t }} <span class="spec-beta">Beta</span></a>
+    <a href="/initiative/{{ initiative.name }}/security" {% if active_tab == "security" %}class="active" aria-current="page"{% endif %}>{{ "security.tab"|t }}</a>
+    <a href="/initiative/{{ initiative.name }}/deliverables" {% if active_tab == "deliverables" %}class="active" aria-current="page"{% endif %}>{{ "spec.tab_deliverables"|t }}</a>
+</nav>

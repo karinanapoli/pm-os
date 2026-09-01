@@ -6,16 +6,7 @@
 <div class="alert alert-{{ notice_kind or 'success' }}" role="status">{{ notice|t }}</div>
 {% endif %}
 
-<nav class="initiative-tabs" aria-label="{{ 'spec.navigation'|t }}">
-    <a href="/initiative/{{ initiative.name }}">{{ "spec.tab_overview"|t }}</a>
-    <a href="/initiative/{{ initiative.name }}/map">{{ "map.tab"|t }}</a>
-    <a href="/initiative/{{ initiative.name }}#context">{{ "spec.tab_evidence"|t }}</a>
-    <a href="/initiative/{{ initiative.name }}/specification">{{ "spec.tab_specification"|t }} <span class="spec-beta">Beta</span></a>
-    <a href="/initiative/{{ initiative.name }}/deliverables" class="active" aria-current="page">{{ "spec.tab_deliverables"|t }}</a>
-    <a href="/initiative/{{ initiative.name }}/chat">{{ "chat.tab"|t }} <span class="spec-beta">Beta</span></a>
-    <a href="/initiative/{{ initiative.name }}/specification#decisions">{{ "spec.tab_decisions"|t }}</a>
-    <a href="/initiative/{{ initiative.name }}/specification#history">{{ "spec.tab_history"|t }}</a>
-</nav>
+{% set active_tab = "deliverables" %}{% include "_initiative_tabs.html" %}
 
 <section class="page-header">
     <div>
@@ -24,6 +15,12 @@
         <p>{{ "spec.deliverables_desc"|t }}</p>
     </div>
 </section>
+
+{% if security_assessment.critical_blockers %}
+<div class="alert alert-error" role="alert">{{ "security.deliverable_blocker"|t }} <a href="/initiative/{{ initiative.name }}/security">{{ "security.review_cta"|t }}</a></div>
+{% elif security_assessment.pending %}
+<div class="alert alert-warning" role="status">{{ "security.deliverable_pending"|t }} <a href="/initiative/{{ initiative.name }}/security">{{ "security.review_cta"|t }}</a></div>
+{% endif %}
 
 <div class="deliverables-grid">
     <article class="card deliverable-card">

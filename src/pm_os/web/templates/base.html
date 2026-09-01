@@ -6,9 +6,6 @@
     <meta name="csrf-token" content="{{ csrf_token }}">
     <title>{{ "app.title"|t }}</title>
     <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css?v=20260805-backlog-source-selector">
     <link rel="stylesheet" href="/static/tour.css">
 </head>
@@ -17,33 +14,33 @@
     <div class="layout">
         <aside class="sidebar" id="appSidebar" aria-label="{{ 'a11y.primary_navigation'|t }}">
             <div class="sidebar-header">
-                <h1 class="logo">PM Studio</h1>
+                <a class="logo" href="/" aria-label="PM Studio — {{ 'nav.dashboard'|t }}">PM Studio</a>
                 <span class="logo-sub">{{ "app.subtitle"|t }}</span>
             </div>
 
             <div class="sidebar-section">{{ "nav.workspace"|t }}</div>
             <nav class="sidebar-nav">
-                <a href="/" class="nav-item {% if request.url.path == '/' %}active{% endif %}">
+                <a href="/" class="nav-item {% if request.url.path == '/' %}active{% endif %}" {% if request.url.path == '/' %}aria-current="page"{% endif %}>
                     <span class="nav-icon">◈</span>
                     <span>{{ "nav.dashboard"|t }}</span>
                 </a>
-                <a href="/initiatives/new" class="nav-item {% if request.url.path == '/initiatives/new' %}active{% endif %}">
+                <a href="/initiatives/new" class="nav-item {% if request.url.path == '/initiatives/new' %}active{% endif %}" {% if request.url.path == '/initiatives/new' %}aria-current="page"{% endif %}>
                     <span class="nav-icon">+</span>
                     <span>{{ "nav.new_initiative"|t }}</span>
                 </a>
-                <a href="/signals" class="nav-item {% if request.url.path.startswith('/signals') %}active{% endif %}">
+                <a href="/signals" class="nav-item {% if request.url.path.startswith('/signals') %}active{% endif %}" {% if request.url.path.startswith('/signals') %}aria-current="page"{% endif %}>
                     <span class="nav-icon">◌</span>
                     <span>{{ "nav.signals"|t }}</span>
                 </a>
-                <a href="/decisions" class="nav-item {% if request.url.path == '/decisions' %}active{% endif %}">
+                <a href="/decisions" class="nav-item {% if request.url.path == '/decisions' %}active{% endif %}" {% if request.url.path == '/decisions' %}aria-current="page"{% endif %}>
                     <span class="nav-icon">◆</span>
                     <span>{{ "nav.decisions"|t }}</span>
                 </a>
-                <a href="/generate" class="nav-item {% if request.url.path == '/generate' %}active{% endif %}">
+                <a href="/generate" class="nav-item {% if request.url.path == '/generate' %}active{% endif %}" {% if request.url.path == '/generate' %}aria-current="page"{% endif %}>
                     <span class="nav-icon">◇</span>
                     <span>{{ "nav.generate_prd"|t }}</span>
                 </a>
-                <a href="/consult" class="nav-item {% if request.url.path == '/consult' %}active{% endif %}">
+                <a href="/consult" class="nav-item {% if request.url.path == '/consult' %}active{% endif %}" {% if request.url.path == '/consult' %}aria-current="page"{% endif %}>
                     <span class="nav-icon">◆</span>
                     <span>{{ "nav.qa"|t }}</span>
                 </a>
@@ -131,7 +128,7 @@
                                 {% endif %}
                             {% endif %}
                         </span>
-                        <a href="/onboarding/show" title="Tour" style="width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.04); color: var(--text-muted); text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.2s ease;" onmouseover="this.style.background='rgba(124,92,231,0.2)'; this.style.color='var(--primary-light)';" onmouseout="this.style.background='rgba(255,255,255,0.04)'; this.style.color='var(--text-muted)';">?</a>
+                        <a href="/onboarding/show" aria-label="{{ 'a11y.open_tour'|t }}" style="width: 36px; height: 36px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.04); color: var(--text-muted); text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.2s ease;">?</a>
                     </div>
                     <div class="app-version" title="{{ 'version.help'|t }}">
                         PM Studio {{ "app.version"|t }}
@@ -145,7 +142,7 @@
                 <button type="button" class="mobile-menu-toggle" id="mobileMenuToggle"
                         aria-controls="appSidebar" aria-expanded="false"
                         aria-label="{{ 'a11y.open_menu'|t }}">☰</button>
-                <h2 class="page-title">{% block page_title %}{{ "dashboard.title"|t }}{% endblock %}</h2>
+                <h1 class="page-title">{% block page_title %}{{ "dashboard.title"|t }}{% endblock %}</h1>
                 {% block topbar_actions %}{% endblock %}
             </header>
             <div class="content" id="main-content" tabindex="-1">
@@ -174,15 +171,26 @@
     window.PMOS = (function() {
         var toastTimer = null;
         var undoStack = [];
+        var modalTrigger = null;
 
         function openModal(id) {
             var el = document.getElementById('modal-' + id);
-            if (el) el.classList.add('active');
+            if (el) {
+                modalTrigger = document.activeElement;
+                el.classList.add('active');
+                el.setAttribute('aria-hidden', 'false');
+                var focusTarget = el.querySelector('[data-modal-initial-focus]') || el.querySelector('button, a, input, select, textarea');
+                if (focusTarget) focusTarget.focus();
+            }
         }
 
         function closeModal(id) {
             var el = document.getElementById('modal-' + id);
-            if (el) el.classList.remove('active');
+            if (el) {
+                el.classList.remove('active');
+                el.setAttribute('aria-hidden', 'true');
+                if (modalTrigger && modalTrigger.focus) modalTrigger.focus();
+            }
         }
 
         function toast(text, undoAction) {
@@ -243,14 +251,42 @@
                 link.addEventListener('click', function() { setMenu(false); });
             });
             document.addEventListener('keydown', function(event) {
-                if (event.key === 'Escape') setMenu(false);
+                if (event.key === 'Escape') {
+                    setMenu(false);
+                    var activeModal = document.querySelector('.modal-overlay.active');
+                    if (activeModal) closeModal(activeModal.id.replace('modal-', ''));
+                }
+                if (event.key === 'Tab') {
+                    var activeDialog = document.querySelector('.modal-overlay.active .modal');
+                    if (!activeDialog) return;
+                    var focusable = Array.from(activeDialog.querySelectorAll('button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled])'));
+                    if (!focusable.length) return;
+                    var first = focusable[0];
+                    var last = focusable[focusable.length - 1];
+                    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+                    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+                }
             });
 
             document.querySelectorAll('.modal-overlay').forEach(function(modal) {
+                modal.setAttribute('aria-hidden', modal.classList.contains('active') ? 'false' : 'true');
+                var dialog = modal.querySelector('.modal');
+                if (dialog) {
+                    dialog.setAttribute('role', 'dialog');
+                    dialog.setAttribute('aria-modal', 'true');
+                    dialog.setAttribute('tabindex', '-1');
+                    var modalTitle = dialog.querySelector('.modal-title');
+                    if (modalTitle && !dialog.hasAttribute('aria-labelledby')) {
+                        if (!modalTitle.id) modalTitle.id = modal.id + '-title';
+                        dialog.setAttribute('aria-labelledby', modalTitle.id);
+                    }
+                }
                 modal.addEventListener('click', function(e) {
-                    if (e.target === modal) modal.classList.remove('active');
+                    if (e.target === modal) closeModal(modal.id.replace('modal-', ''));
                 });
             });
+            var activeInitiativeTab = document.querySelector('.initiative-tabs [aria-current="page"]');
+            if (activeInitiativeTab) activeInitiativeTab.scrollIntoView({block: 'nearest', inline: 'center'});
 
             // CSRF token injection for all forms
             var csrfToken = '{{ csrf_token }}';
@@ -311,7 +347,33 @@
                     }
                     overlay.classList.add('active');
                     overlay.setAttribute('aria-hidden', 'false');
+                    document.getElementById('main-content').setAttribute('aria-busy', 'true');
+                    form.dataset.submitted = 'true';
                 });
+            });
+
+            document.querySelectorAll('form[data-unsaved-guard]').forEach(function(form) {
+                form.dataset.dirty = 'false';
+                form.addEventListener('input', function() { form.dataset.dirty = 'true'; });
+                form.addEventListener('change', function() { form.dataset.dirty = 'true'; });
+            });
+            document.querySelectorAll('form[data-prevent-duplicate]').forEach(function(form) {
+                form.addEventListener('submit', function(event) {
+                    if (form.dataset.submitting === 'true') {
+                        event.preventDefault();
+                        return;
+                    }
+                    form.dataset.submitting = 'true';
+                    form.querySelectorAll('button[type="submit"], input[type="submit"]').forEach(function(control) {
+                        control.disabled = true;
+                    });
+                });
+            });
+            window.addEventListener('beforeunload', function(event) {
+                var dirty = Array.from(document.querySelectorAll('form[data-unsaved-guard]')).some(function(form) {
+                    return form.dataset.dirty === 'true' && form.dataset.submitted !== 'true';
+                });
+                if (dirty) { event.preventDefault(); event.returnValue = ''; }
             });
 
             // Hide loading overlay on page navigation fail (back/error)
@@ -319,12 +381,15 @@
                 var ol = document.getElementById('loadingOverlay');
                 ol.classList.remove('active');
                 ol.setAttribute('aria-hidden', 'true');
+                document.getElementById('main-content').setAttribute('aria-busy', 'false');
             });
             // Safety: hide overlay after 60s regardless
             setTimeout(function() {
                 var ol = document.getElementById('loadingOverlay');
+                if (ol.classList.contains('active')) PMOS.toast({{ "loading.timeout"|t|tojson }});
                 ol.classList.remove('active');
                 ol.setAttribute('aria-hidden', 'true');
+                document.getElementById('main-content').setAttribute('aria-busy', 'false');
             }, 60000);
         });
 

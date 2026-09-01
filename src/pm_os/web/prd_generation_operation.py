@@ -53,7 +53,7 @@ class PRDGenerationOperation:
             job.fail(self.translate("error.ollama", request.lang))
         except Exception as exc:
             _logger.exception("Background PRD generation failed")
-            job.fail(str(exc))
+            job.fail(self.translate("error.unexpected", request.lang))
 
     def _run(self, job: GenerationJob, request: PRDGenerationRequest) -> None:
         job.set_step(0, "active", self.translate("generate.progress_context", request.lang))

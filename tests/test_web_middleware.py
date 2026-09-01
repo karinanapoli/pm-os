@@ -117,4 +117,7 @@ def test_security_headers_apply_to_html_and_downloads(monkeypatch):
         assert response.headers["Cross-Origin-Opener-Policy"] == "same-origin"
         assert response.headers["Strict-Transport-Security"].startswith("max-age=")
     assert "Content-Security-Policy" in html.headers
+    assert "font-src 'self'" in html.headers["Content-Security-Policy"]
+    assert "fonts.googleapis.com" not in html.headers["Content-Security-Policy"]
+    assert "fonts.gstatic.com" not in html.headers["Content-Security-Policy"]
     assert "Content-Security-Policy" not in download.headers

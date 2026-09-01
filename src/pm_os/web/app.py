@@ -102,6 +102,11 @@ from pm_os.web.request_limits import (
 )
 from pm_os.web.safe_http import fetch_public_url, validate_public_url
 from pm_os.web.signal_source_service import SignalSourceError, SignalSourceService
+from pm_os.web.security_assessment_service import (
+    SECURITY_DIMENSIONS,
+    SecurityAssessmentValidationError,
+    SecurityAssessmentService,
+)
 from pm_os.writers.markdown_writer import MarkdownWriter
 import logging
 _logger = logging.getLogger("pm_os")
@@ -109,6 +114,7 @@ initiative_chat_service = InitiativeChatService()
 mcp_tool_service = MCPToolService()
 backlog_export_service = BacklogExportService()
 backlog_mcp_write_service = BacklogMCPWriteService()
+security_assessment_service = SecurityAssessmentService()
 
 
 def _validation_report_for_display(content: str, lang: str) -> str:
@@ -1126,7 +1132,7 @@ async def create_signal(
                 initiatives=initiatives,
                 source_types=SIGNAL_SOURCE_TYPES,
                 strengths=SIGNAL_STRENGTHS,
-                error=str(exc),
+                error=_t("error.unexpected", _get_lang()),
                 form_values={
                     "title": title,
                     "summary": summary,
@@ -1359,6 +1365,7 @@ async def initiative_detail(
             specification=specification,
             specification_completion=product_specification_service.completion(specification),
             linked_signals=_signal_repo(request).list(initiative_name),
+            security_assessment=security_assessment_service.load(selected.path),
         ),
     )
 
@@ -1401,6 +1408,7 @@ async def specification_page(
             active_ai_provider=config_manager.get("ai_provider", "ollama"),
             notice=notice,
             notice_kind=notice_kind,
+            security_assessment=security_assessment_service.load(selected.path),
         ),
     )
 
@@ -1440,6 +1448,75 @@ async def initiative_map(request: Request, initiative_name: str):
     )
 
 
+@app.get("/initiative/{initiative_name}/security", response_class=HTMLResponse)
+async def initiative_security(
+    request: Request,
+    initiative_name: str,
+    notice: str = "",
+):
+    selected = _get_initiative_by_name(initiative_name, request)
+    if not selected:
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    return templates.TemplateResponse(
+        request,
+        "initiative_security.html",
+        _ctx(
+            request,
+            initiative=selected,
+            assessment=security_assessment_service.load(selected.path),
+            dimensions=SECURITY_DIMENSIONS,
+            notice=notice,
+        ),
+    )
+
+
+@app.post("/initiative/{initiative_name}/security")
+async def save_initiative_security(request: Request, initiative_name: str):
+    selected = _get_initiative_by_name(initiative_name, request)
+    if not selected:
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    form = await request.form()
+    submitted = {
+        key: {
+            "status": str(form.get(f"{key}_status", "not_assessed")),
+            "risk": str(form.get(f"{key}_risk", "medium")),
+            "evidence": str(form.get(f"{key}_evidence", "")),
+            "action": str(form.get(f"{key}_action", "")),
+            "owner": str(form.get(f"{key}_owner", "")),
+            "due_date": str(form.get(f"{key}_due_date", "")),
+            "not_applicable_reason": str(form.get(f"{key}_not_applicable_reason", "")),
+        }
+        for key in SECURITY_DIMENSIONS
+    }
+    try:
+        security_assessment_service.save(
+            selected.path,
+            submitted,
+            actor=_get_session_user_email(request),
+        )
+    except SecurityAssessmentValidationError:
+        draft_assessment = security_assessment_service.load(selected.path)
+        draft_assessment["answers"].update(submitted)
+        return templates.TemplateResponse(
+            request,
+            "initiative_security.html",
+            _ctx(
+                request,
+                initiative=selected,
+                assessment=draft_assessment,
+                dimensions=SECURITY_DIMENSIONS,
+                error=_t("security.validation_error", _get_lang()),
+                notice="",
+            ),
+            status_code=422,
+        )
+    create_change_tracker().update_manifest(str(selected.path))
+    return RedirectResponse(
+        url=f"/initiative/{initiative_name}/security?notice=security.saved",
+        status_code=303,
+    )
+
+
 @app.get("/initiative/{initiative_name}/deliverables", response_class=HTMLResponse)
 async def initiative_deliverables(
     request: Request,
@@ -1462,6 +1539,7 @@ async def initiative_deliverables(
             backlog_exists=(selected.path / "artifacts" / "backlog.md").exists(),
             prd_exists=(selected.path / "artifacts" / "prd.md").exists(),
             artifacts=specification.get("artifacts") or {},
+            security_assessment=security_assessment_service.load(selected.path),
             notice=notice,
             notice_kind=notice_kind,
         ),
@@ -2548,7 +2626,7 @@ async def save_config(
             return templates.TemplateResponse(
                 request,
                 "config.html",
-                _ctx(request, saved=False, error=str(exc)),
+                _ctx(request, saved=False, error=_t("error.unexpected", _get_lang())),
                 status_code=422,
             )
     updates = {

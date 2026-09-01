@@ -17,6 +17,21 @@ def test_prompt_builder_builds_create_prd_prompt():
     assert "Recommendations" in prompt
     assert "Do not cite, enumerate, or repeat every document" in prompt
     assert "Cite every factual claim" not in prompt
+    assert "Security by Design" in prompt
+    assert "least privilege" in prompt
+    assert 'mark it "To be defined"' in prompt
+
+
+def test_prompt_builder_builds_security_by_design_questions_in_portuguese():
+    prompt = PromptBuilder().build(
+        workflow_name="create_prd",
+        context="Contexto do produto",
+        lang="pt-BR",
+    )
+
+    assert "Security by Design" in prompt
+    assert "menor privilégio" in prompt
+    assert 'marque-a como "A definir"' in prompt
 
 
 def test_prompt_builder_rejects_unknown_workflow():

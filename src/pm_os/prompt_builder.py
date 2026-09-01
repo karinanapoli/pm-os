@@ -97,7 +97,27 @@ O PRD deve incluir:
 7. Requisitos não funcionais
 8. Métricas de sucesso
 9. Riscos
-10. Perguntas em aberto
+10. Security by Design
+11. Perguntas em aberto
+
+Na seção "Security by Design", avalie explicitamente, como perguntas a serem
+respondidas antes da entrega:
+
+- Quais dados pessoais, sensíveis ou confidenciais serão coletados, processados,
+  armazenados, compartilhados e excluídos?
+- Quem pode acessar cada dado e operação, e como autenticação, autorização e
+  menor privilégio serão aplicados?
+- Quais ameaças, usos indevidos, fraudes e casos de abuso são plausíveis?
+- Como dados serão protegidos em trânsito e em repouso, incluindo segredos e
+  registros de auditoria?
+- Quais obrigações de privacidade, retenção, consentimento e conformidade se
+  aplicam?
+- Como vulnerabilidades, dependências, monitoramento, resposta a incidentes e
+  recuperação serão tratados?
+
+Responda somente quando houver evidência no contexto. Caso contrário, mantenha
+a pergunta explícita e marque-a como "A definir"; não presuma controles de
+segurança já implementados.
 
 Contexto:
 
@@ -135,7 +155,25 @@ The PRD must include:
 7. Non-functional requirements
 8. Success metrics
 9. Risks
-10. Open questions
+10. Security by Design
+11. Open questions
+
+In the "Security by Design" section, explicitly assess these questions before
+delivery:
+
+- What personal, sensitive, or confidential data will be collected, processed,
+  stored, shared, and deleted?
+- Who can access each datum and operation, and how will authentication,
+  authorization, and least privilege be enforced?
+- What threats, misuse, fraud, and abuse cases are plausible?
+- How will data in transit and at rest, secrets, and audit logs be protected?
+- What privacy, retention, consent, and compliance obligations apply?
+- How will vulnerabilities, dependencies, monitoring, incident response, and
+  recovery be handled?
+
+Answer only when supported by the context. Otherwise, keep the question
+explicit and mark it "To be defined"; do not assume security controls are
+already implemented.
 
 Context:
 
