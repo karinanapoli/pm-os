@@ -2109,7 +2109,13 @@ async def prepare_backlog_export(
             url=f"/initiative/{initiative_name}/backlog/export?notice=backlog.export_error&notice_kind=error",
             status_code=303,
         )
-    return RedirectResponse(url=f"/initiative/{initiative_name}/backlog/export?notice=backlog.export_prepared", status_code=303)
+    return RedirectResponse(
+        url=(
+            f"/initiative/{initiative_name}/backlog/export"
+            "?notice=backlog.export_prepared#export-preview"
+        ),
+        status_code=303,
+    )
 
 
 @app.post("/initiative/{initiative_name}/backlog/export/confirm")
@@ -2128,7 +2134,13 @@ async def confirm_backlog_export(request: Request, initiative_name: str, preview
             url=f"/initiative/{initiative_name}/backlog/export?notice=backlog.export_error&notice_kind=error",
             status_code=303,
         )
-    return RedirectResponse(url=f"/initiative/{initiative_name}/backlog/export?notice=backlog.export_confirmed", status_code=303)
+    return RedirectResponse(
+        url=(
+            f"/initiative/{initiative_name}/backlog/export"
+            "?notice=backlog.export_confirmed#export-result"
+        ),
+        status_code=303,
+    )
 
 
 @app.get("/initiative/{initiative_name}/backlog/export/download")

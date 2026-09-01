@@ -18,11 +18,19 @@ class BacklogExportService:
         found = []
         blocks = re.split(r"(?=^##(?:#)?\s+)", content, flags=re.MULTILINE)
         for block in blocks:
-            epic = re.match(r"^##\s+Épico:\s*(.+)$", block, re.MULTILINE | re.IGNORECASE)
+            epic = re.match(
+                r"^##\s+(?:Épico|Epic):\s*(.+)$",
+                block,
+                re.MULTILINE | re.IGNORECASE,
+            )
             if epic:
                 current_epic = epic.group(1).strip()
                 continue
-            story = re.match(r"^###\s+História:\s*(.+)$", block, re.MULTILINE | re.IGNORECASE)
+            story = re.match(
+                r"^###\s+(?:História|Story):\s*(.+)$",
+                block,
+                re.MULTILINE | re.IGNORECASE,
+            )
             if not story:
                 continue
             title = story.group(1).strip()

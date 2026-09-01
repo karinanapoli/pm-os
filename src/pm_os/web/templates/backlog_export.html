@@ -9,10 +9,16 @@
 <section class="page-header">
     <div><p class="eyebrow">{{ initiative.name }}</p><h2>{{ "backlog.export_title"|t }}</h2><p>{{ "backlog.export_desc"|t }}</p></div>
 </section>
+<ol class="export-progress" aria-label="{{ 'backlog.export_progress'|t }}">
+    <li class="active"><span>1</span>{{ "backlog.export_step_select"|t }}</li>
+    <li class="{% if preview %}active{% endif %}"><span>2</span>{{ "backlog.export_step_review"|t }}</li>
+    <li class="{% if preview.status == 'confirmed' %}active{% endif %}"><span>3</span>{{ "backlog.export_step_download"|t }}</li>
+</ol>
 <section class="card">
     <div class="card-header"><div><h3>{{ "backlog.export_select"|t }}</h3><p class="spec-caption">{{ "backlog.export_select_help"|t }}</p></div></div>
     <div class="card-body">
-        <form method="POST" action="/initiative/{{ initiative.name }}/backlog/export/prepare" class="form">
+        <form method="POST" action="/initiative/{{ initiative.name }}/backlog/export/prepare" class="form" data-loading="generating" data-prevent-duplicate>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <div class="form-group"><label for="export-target">{{ "backlog.export_target"|t }}</label>
                 <select id="export-target" name="target">
                     {% for target in targets %}<option value="{{ target }}">{{ ("backlog.export_target_" ~ target)|t }}</option>{% endfor %}
@@ -23,18 +29,20 @@
                 <label class="checkbox-label"><input type="checkbox" name="item_ids" value="{{ item.id }}" checked><span><strong>{{ item.title }}</strong><br><small>{{ item.epic }}</small></span></label>
                 {% endfor %}
             </div>
-            <button class="btn btn-primary" type="submit">{{ "backlog.export_prepare"|t }}</button>
+            {% if not items %}<div class="alert alert-error" role="alert">{{ "backlog.export_no_items"|t }}</div>{% endif %}
+            <button class="btn btn-primary" type="submit" {% if not items %}disabled aria-disabled="true"{% endif %}>{{ "backlog.export_prepare"|t }}</button>
         </form>
     </div>
 </section>
 {% if preview %}
-<section class="card" style="margin-top:16px;">
+<section class="card" id="export-preview" tabindex="-1" style="margin-top:16px;scroll-margin-top:24px;">
     <div class="card-header"><div><h3>{{ "backlog.export_preview"|t }}</h3><p class="spec-caption">{{ preview.items|length }} {{ "backlog.export_items"|t }} · {{ preview.target }}</p></div></div>
     <div class="card-body">
         <pre style="max-height:480px;overflow:auto;white-space:pre-wrap;">{{ preview|tojson(indent=2) }}</pre>
         {% if preview.status == "prepared" %}
         <div class="learning-callout"><strong>{{ "backlog.export_confirm_title"|t }}</strong><span>{{ "backlog.export_confirm_help"|t }}</span></div>
-        <form method="POST" action="/initiative/{{ initiative.name }}/backlog/export/confirm">
+        <form method="POST" action="/initiative/{{ initiative.name }}/backlog/export/confirm" data-loading="saving" data-prevent-duplicate>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="preview_id" value="{{ preview.preview_id }}">
             <button class="btn btn-primary" type="submit">{{ "backlog.export_confirm"|t }}</button>
         </form>
@@ -45,11 +53,12 @@
 </section>
 {% endif %}
 {% if preview.status == "confirmed" %}
-<section class="card" style="margin-top:16px;">
+<section class="card" id="export-result" tabindex="-1" style="margin-top:16px;scroll-margin-top:24px;">
     <div class="card-header"><div><h3>{{ "backlog.mcp_write_title"|t }}</h3><p class="spec-caption">{{ "backlog.mcp_write_help"|t }}</p></div></div>
     <div class="card-body">
         {% if write_tools %}
         <form method="POST" action="/initiative/{{ initiative.name }}/backlog/export/mcp-write" class="form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <div class="form-group"><label for="backlog-mcp-tool">{{ "backlog.mcp_write_tool"|t }}</label>
                 <select id="backlog-mcp-tool" name="mcp_tool">
                     {% for tool in write_tools %}<option value="{{ tool.value }}">{{ tool.connection }} · {{ tool.name }}</option>{% endfor %}
@@ -71,4 +80,7 @@
     </div>
 </section>
 {% endif %}
+<style>
+.export-progress{list-style:none;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 18px;padding:0}.export-progress li{display:flex;align-items:center;gap:8px;color:var(--text-muted);padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius-md)}.export-progress li span{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--bg-elevated);font-weight:700}.export-progress li.active{color:var(--text-primary);border-color:rgba(124,92,231,.45)}.export-progress li.active span{background:var(--primary);color:#fff}@media(max-width:650px){.export-progress{grid-template-columns:1fr}.export-progress li{min-height:48px}}
+</style>
 {% endblock %}
