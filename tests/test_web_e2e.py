@@ -2388,14 +2388,28 @@ class TestDashboardEmptyState:
         assert "/workspace/default" in resp.text
         assert "Default" in resp.text
 
-    def test_dashboard_exposes_recent_capabilities_and_version(self, client):
+    def test_dashboard_exposes_product_capabilities_without_technical_plugin_cta(self, client):
         response = client.get("/")
 
         assert response.status_code == 200
         assert 'href="/signals"' in response.text
         assert 'href="/decisions"' in response.text
-        assert 'href="/config#plugins"' in response.text
+        assert 'href="/config#plugins"' not in response.text
         assert "PM Studio v0.2.0" in response.text
+
+    def test_dashboard_prioritizes_next_action_and_collapses_secondary_features(
+        self, client
+    ):
+        _create_initiative(client, "Prioridade visual", "INT-UI-PRIORITY")
+
+        response = client.get("/")
+
+        assert response.status_code == 200
+        assert "Próximo passo recomendado" in response.text
+        assert '<details class="capability-section capability-disclosure">' in response.text
+        assert response.text.index("Próximo passo recomendado") < response.text.index(
+            "Explorar recursos"
+        )
 
 
 class TestGenerateLinks:
@@ -2634,6 +2648,27 @@ class TestSyntheticPartialSpecificationJourneys:
             "Detalhar iniciativa — opcional"
         )
         assert 'id="acceptance_criteria"' in page.text
+
+    def test_primary_outcomes_precede_initiative_metrics(self, client):
+        initiative_id = _create_initiative(
+            client, "Hierarquia visual", "INT-VISUAL-HIERARCHY"
+        )
+
+        page = client.get(f"/initiative/{initiative_id}")
+
+        assert page.text.index("O que você quer produzir agora?") < page.text.index(
+            'class="stats-row"'
+        )
+
+    def test_backlog_keeps_generation_tuning_optional(self, client):
+        initiative_id = _create_initiative(
+            client, "Backlog focado", "INT-FOCUSED-BACKLOG"
+        )
+
+        page = client.get(f"/initiative/{initiative_id}/backlog?source=upload")
+
+        assert "Ajustar formato e detalhamento — opcional" in page.text
+        assert 'class="advanced-options backlog-generation-options"' in page.text
 
     def test_lia_can_generate_backlog_with_only_minimum_requirements(
         self, client, session_base

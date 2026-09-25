@@ -30,6 +30,41 @@
 
 {% set active_tab = "overview" %}{% include "_initiative_tabs.html" %}
 
+{# ── Primary next action ── #}
+<section class="card initiative-goals-card" aria-labelledby="initiative-goals-title">
+    <div class="card-header">
+        <div>
+            <span class="eyebrow">{{ "initiative.goals.eyebrow"|t }}</span>
+            <h2 id="initiative-goals-title">{{ "initiative.goals.title"|t }}</h2>
+            <p class="spec-caption">{{ "initiative.goals.desc"|t }}</p>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="initiative-goal-grid">
+            <a href="/initiative/{{ initiative.name }}/backlog?source=upload" class="initiative-goal primary">
+                <span class="initiative-goal-icon" aria-hidden="true">▤</span>
+                <strong>{{ "initiative.goals.backlog"|t }}</strong>
+                <span>{{ "initiative.goals.backlog_desc"|t }}</span>
+            </a>
+            <a href="/generate?initiative={{ initiative.name }}" class="initiative-goal">
+                <span class="initiative-goal-icon" aria-hidden="true">◇</span>
+                <strong>{{ "initiative.goals.prd"|t }}</strong>
+                <span>{{ "initiative.goals.prd_desc"|t }}</span>
+            </a>
+            <a href="/initiative/{{ initiative.name }}/chat" class="initiative-goal">
+                <span class="initiative-goal-icon" aria-hidden="true">✦</span>
+                <strong>{{ "initiative.goals.explore"|t }}</strong>
+                <span>{{ "initiative.goals.explore_desc"|t }}</span>
+            </a>
+            <a href="/initiative/{{ initiative.name }}/specification" class="initiative-goal">
+                <span class="initiative-goal-icon" aria-hidden="true">◎</span>
+                <strong>{{ "initiative.goals.specification"|t }}</strong>
+                <span>{{ "initiative.goals.specification_desc"|t }}</span>
+            </a>
+        </div>
+    </div>
+</section>
+
 <div class="stats-row">
     <div class="stat-card">
         <div class="stat-label">{{ "initiative.detail.status"|t }}</div>
@@ -127,36 +162,6 @@
                 </div>
                 <button type="submit" class="btn btn-secondary btn-sm">{{ "initiative.detail.upload_cta"|t }}</button>
             </form>
-        </div>
-    </div>
-</div>
-
-{# ── Outcome-oriented entry points ── #}
-<div class="card initiative-goals-card">
-    <div class="card-header">
-        <div>
-            <h3>{{ "initiative.goals.title"|t }}</h3>
-            <p class="spec-caption">{{ "initiative.goals.desc"|t }}</p>
-        </div>
-    </div>
-    <div class="card-body">
-        <div class="initiative-goal-grid">
-            <a href="/initiative/{{ initiative.name }}/backlog?source=upload" class="initiative-goal primary">
-                <strong>{{ "initiative.goals.backlog"|t }}</strong>
-                <span>{{ "initiative.goals.backlog_desc"|t }}</span>
-            </a>
-            <a href="/generate?initiative={{ initiative.name }}" class="initiative-goal">
-                <strong>{{ "initiative.goals.prd"|t }}</strong>
-                <span>{{ "initiative.goals.prd_desc"|t }}</span>
-            </a>
-            <a href="/initiative/{{ initiative.name }}/chat" class="initiative-goal">
-                <strong>{{ "initiative.goals.explore"|t }}</strong>
-                <span>{{ "initiative.goals.explore_desc"|t }}</span>
-            </a>
-            <a href="/initiative/{{ initiative.name }}/specification" class="initiative-goal">
-                <strong>{{ "initiative.goals.specification"|t }}</strong>
-                <span>{{ "initiative.goals.specification_desc"|t }}</span>
-            </a>
         </div>
     </div>
 </div>

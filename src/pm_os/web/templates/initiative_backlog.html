@@ -29,7 +29,7 @@
     <li class="{{ 'done' if backlog_artifact.review_status == 'approved' else '' }}">{{ "backlog.step_download"|t }}</li>
 </ol>
 
-<section class="card">
+<section class="card backlog-config-card">
     <div class="card-header">
         <div>
             <h3>{{ "backlog.configure_title"|t }}</h3>
@@ -69,7 +69,10 @@
                         <div class="form-hint">{{ "backlog.source_file_help"|t }}</div>
                     </div>
                 </fieldset>
-            <div class="spec-field-grid">
+            <details class="advanced-options backlog-generation-options">
+                <summary>{{ "backlog.adjust_generation"|t }}</summary>
+                <p class="spec-caption">{{ "backlog.adjust_generation_desc"|t }}</p>
+                <div class="spec-field-grid">
                 <div class="form-group">
                     <label for="story-format">{{ "backlog.story_format"|t }}</label>
                     <select id="story-format" name="story_format">
@@ -102,7 +105,8 @@
                         {% endfor %}
                     </select>
                 </div>
-            </div>
+                </div>
+            </details>
             <div class="backlog-form-actions">
                 <span>{{ "backlog.single_file_help"|t }}</span>
                 <button type="submit" class="btn btn-ai" id="backlog-generate-button" {% if selected_source == 'upload' or (selected_source == 'prd' and not prd_ready) or (selected_source not in ['prd', 'upload'] and not specification_ready) %}disabled{% endif %}>

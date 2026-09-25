@@ -1372,6 +1372,130 @@ body {
     }
 }
 
+/* ── Progressive journey UI polish ── */
+body {
+    background:
+        radial-gradient(circle at 82% -10%, rgba(110, 86, 217, .12), transparent 34rem),
+        var(--bg);
+}
+
+.content {
+    width: 100%;
+    max-width: 1480px;
+    margin-inline: auto;
+}
+
+.workspace-switcher {
+    background: rgba(20, 17, 31, .72);
+    box-shadow: none;
+}
+
+.next-action {
+    border: 1px solid rgba(110, 86, 217, .32);
+    background: linear-gradient(135deg, rgba(110, 86, 217, .16), rgba(34, 184, 217, .07));
+    box-shadow: 0 14px 42px rgba(0, 0, 0, .18);
+}
+
+.capability-disclosure {
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: rgba(20, 17, 31, .62);
+}
+
+.capability-disclosure > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 16px 20px;
+    cursor: pointer;
+    color: var(--text-secondary);
+}
+
+.capability-disclosure > summary::marker { content: ""; }
+.capability-disclosure > summary span:first-child { display: flex; flex-direction: column; }
+.capability-disclosure > summary strong { color: var(--text); font-size: 14px; }
+.capability-disclosure > summary small { color: var(--text-muted); font-size: 12px; }
+.capability-disclosure > summary span:last-child { color: var(--primary-light); font-size: 12px; font-weight: 700; }
+.capability-disclosure[open] > summary { border-bottom: 1px solid var(--border); }
+.capability-disclosure .capability-grid { padding: 16px; }
+.capability-disclosure .capability-card { min-height: 105px; }
+
+.dashboard-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 62vh;
+    padding: 64px 24px;
+    text-align: center;
+}
+
+.initiative-create-shell { max-width: 720px; margin: 0 auto; }
+.initiative-create-card {
+    border-color: rgba(110, 86, 217, .2);
+    box-shadow: 0 20px 55px rgba(0, 0, 0, .22);
+}
+.initiative-create-card textarea#context { min-height: 150px; }
+.initiative-create-card .advanced-options { background: rgba(255, 255, 255, .018); }
+
+.initiative-goals-card {
+    overflow: hidden;
+    border-color: rgba(110, 86, 217, .25);
+    background: linear-gradient(145deg, rgba(30, 26, 58, .88), rgba(20, 17, 31, .96));
+    box-shadow: 0 18px 50px rgba(0, 0, 0, .22);
+}
+.initiative-goals-card .card-header h2 { margin: 2px 0 0; font-size: clamp(18px, 2vw, 23px); }
+.initiative-goal { min-height: 132px; position: relative; padding: 18px; }
+.initiative-goal strong { font-size: 14px; padding-right: 32px; }
+.initiative-goal-icon {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    margin-bottom: 8px;
+    border-radius: 9px;
+    color: var(--primary-light) !important;
+    background: rgba(110, 86, 217, .14);
+    font-size: 16px !important;
+}
+.initiative-goal.primary .initiative-goal-icon { color: var(--ai-light) !important; background: rgba(34, 184, 217, .13); }
+
+.spec-editor { overflow: hidden; }
+.spec-editor > .card-header { background: rgba(110, 86, 217, .045); }
+.spec-editor .spec-completion {
+    white-space: nowrap;
+    color: var(--accent-light);
+    background: rgba(20, 184, 166, .09);
+    border: 1px solid rgba(20, 184, 166, .2);
+}
+.spec-advanced-fields > summary,
+.backlog-generation-options > summary { color: var(--text); font-weight: 700; }
+
+.backlog-config-card { border-color: rgba(34, 184, 217, .16); }
+.backlog-config-card > .card-header { background: rgba(34, 184, 217, .035); }
+#backlog-upload-source {
+    margin-top: 14px !important;
+    padding: 18px;
+    border: 1px solid rgba(34, 184, 217, .18);
+    border-radius: var(--radius);
+    background: rgba(34, 184, 217, .035);
+}
+.backlog-generation-options { margin: 16px 0; }
+.backlog-generation-options .spec-field-grid { margin-top: 14px; }
+.backlog-form-actions { padding-top: 16px; border-top: 1px solid var(--border); }
+
+@media (max-width: 760px) {
+    .content { padding-inline: 18px; }
+    .workspace-switcher .card-body { align-items: stretch !important; }
+    .workspace-switcher .btn { flex: 1; justify-content: center; }
+    .initiative-goal { min-height: auto; }
+    .capability-disclosure > summary { align-items: flex-start; flex-direction: column; gap: 6px; }
+    .backlog-form-actions { align-items: stretch; flex-direction: column; }
+    .backlog-form-actions .btn { width: 100%; }
+}
+
 /* ── Table ── */
 .table-wrapper {
     overflow-x: auto;
