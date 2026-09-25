@@ -56,10 +56,14 @@
                     <label class="backlog-source-option">
                         <input class="backlog-source-radio" type="radio" name="source" value="upload" {% if selected_source == 'upload' %}checked{% endif %}>
                         <span class="backlog-source-indicator" aria-hidden="true"></span>
-                        <span class="backlog-source-copy"><span class="backlog-source-title">{{ "backlog.source_file"|t }}</span><br><span class="backlog-source-description">{{ "backlog.source_file_desc"|t }}</span></span>
+                        <span class="backlog-source-copy"><span class="backlog-source-title">{{ "backlog.source_idea"|t }}</span><br><span class="backlog-source-description">{{ "backlog.source_idea_desc"|t }}</span></span>
                     </label>
                     </div>
                     <div id="backlog-upload-source" {% if selected_source != 'upload' %}hidden{% endif %} style="margin-top:10px;">
+                        <label for="backlog-source-text">{{ "backlog.source_text_label"|t }}</label>
+                        <textarea id="backlog-source-text" name="backlog_source_text" rows="5" placeholder="{{ 'backlog.source_text_placeholder'|t }}"></textarea>
+                        <div class="form-hint">{{ "backlog.source_text_help"|t }}</div>
+                        <div class="backlog-source-separator">{{ "backlog.source_or_file"|t }}</div>
                         <label for="backlog-source-file">{{ "backlog.source_file_label"|t }}</label>
                         <input id="backlog-source-file" name="backlog_source_file" type="file" accept=".md,.txt,text/markdown,text/plain" onchange="PMOS.validateUploadFiles(this)">
                         <div class="form-hint">{{ "backlog.source_file_help"|t }}</div>
@@ -155,18 +159,21 @@
     const button = document.getElementById('backlog-generate-button');
     const uploadArea = document.getElementById('backlog-upload-source');
     const uploadInput = document.getElementById('backlog-source-file');
+    const textInput = document.getElementById('backlog-source-text');
     if (!form || !button) return;
     const updateSourceState = () => {
         const selected = form.querySelector('input[name="source"]:checked');
         const isUpload = selected && selected.value === 'upload';
         uploadArea.hidden = !isUpload;
-        uploadInput.required = Boolean(isUpload);
-        button.disabled = !selected || selected.disabled || (isUpload && !uploadInput.files.length);
+        button.disabled = !selected || selected.disabled || (
+            isUpload && !uploadInput.files.length && !textInput.value.trim()
+        );
     };
     form.querySelectorAll('input[name="source"]').forEach((radio) => {
         radio.addEventListener('change', updateSourceState);
     });
     uploadInput.addEventListener('change', updateSourceState);
+    textInput.addEventListener('input', updateSourceState);
     updateSourceState();
 })();
 </script>

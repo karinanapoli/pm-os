@@ -74,7 +74,11 @@
                         {% endif %}
                     </p>
                 </div>
-                <span class="spec-completion">{{ completion }}% {{ "spec.complete"|t }}</span>
+                <span class="spec-completion">
+                    {% if specification.sections.requirements %}{{ "spec.readiness_minimum"|t }}
+                    {% elif specification.version %}{{ "spec.readiness_building"|t }}
+                    {% else %}{{ "spec.readiness_start"|t }}{% endif %}
+                </span>
             </div>
             <div class="card-body">
                 <div class="spec-field-grid">
@@ -82,62 +86,28 @@
                         <label for="problem">{{ "spec.problem"|t }}</label>
                         <textarea id="problem" name="problem" rows="3" placeholder="{{ 'spec.problem_hint'|t }}">{{ specification.sections.problem }}</textarea>
                     </div>
-                    <div class="form-group">
-                        <label for="users">{{ "spec.users"|t }}</label>
-                        <textarea id="users" name="users" rows="3">{{ specification.sections.users }}</textarea>
-                    </div>
-                    <div class="form-group">
+                    <div class="form-group spec-span-2">
                         <label for="outcome">{{ "spec.outcome"|t }}</label>
                         <textarea id="outcome" name="outcome" rows="3">{{ specification.sections.outcome }}</textarea>
-                    </div>
-                    <div class="form-group spec-span-2">
-                        <label for="evidence">{{ "spec.evidence"|t }}</label>
-                        <textarea id="evidence" name="evidence" rows="3" placeholder="{{ 'spec.evidence_hint'|t }}">{{ specification.sections.evidence }}</textarea>
-                        {% if specification.source_ids %}
-                        <div class="form-hint">{{ specification.source_ids|length }} {{ "spec.sources_linked"|t }}</div>
-                        {% endif %}
-                    </div>
-                    <div class="form-group">
-                        <label for="metrics">{{ "spec.metrics"|t }}</label>
-                        <textarea id="metrics" name="metrics" rows="3">{{ specification.sections.metrics }}</textarea>
-                    </div>
-                    <div class="form-group">
-                        <label for="scope">{{ "spec.scope"|t }}</label>
-                        <textarea id="scope" name="scope" rows="3">{{ specification.sections.scope }}</textarea>
-                    </div>
-                    <div class="form-group">
-                        <label for="out_of_scope">{{ "spec.out_of_scope"|t }}</label>
-                        <textarea id="out_of_scope" name="out_of_scope" rows="3">{{ specification.sections.out_of_scope }}</textarea>
-                    </div>
-                    <div class="form-group">
-                        <label for="constraints">{{ "spec.constraints"|t }}</label>
-                        <textarea id="constraints" name="constraints" rows="3">{{ specification.sections.constraints }}</textarea>
                     </div>
                     <div class="form-group spec-span-2">
                         <label for="requirements">{{ "spec.requirements"|t }}</label>
                         <textarea id="requirements" name="requirements" rows="5" placeholder="{{ 'spec.list_hint'|t }}">{{ specification.sections.requirements }}</textarea>
                     </div>
-                    <div class="form-group">
-                        <label for="risks">{{ "spec.risks"|t }}</label>
-                        <textarea id="risks" name="risks" rows="4">{{ specification.sections.risks }}</textarea>
-                    </div>
-                    <div class="form-group">
-                        <label for="dependencies">{{ "spec.dependencies"|t }}</label>
-                        <textarea id="dependencies" name="dependencies" rows="4">{{ specification.sections.dependencies }}</textarea>
-                    </div>
-                    <div class="form-group">
-                        <label for="hypotheses">{{ "spec.hypotheses"|t }}</label>
-                        <textarea id="hypotheses" name="hypotheses" rows="4">{{ specification.sections.hypotheses }}</textarea>
-                    </div>
-                    <div class="form-group">
-                        <label for="open_questions">{{ "spec.open_questions"|t }}</label>
-                        <textarea id="open_questions" name="open_questions" rows="4">{{ specification.sections.open_questions }}</textarea>
-                    </div>
-                    <div class="form-group spec-span-2">
-                        <label for="acceptance_criteria">{{ "spec.acceptance_criteria"|t }}</label>
-                        <textarea id="acceptance_criteria" name="acceptance_criteria" rows="5" placeholder="{{ 'spec.list_hint'|t }}">{{ specification.sections.acceptance_criteria }}</textarea>
-                    </div>
                 </div>
+                <details class="advanced-options spec-advanced-fields">
+                    <summary>{{ "spec.advanced_fields"|t }}</summary>
+                    <p class="spec-caption">{{ "spec.advanced_fields_desc"|t }}</p>
+                    <div class="spec-field-grid">
+                        {% for field in ["users", "evidence", "metrics", "scope", "out_of_scope", "constraints", "risks", "dependencies", "hypotheses", "open_questions", "acceptance_criteria"] %}
+                        <div class="form-group {% if field in ['evidence', 'acceptance_criteria'] %}spec-span-2{% endif %}">
+                            <label for="{{ field }}">{{ ("spec." ~ field)|t }}</label>
+                            <textarea id="{{ field }}" name="{{ field }}" rows="{{ 5 if field == 'acceptance_criteria' else 3 }}"{% if field == 'evidence' %} placeholder="{{ 'spec.evidence_hint'|t }}"{% elif field == 'acceptance_criteria' %} placeholder="{{ 'spec.list_hint'|t }}"{% endif %}>{{ specification.sections[field] }}</textarea>
+                            {% if field == "evidence" and specification.source_ids %}<div class="form-hint">{{ specification.source_ids|length }} {{ "spec.sources_linked"|t }}</div>{% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </details>
                 <div class="spec-actions">
                     <a href="/generate?initiative={{ initiative.name }}" class="btn btn-secondary">{{ "spec.generate_prd_now"|t }}</a>
                     <button type="submit" class="btn btn-primary">{{ "spec.save_draft"|t }}</button>
@@ -323,9 +293,6 @@
         <section class="card">
             <div class="card-body">
                 <h3>{{ "spec.quality_title"|t }}</h3>
-                <div class="spec-progress">
-                    <span style="width: {{ completion }}%"></span>
-                </div>
                 <p class="spec-caption">{{ "spec.quality_desc"|t }}</p>
                 <dl class="spec-metrics">
                     <div><dt>{{ "spec.sources"|t }}</dt><dd>{{ specification.source_ids|length }}</dd></div>
@@ -382,7 +349,7 @@
                     {% endif %}
                     {% endif %}
                     {% if not backlog_exists %}
-                    <a href="/initiative/{{ initiative.name }}/backlog" class="btn btn-secondary btn-sm {% if specification.status != 'approved' %}disabled{% endif %}">{{ "spec.create_backlog"|t }}</a>
+                    <a href="/initiative/{{ initiative.name }}/backlog" class="btn btn-secondary btn-sm">{{ "spec.create_backlog"|t }}</a>
                     {% endif %}
                 </div>
             </div>

@@ -20,14 +20,24 @@
             {% endif %}
 
             <form method="POST" action="/initiatives/new" class="form" data-loading="saving">
-                <div class="form-grid-2" style="margin-bottom: 18px;">
+                <div style="margin-bottom: 18px;">
                     <div class="form-group" style="margin-bottom: 0;">
                         <label for="name" style="display: block; font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 5px;">{{ "initiative.new.name"|t }} <span style="color: var(--danger);">*</span></label>
                         <input type="text" name="name" id="name" placeholder='{{ "initiative.new.name_placeholder"|t }}' required style="width: 100%; padding: 9px 12px; background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 14px; outline: none; box-sizing: border-box;">
                         <div class="form-hint" style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">{{ "initiative.new.name_hint"|t }}</div>
                     </div>
 
-                    <div class="form-group" style="margin-bottom: 0;">
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <label for="context" style="display: block; font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 5px;">{{ "initiative.new.idea"|t }}</label>
+                    <textarea name="context" id="context" placeholder='{{ "initiative.new.idea_placeholder"|t }}' rows="6" style="width: 100%; padding: 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 14px; outline: none; box-sizing: border-box; resize: vertical; line-height: 1.6;"></textarea>
+                    <div class="form-hint" style="font-size: 11px; color: var(--text-muted); margin-top: 5px;">{{ "initiative.new.idea_hint"|t }}</div>
+                </div>
+
+                <details class="advanced-options" style="margin-bottom:20px;">
+                    <summary>{{ "initiative.new.advanced"|t }}</summary>
+                    <div class="form-group" style="margin-top:16px;">
                         <label for="id" style="display: block; font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 5px;">{{ "initiative.new.id"|t }}</label>
                         <div style="display: flex; align-items: center; gap: 6px;">
                             <input type="text" name="id" id="id" placeholder='{{ "initiative.new.id_placeholder"|t }}' style="flex: 1; padding: 9px 12px; background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 14px; outline: none; box-sizing: border-box; font-family: 'JetBrains Mono', monospace; letter-spacing: 0.5px;">
@@ -35,9 +45,8 @@
                         </div>
                         <div class="form-hint" style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">{{ "initiative.new.id_hint"|t }}</div>
                     </div>
-                </div>
 
-                <div style="margin-bottom: 18px;">
+                    <div style="margin-bottom: 8px;">
                     <label style="display: block; font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 6px;">{{ "initiative.new.status"|t }}</label>
                     <div style="display: flex; gap: 6px; flex-wrap: wrap;">
                         {% for val, label in [("discovery", "initiative.new.status_discovery"), ("planning", "initiative.new.status_planning"), ("development", "initiative.new.status_development"), ("completed", "initiative.new.status_completed")] %}
@@ -47,31 +56,8 @@
                         </label>
                         {% endfor %}
                     </div>
-                </div>
-
-                <div style="margin-bottom: 20px;">
-                    <label for="context" style="display: block; font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 5px;">Observações</label>
-                    <textarea name="context" id="context" placeholder='Ex: Queremos reduzir o churn em 20% nos próximos 3 meses...' rows="8" style="width: 100%; padding: 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 14px; outline: none; box-sizing: border-box; resize: vertical; line-height: 1.6;"></textarea>
-                    <div class="form-hint" style="font-size: 11px; color: var(--text-muted); margin-top: 5px;">Contexto inicial da iniciativa — use Markdown para formatar.</div>
-                </div>
-
-                <fieldset class="experience-choice">
-                    <legend>{{ "spec.new_mode_title"|t }}</legend>
-                    <label>
-                        <input type="radio" name="experience_mode" value="quick" checked>
-                        <span>
-                            <strong>{{ "spec.mode_quick"|t }}</strong>
-                            <small>{{ "spec.new_mode_quick_desc"|t }}</small>
-                        </span>
-                    </label>
-                    <label>
-                        <input type="radio" name="experience_mode" value="guided">
-                        <span>
-                            <strong>{{ "spec.mode_guided"|t }} <span class="spec-beta">Beta</span></strong>
-                            <small>{{ "spec.new_mode_guided_desc"|t }}</small>
-                        </span>
-                    </label>
-                </fieldset>
+                    </div>
+                </details>
 
                 <div style="display: flex; gap: 12px; align-items: center; padding-top: 20px; border-top: 1px solid var(--border);">
                     <button type="submit" class="btn btn-primary" style="padding: 10px 28px; font-size: 14px;">{{ "initiative.new.cta"|t }}</button>

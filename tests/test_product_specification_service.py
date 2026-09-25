@@ -230,14 +230,12 @@ def test_uploaded_file_becomes_generation_source_and_preserves_filename(tmp_path
     assert context["preferences"]["story_format"] == "automatic"
 
 
-def test_backlog_requires_approved_specification_and_requirements(tmp_path):
+def test_backlog_accepts_draft_specification_but_still_requires_requirements(tmp_path):
     service = ProductSpecificationService()
     service.save(tmp_path, _sections())
-    with pytest.raises(ValueError, match="Approve"):
-        service.generate_backlog(tmp_path)
+    assert service.generate_backlog(tmp_path).is_file()
 
     service.save(tmp_path, _sections(requirements=""))
-    service.approve(tmp_path)
     with pytest.raises(ValueError, match="requirement"):
         service.generate_backlog(tmp_path)
 

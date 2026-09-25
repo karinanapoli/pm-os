@@ -131,29 +131,31 @@
     </div>
 </div>
 
-{# ── Guided specification entry point ── #}
-<div class="card">
+{# ── Outcome-oriented entry points ── #}
+<div class="card initiative-goals-card">
     <div class="card-header">
         <div>
-            <h3>{{ "spec.editor_title"|t }} <span class="spec-beta">Beta</span></h3>
-            <p class="spec-caption">
-                {% if specification.version %}
-                {{ "spec.version"|t }} {{ specification.version }} · {{ ("spec.status_" ~ specification.status)|t }}
-                {% else %}
-                {{ "spec.entry_desc"|t }}
-                {% endif %}
-            </p>
+            <h3>{{ "initiative.goals.title"|t }}</h3>
+            <p class="spec-caption">{{ "initiative.goals.desc"|t }}</p>
         </div>
-        {% if specification.version %}
-        <span class="spec-completion">{{ specification_completion }}% {{ "spec.complete"|t }}</span>
-        {% endif %}
     </div>
     <div class="card-body">
-        <p style="color:var(--text-secondary);font-size:13px;margin-top:0;">{{ "spec.entry_help"|t }}</p>
-        <div class="spec-actions">
-            <a href="/generate?initiative={{ initiative.name }}" class="btn btn-secondary btn-sm">{{ "spec.mode_quick"|t }}</a>
-            <a href="/initiative/{{ initiative.name }}/specification" class="btn btn-primary btn-sm">
-                {{ "spec.continue_guided"|t if specification.version else "spec.start_guided"|t }}
+        <div class="initiative-goal-grid">
+            <a href="/initiative/{{ initiative.name }}/backlog?source=upload" class="initiative-goal primary">
+                <strong>{{ "initiative.goals.backlog"|t }}</strong>
+                <span>{{ "initiative.goals.backlog_desc"|t }}</span>
+            </a>
+            <a href="/generate?initiative={{ initiative.name }}" class="initiative-goal">
+                <strong>{{ "initiative.goals.prd"|t }}</strong>
+                <span>{{ "initiative.goals.prd_desc"|t }}</span>
+            </a>
+            <a href="/initiative/{{ initiative.name }}/chat" class="initiative-goal">
+                <strong>{{ "initiative.goals.explore"|t }}</strong>
+                <span>{{ "initiative.goals.explore_desc"|t }}</span>
+            </a>
+            <a href="/initiative/{{ initiative.name }}/specification" class="initiative-goal">
+                <strong>{{ "initiative.goals.specification"|t }}</strong>
+                <span>{{ "initiative.goals.specification_desc"|t }}</span>
             </a>
         </div>
     </div>

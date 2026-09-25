@@ -453,6 +453,58 @@ body {
     background: rgba(124, 92, 231, 0.1);
     font-size: 11px;
 }
+
+.backlog-source-separator {
+    margin: 12px 0 8px;
+    color: var(--text-muted);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+
+.initiative-goal-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.initiative-goal {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--text);
+    text-decoration: none;
+    background: rgba(255, 255, 255, .02);
+}
+
+.initiative-goal:hover,
+.initiative-goal.primary {
+    border-color: var(--primary);
+    background: rgba(124, 92, 231, .08);
+}
+
+.initiative-goal span {
+    color: var(--text-secondary);
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.spec-advanced-fields {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+}
+
+.spec-advanced-fields > .spec-field-grid {
+    margin-top: 14px;
+}
+
+@media (max-width: 720px) {
+    .initiative-goal-grid { grid-template-columns: 1fr; }
+}
 .cursor-proposal-summary span { color: var(--text-secondary); }
 .cursor-proposal-list { display: flex; flex-direction: column; }
 .cursor-proposal { padding: 14px; border-top: 1px solid var(--border); }

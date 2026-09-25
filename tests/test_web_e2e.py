@@ -340,10 +340,7 @@ class TestGuidedSpecification:
         assert page.status_code == 200
         assert 'name="source" value="prd" checked' in page.text
         assert 'name="source" value="prd" checked disabled' not in page.text
-        assert (
-            "Aprove uma versão da especificação antes de usá-la como fonte do backlog."
-            in page.text
-        )
+        assert "A fonte não contém requisitos reconhecíveis" in page.text
 
     def test_uses_uploaded_file_as_source_to_generate_backlog(self, client, session_base):
         init_id = _create_initiative(client, "Uploaded Source", "INT-UPLOADED-SOURCE")
@@ -373,7 +370,8 @@ Emissão automática de pedidos de compra.
 
         upload_page = client.get(f"/initiative/{init_id}/backlog?source=upload")
         assert 'name="source" value="upload" checked' in upload_page.text
-        assert "Novo arquivo" in upload_page.text
+        assert "Ideia ou material inicial" in upload_page.text
+        assert "Uma ou duas frases são suficientes" in upload_page.text
         assert "Escolher automaticamente — recomendado" in upload_page.text
         assert "Automático escolhe entre User, Technical e Job Story" in upload_page.text
         assert "backlog.upload." not in upload_page.text
@@ -691,7 +689,7 @@ Emissão automática de pedidos de compra.
         assert page.text.count("Verificação estrutural — avaliação incompleta") == 1
         assert "Avaliação estrutural de recuperação" not in page.text
 
-    def test_records_decision_and_rejects_backlog_before_approval(self, client):
+    def test_records_decision_and_exposes_progressive_backlog_entry(self, client):
         init_id = _create_initiative(client, "Decision Flow", "INT-DECISION")
         response = client.post(
             f"/initiative/{init_id}/decisions",
@@ -722,12 +720,12 @@ Emissão automática de pedidos de compra.
             f"/initiative/{init_id}/backlog/generate",
             follow_redirects=False,
         )
-        assert "notice=backlog.specification_requires_approval" in blocked.headers["location"]
+        assert "notice=backlog.requirements_missing" in blocked.headers["location"]
 
         deliverables = client.get(f"/initiative/{init_id}/deliverables")
         assert "BACKLOG · BETA" in deliverables.text
-        assert "Revisar e aprovar especificação" in deliverables.text
-        assert 'disabled title="Aprove uma versão' not in deliverables.text
+        assert "Criar backlog" in deliverables.text
+        assert "Revisar e aprovar especificação" not in deliverables.text
 
     def test_prepares_specification_from_overview_context(self, client, session_base, monkeypatch):
         from pm_os.infrastructure.ai.clients.fake_ai_client import FakeAIClient
@@ -2325,7 +2323,7 @@ class TestInitiativeCreationPage:
         """Page should show 'em Pessoal' or current squad."""
         resp = client.get("/initiatives/new")
         assert resp.status_code == 200
-        assert "Observa" in resp.text  # "Observações" label
+        assert "O que você já sabe ou quer resolver?" in resp.text
         assert "Pessoal" in resp.text  # Workspace indicator
 
     def test_new_initiative_has_status_chips(self, client):
@@ -2334,12 +2332,25 @@ class TestInitiativeCreationPage:
         assert resp.status_code == 200
         assert 'type="radio"' in resp.text
         assert "status-chip" in resp.text
+        assert "Opções avançadas" in resp.text
 
     def test_new_initiative_auto_generates_id(self, client):
         """JS must be present for auto-ID generation."""
         resp = client.get("/initiatives/new")
         assert resp.status_code == 200
         assert "auto-gerado" in resp.text or "document.getElementById('name')" in resp.text
+
+    def test_default_creation_leads_to_outcome_choices(self, client):
+        response = client.post(
+            "/initiatives/new",
+            data={"name": "Jornada simples", "context": "Reduzir abandono."},
+            follow_redirects=False,
+        )
+
+        assert response.status_code == 303
+        assert response.headers["location"].startswith("/initiative/INT-JORNADA-SIMPLES")
+        page = client.get(response.headers["location"])
+        assert "O que você quer produzir agora?" in page.text
 
 
 class TestDashboardEmptyState:
@@ -2602,3 +2613,122 @@ class TestCursorConnection:
         assert response.status_code == 303
         assert "cursor.install_error" in response.headers["location"]
         assert cursor_config.read_text(encoding="utf-8") == "{invalid"
+
+
+class TestSyntheticPartialSpecificationJourneys:
+    """Journeys for PMs who do not have a complete specification yet."""
+
+    def test_specification_starts_with_essentials_and_keeps_details_optional(
+        self, client
+    ):
+        initiative_id = _create_initiative(
+            client, "Especificação progressiva", "INT-PROGRESSIVE-SPEC"
+        )
+
+        page = client.get(f"/initiative/{initiative_id}/specification")
+
+        assert page.status_code == 200
+        assert "Comece pelo essencial" in page.text
+        assert "Detalhar iniciativa — opcional" in page.text
+        assert page.text.index('id="requirements"') < page.text.index(
+            "Detalhar iniciativa — opcional"
+        )
+        assert 'id="acceptance_criteria"' in page.text
+
+    def test_lia_can_generate_backlog_with_only_minimum_requirements(
+        self, client, session_base
+    ):
+        initiative_id = _create_initiative(
+            client, "Melhorar recuperação de senha", "INT-LIA-MINIMAL"
+        )
+
+        saved = client.post(
+            f"/initiative/{initiative_id}/specification",
+            data={
+                "requirements": (
+                    "- Permitir solicitar um link de recuperação\n"
+                    "- Informar quando o link expirar"
+                )
+            },
+            follow_redirects=False,
+        )
+        approved = client.post(
+            f"/initiative/{initiative_id}/specification/approve",
+            follow_redirects=False,
+        )
+        generated = client.post(
+            f"/initiative/{initiative_id}/backlog/generate",
+            data={"source": "specification", "ai_provider": "demo"},
+            follow_redirects=False,
+        )
+
+        assert saved.status_code == 303
+        assert approved.status_code == 303
+        assert "notice=backlog.created" in generated.headers["location"]
+        backlog = (
+            session_base / "workspace" / "initiatives" / initiative_id
+            / "artifacts" / "backlog.md"
+        ).read_text(encoding="utf-8")
+        assert "Rastreabilidade: SPEC-v1" in backlog
+        assert "## Épico:" in backlog
+        assert "### História:" in backlog
+
+    def test_caio_can_approve_partial_spec_but_backlog_then_blocks_without_requirement(
+        self, client
+    ):
+        initiative_id = _create_initiative(
+            client, "Entender abandono", "INT-CAIO-PARTIAL"
+        )
+        client.post(
+            f"/initiative/{initiative_id}/specification",
+            data={"problem": "Clientes abandonam o cadastro na etapa de documentos."},
+        )
+
+        approved = client.post(
+            f"/initiative/{initiative_id}/specification/approve",
+            follow_redirects=False,
+        )
+        backlog_page = client.get(f"/initiative/{initiative_id}/backlog")
+
+        assert "notice=spec.approved" in approved.headers["location"]
+        assert "A fonte não contém requisitos reconhecíveis" in backlog_page.text
+        assert 'name="source" value="specification"' in backlog_page.text
+        assert re.search(
+            r'<input[^>]+name="source" value="specification"[^>]+disabled',
+            backlog_page.text,
+        )
+
+    def test_bia_can_skip_specification_and_generate_from_an_unstructured_note(
+        self, client, session_base
+    ):
+        initiative_id = _create_initiative(
+            client, "Alerta de renovação", "INT-BIA-NOTE"
+        )
+        note = (
+            "Precisamos avisar clientes sete dias antes da renovação e permitir "
+            "que alterem a forma de pagamento antes da cobrança."
+        )
+
+        generated = client.post(
+            f"/initiative/{initiative_id}/backlog/generate",
+            data={
+                "source": "upload",
+                "ai_provider": "demo",
+                "backlog_source_text": note,
+            },
+            follow_redirects=False,
+        )
+
+        assert "notice=backlog.created" in generated.headers["location"]
+        state = json.loads((
+            session_base / "workspace" / "initiatives" / initiative_id
+            / "artifacts" / "specification.json"
+        ).read_text(encoding="utf-8"))
+        assert state["artifacts"]["backlog"]["source"] == "upload"
+        assert state["artifacts"]["backlog_source"]["source_filename"] == "ideia-inicial.txt"
+
+        initiative_page = client.get(f"/initiative/{initiative_id}")
+        assert "O que você quer produzir agora?" in initiative_page.text
+        assert "Explorar com IA" in initiative_page.text
+        assert "Detalhar a iniciativa" in initiative_page.text
+        assert f'/initiative/{initiative_id}/backlog?source=upload' in initiative_page.text

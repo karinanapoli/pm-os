@@ -1990,6 +1990,7 @@ async def generate_specification_backlog(
     epic_count: int = Form(0),
     ai_provider: str = Form(""),
     backlog_source_file: Optional[UploadFile] = File(None),
+    backlog_source_text: str = Form(""),
 ):
     selected = _get_initiative_by_name(initiative_name, request)
     if not selected:
@@ -2010,17 +2011,26 @@ async def generate_specification_backlog(
         filename = safe_upload_filename(
             backlog_source_file.filename if backlog_source_file else ""
         )
-        if not filename or Path(filename).suffix.casefold() not in {".md", ".txt"}:
-            return RedirectResponse(
-                url=f"/initiative/{initiative_name}/backlog?source=upload&notice=backlog.upload.type_error&notice_kind=error",
-                status_code=303,
-            )
-        raw_content = await backlog_source_file.read(MAX_UPLOAD_FILE_BYTES + 1)
-        if len(raw_content) > MAX_UPLOAD_FILE_BYTES:
-            return RedirectResponse(
-                url=f"/initiative/{initiative_name}/backlog?source=upload&notice=backlog.upload.size_error&notice_kind=error",
-                status_code=303,
-            )
+        if filename:
+            if Path(filename).suffix.casefold() not in {".md", ".txt"}:
+                return RedirectResponse(
+                    url=f"/initiative/{initiative_name}/backlog?source=upload&notice=backlog.upload.type_error&notice_kind=error",
+                    status_code=303,
+                )
+            raw_content = await backlog_source_file.read(MAX_UPLOAD_FILE_BYTES + 1)
+            if len(raw_content) > MAX_UPLOAD_FILE_BYTES:
+                return RedirectResponse(
+                    url=f"/initiative/{initiative_name}/backlog?source=upload&notice=backlog.upload.size_error&notice_kind=error",
+                    status_code=303,
+                )
+        else:
+            filename = "ideia-inicial.txt"
+            raw_content = backlog_source_text.strip().encode("utf-8")
+            if not raw_content:
+                return RedirectResponse(
+                    url=f"/initiative/{initiative_name}/backlog?source=upload&notice=backlog.idea_required&notice_kind=error",
+                    status_code=303,
+                )
         try:
             product_specification_service.save_backlog_generation_source(
                 selected.path,
@@ -2521,7 +2531,7 @@ async def create_initiative(
             url=f"/initiative/{init_id}/specification",
             status_code=303,
         )
-    return await dashboard(request)
+    return RedirectResponse(url=f"/initiative/{init_id}", status_code=303)
 
 
 # ─── Generate PRD ───
