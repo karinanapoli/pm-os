@@ -203,6 +203,92 @@
     </div>
 
     <aside class="spec-sidebar">
+        <section class="card cursor-ai-card" id="cursor-ai">
+            <div class="card-body">
+                <div class="cursor-ai-heading">
+                    <span class="spec-prepare-icon">⌁</span>
+                    <div>
+                        <h3>{{ "cursor.title"|t }}</h3>
+                        <p class="spec-caption">{{ "cursor.desc"|t }}</p>
+                    </div>
+                </div>
+
+                {% if cursor_installation.state != "installed" %}
+                {% if cursor_installation.state == "outdated" %}
+                <p class="spec-caption">{{ "cursor.outdated_help"|t }}</p>
+                {% elif cursor_installation.state == "invalid" %}
+                <p class="spec-caption">{{ "cursor.invalid_help"|t }}</p>
+                {% else %}
+                <p class="spec-caption">{{ "cursor.disconnected_help"|t }}</p>
+                {% endif %}
+                {% if cursor_local_install_available %}
+                <form method="POST" action="/initiative/{{ initiative.name }}/cursor/connect">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button type="submit" class="btn btn-ai btn-sm btn-block">
+                        {{ ("cursor.repair" if cursor_installation.state == "outdated" else "cursor.connect")|t }}
+                    </button>
+                </form>
+                {% else %}
+                <p class="spec-caption">{{ "cursor.local_only"|t }}</p>
+                {% endif %}
+                {% elif ai_contributions.initiative_access != "shared" %}
+                <p class="cursor-status connected">✓ {{ "cursor.connected"|t }}</p>
+                <p class="spec-caption">{{ "cursor.connected_help"|t }}</p>
+                <form method="POST" action="/initiative/{{ initiative.name }}/cursor/share">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button type="submit" class="btn btn-primary btn-sm btn-block">{{ "cursor.share"|t }}</button>
+                </form>
+                {% elif pending_ai_proposals %}
+                <p class="cursor-status connected">✓ {{ "cursor.shared"|t }}</p>
+                <div class="cursor-proposal-summary">
+                    <strong>{{ pending_ai_proposals|length }} {{ "cursor.new_proposals"|t }}</strong>
+                    <span>{{ "cursor.proposals_help"|t }}</span>
+                </div>
+                <a class="btn btn-primary btn-sm btn-block" href="#cursor-proposals">{{ "cursor.review"|t }}</a>
+                {% else %}
+                <p class="cursor-status connected">✓ {{ "cursor.shared"|t }}</p>
+                <p class="spec-caption">{{ "cursor.shared_help"|t }}</p>
+                <form method="POST" action="/initiative/{{ initiative.name }}/cursor/simulate">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button type="submit" class="btn btn-secondary btn-sm btn-block">{{ "cursor.simulate"|t }}</button>
+                </form>
+                {% endif %}
+            </div>
+        </section>
+
+        {% if pending_ai_proposals %}
+        <section class="card cursor-proposals-card" id="cursor-proposals">
+            <div class="card-header">
+                <div><h3>{{ "cursor.review_title"|t }}</h3><p class="spec-caption">{{ "cursor.review_desc"|t }}</p></div>
+                <span class="spec-count">{{ pending_ai_proposals|length }}</span>
+            </div>
+            <div class="cursor-proposal-list">
+                {% for proposal in pending_ai_proposals %}
+                <article class="cursor-proposal">
+                    <span class="cursor-proposal-type">{{ ("cursor.kind_" ~ proposal.kind)|t }}</span>
+                    <p>{{ proposal.content }}</p>
+                    <small>{{ proposal.reason }}</small>
+                    {% if proposal.specification_version != specification.version %}
+                    <div class="cursor-stale">{{ "cursor.stale"|t }}</div>
+                    {% endif %}
+                    <div class="cursor-proposal-actions">
+                        <form method="POST" action="/initiative/{{ initiative.name }}/cursor/proposals/{{ proposal.id }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                            <input type="hidden" name="decision" value="approve">
+                            <button type="submit" class="btn btn-primary btn-sm">{{ "cursor.approve"|t }}</button>
+                        </form>
+                        <form method="POST" action="/initiative/{{ initiative.name }}/cursor/proposals/{{ proposal.id }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                            <input type="hidden" name="decision" value="reject">
+                            <button type="submit" class="btn btn-ghost btn-sm">{{ "cursor.reject"|t }}</button>
+                        </form>
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
         <section class="card">
             <div class="card-body">
                 <h3>{{ "spec.clarifications_title"|t }}</h3>

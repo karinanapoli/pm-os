@@ -29,6 +29,7 @@ dev = [
 
 [project.scripts]
 pm-studio = "pm_os.web.cli:main"
+pm-studio-mcp = "pm_os.mcp_server:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

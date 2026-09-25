@@ -2555,3 +2555,50 @@ class TestSecurityAIAssessment:
         assert "Avaliação preliminar gerada" in response.text
         assert "Sugerido pela IA" in response.text
         assert "Contexto de dados identificado" in response.text
+
+
+class TestCursorConnection:
+    def test_connect_button_installs_local_mcp_without_manual_copy(
+        self, client, session_base, monkeypatch
+    ):
+        initiative_id = _create_initiative(client, "Cursor MCP", "INT-CURSOR-MCP")
+        cursor_config = session_base / ".cursor" / "mcp.json"
+        cursor_config.parent.mkdir(exist_ok=True)
+        cursor_config.write_text(
+            json.dumps({"mcpServers": {"existing": {"command": "keep-me"}}}),
+            encoding="utf-8",
+        )
+        monkeypatch.setenv("PM_OS_CURSOR_CONFIG_PATH", str(cursor_config))
+
+        response = client.post(
+            f"/initiative/{initiative_id}/cursor/connect",
+            follow_redirects=False,
+        )
+        stored = json.loads(cursor_config.read_text(encoding="utf-8"))
+
+        assert response.status_code == 303
+        assert "cursor.notice_connected" in response.headers["location"]
+        assert stored["mcpServers"]["existing"] == {"command": "keep-me"}
+        assert stored["mcpServers"]["pm-studio"]["args"] == [
+            "-m",
+            "pm_os.mcp_server",
+        ]
+        assert cursor_config.with_name("mcp.json.pm-studio.bak").exists()
+
+    def test_invalid_cursor_config_returns_error_and_is_preserved(
+        self, client, session_base, monkeypatch
+    ):
+        initiative_id = _create_initiative(client, "Invalid Cursor", "INT-CURSOR-BAD")
+        cursor_config = session_base / ".cursor" / "invalid-mcp.json"
+        cursor_config.parent.mkdir(exist_ok=True)
+        cursor_config.write_text("{invalid", encoding="utf-8")
+        monkeypatch.setenv("PM_OS_CURSOR_CONFIG_PATH", str(cursor_config))
+
+        response = client.post(
+            f"/initiative/{initiative_id}/cursor/connect",
+            follow_redirects=False,
+        )
+
+        assert response.status_code == 303
+        assert "cursor.install_error" in response.headers["location"]
+        assert cursor_config.read_text(encoding="utf-8") == "{invalid"
