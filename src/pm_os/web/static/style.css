@@ -436,6 +436,34 @@ body {
     line-height: 1.5;
 }
 
+.btn-block { width: 100%; justify-content: center; }
+
+.cursor-ai-heading { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px; }
+.cursor-ai-heading h3 { margin: 0; }
+.cursor-ai-card form { margin-top: 12px; }
+.cursor-status { margin: 0 0 8px; font-size: 12px; font-weight: 600; }
+.cursor-status.connected { color: var(--success); }
+.cursor-proposal-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    margin: 12px 0;
+    padding: 10px;
+    border-radius: var(--radius);
+    background: rgba(124, 92, 231, 0.1);
+    font-size: 11px;
+}
+.cursor-proposal-summary span { color: var(--text-secondary); }
+.cursor-proposal-list { display: flex; flex-direction: column; }
+.cursor-proposal { padding: 14px; border-top: 1px solid var(--border); }
+.cursor-proposal:first-child { border-top: 0; }
+.cursor-proposal-type { color: var(--primary-light); font-size: 9px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.cursor-proposal p { margin: 6px 0; font-size: 12px; line-height: 1.5; }
+.cursor-proposal small { display: block; color: var(--text-muted); font-size: 10px; line-height: 1.5; }
+.cursor-proposal-actions { display: flex; gap: 6px; margin-top: 10px; }
+.cursor-proposal-actions form { margin: 0; }
+.cursor-stale { margin-top: 8px; color: var(--amber); font-size: 10px; }
+
 .spec-completion,
 .spec-count {
     padding: 4px 9px;

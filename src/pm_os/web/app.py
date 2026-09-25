@@ -5,6 +5,7 @@ import shutil
 import urllib.parse
 import time
 import yaml
+from copy import deepcopy
 from dataclasses import asdict
 from datetime import date, datetime
 from pathlib import Path
@@ -78,6 +79,11 @@ from pm_os.web.product_specification_service import (
     ProductSpecificationService,
     SPECIFICATION_FIELDS,
 )
+from pm_os.web.ai_contribution_service import AIContributionService
+from pm_os.web.cursor_installer_service import (
+    CursorInstallerError,
+    CursorInstallerService,
+)
 from pm_os.web.mcp_context_service import MCPContextService
 from pm_os.web.mcp_client import MCPAuthorizationRequired, MCPClient, MCPError
 from pm_os.web.mcp_stdio_client import MCPStdioClient
@@ -122,6 +128,12 @@ security_assessment_service = SecurityAssessmentService()
 security_assessment_ai_service = SecurityAssessmentAIService()
 
 
+def _is_local_request(request: Request) -> bool:
+    """Only let a browser on this machine modify the local Cursor config."""
+    host = request.client.host if request.client else ""
+    return host in {"127.0.0.1", "::1", "localhost", "testclient"}
+
+
 def _validation_report_for_display(content: str, lang: str) -> str:
     """Collapse the repeated rationale produced by legacy fallback reports."""
     legacy_rationales = (
@@ -147,6 +159,7 @@ def _validation_report_for_display(content: str, lang: str) -> str:
 
 _gen_executor = ThreadPoolExecutor(max_workers=2)
 product_specification_service = ProductSpecificationService()
+ai_contribution_service = AIContributionService()
 
 app = FastAPI(title="PM Studio")
 
@@ -1387,6 +1400,8 @@ async def specification_page(
         return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
     specification = product_specification_service.load(selected.path)
     artifacts = specification.get("artifacts") or {}
+    ai_contributions = ai_contribution_service.load(selected.path)
+    cursor_installer = CursorInstallerService()
     return templates.TemplateResponse(
         request,
         "initiative_specification.html",
@@ -1408,6 +1423,10 @@ async def specification_page(
             backlog_exists=(selected.path / "artifacts" / "backlog.md").exists(),
             prd_exists=(selected.path / "artifacts" / "prd.md").exists(),
             artifacts=artifacts,
+            ai_contributions=ai_contributions,
+            cursor_installation=cursor_installer.status(),
+            cursor_local_install_available=_is_local_request(request),
+            pending_ai_proposals=ai_contribution_service.pending(ai_contributions),
             available_sources=selected.sources,
             available_ai_providers=_available_ai_providers(),
             active_ai_provider=config_manager.get("ai_provider", "ollama"),
@@ -1415,6 +1434,130 @@ async def specification_page(
             notice_kind=notice_kind,
             security_assessment=security_assessment_service.load(selected.path),
         ),
+    )
+
+
+@app.post("/initiative/{initiative_name}/cursor/connect")
+async def connect_cursor(request: Request, initiative_name: str):
+    selected = _get_initiative_by_name(initiative_name, request)
+    if not selected:
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    if not _is_local_request(request):
+        return RedirectResponse(
+            url=f"/initiative/{initiative_name}/specification?notice=cursor.local_only&notice_kind=error#cursor-ai",
+            status_code=303,
+        )
+    try:
+        CursorInstallerService().install()
+    except CursorInstallerError:
+        _logger.exception("Could not install the PM Studio Cursor MCP configuration.")
+        return RedirectResponse(
+            url=f"/initiative/{initiative_name}/specification?notice=cursor.install_error&notice_kind=error#cursor-ai",
+            status_code=303,
+        )
+    ai_contribution_service.connect(
+        selected.path,
+        actor=_get_session_user_email(request),
+    )
+    return RedirectResponse(
+        url=f"/initiative/{initiative_name}/specification?notice=cursor.notice_connected#cursor-ai",
+        status_code=303,
+    )
+
+
+@app.post("/initiative/{initiative_name}/cursor/share")
+async def share_with_cursor(request: Request, initiative_name: str):
+    selected = _get_initiative_by_name(initiative_name, request)
+    if not selected:
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    if CursorInstallerService().status()["state"] != "installed":
+        return RedirectResponse(
+            url=f"/initiative/{initiative_name}/specification?notice=cursor.share_error&notice_kind=error#cursor-ai",
+            status_code=303,
+        )
+    specification = product_specification_service.load(selected.path)
+    try:
+        ai_contribution_service.share(
+            selected.path,
+            specification_version=int(specification.get("version") or 0),
+        )
+    except ValueError:
+        return RedirectResponse(
+            url=f"/initiative/{initiative_name}/specification?notice=cursor.share_error&notice_kind=error#cursor-ai",
+            status_code=303,
+        )
+    return RedirectResponse(
+        url=f"/initiative/{initiative_name}/specification?notice=cursor.notice_shared#cursor-ai",
+        status_code=303,
+    )
+
+
+@app.post("/initiative/{initiative_name}/cursor/simulate")
+async def simulate_cursor_response(request: Request, initiative_name: str):
+    selected = _get_initiative_by_name(initiative_name, request)
+    if not selected:
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    specification = product_specification_service.load(selected.path)
+    try:
+        ai_contribution_service.simulate(
+            selected.path,
+            specification_version=int(specification.get("version") or 0),
+        )
+    except ValueError:
+        return RedirectResponse(
+            url=f"/initiative/{initiative_name}/specification?notice=cursor.receive_error&notice_kind=error#cursor-ai",
+            status_code=303,
+        )
+    return RedirectResponse(
+        url=f"/initiative/{initiative_name}/specification?notice=cursor.proposals_received#cursor-proposals",
+        status_code=303,
+    )
+
+
+@app.post("/initiative/{initiative_name}/cursor/proposals/{proposal_id}")
+async def review_cursor_proposal(
+    request: Request,
+    initiative_name: str,
+    proposal_id: str,
+    decision: str = Form(...),
+):
+    selected = _get_initiative_by_name(initiative_name, request)
+    if not selected:
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    if decision not in {"approve", "reject"}:
+        return RedirectResponse(
+            url=f"/initiative/{initiative_name}/specification?notice=cursor.review_error&notice_kind=error#cursor-proposals",
+            status_code=303,
+        )
+    normalized_decision = "approved" if decision == "approve" else "rejected"
+    try:
+        proposal = ai_contribution_service.decide(
+            selected.path,
+            proposal_id,
+            decision=normalized_decision,
+            actor=_get_session_user_email(request),
+        )
+    except ValueError:
+        return RedirectResponse(
+            url=f"/initiative/{initiative_name}/specification?notice=cursor.review_error&notice_kind=error#cursor-proposals",
+            status_code=303,
+        )
+
+    if normalized_decision == "approved":
+        specification = product_specification_service.load(selected.path)
+        sections = deepcopy(specification["sections"])
+        field = proposal["field"]
+        existing = sections.get(field, "").strip()
+        sections[field] = f"{existing}\n{proposal['content']}".strip()
+        product_specification_service.save(
+            selected.path,
+            sections,
+            actor=_get_session_user_email(request),
+        )
+    notice = "cursor.proposal_approved" if normalized_decision == "approved" else "cursor.proposal_rejected"
+    return RedirectResponse(
+        url=f"/initiative/{initiative_name}/specification?notice={notice}#cursor-proposals",
+        status_code=303,
     )
 
 
