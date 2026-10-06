@@ -58,6 +58,27 @@ def test_oauth_connection_is_explicitly_pending_authorization():
     assert connection["status"]["state"] == "authorization_required"
 
 
+def test_public_connection_never_exposes_oauth_credentials():
+    from pm_os.web.mcp_connections import public_connection
+
+    connection = build_connection(
+        name="OAuth",
+        url="https://mcp.example.com/mcp",
+        auth_type="oauth",
+    )
+    connection["auth"].update({
+        "secret": "access",
+        "refresh_token": "refresh",
+        "client_secret": "client-secret",
+    })
+
+    public = public_connection(connection)
+
+    assert public["auth"]["secret"] == ""
+    assert public["auth"]["refresh_token"] == ""
+    assert public["auth"]["client_secret"] == ""
+
+
 def test_builds_stdio_connection_without_exposing_environment_values():
     connection = build_connection(
         name="Filesystem",

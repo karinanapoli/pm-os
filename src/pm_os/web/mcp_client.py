@@ -119,7 +119,7 @@ class MCPClient:
         }
         auth = connection.get("auth") or {}
         secret = str(auth.get("secret") or "")
-        if auth.get("type") == "bearer" and secret:
+        if auth.get("type") in {"bearer", "oauth"} and secret:
             headers["Authorization"] = f"Bearer {secret}"
         elif auth.get("type") == "api_key" and secret:
             headers[str(auth.get("header") or "X-API-Key")] = secret

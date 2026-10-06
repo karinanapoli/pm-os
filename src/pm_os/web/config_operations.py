@@ -226,6 +226,17 @@ def remove_mcp_server(config: dict, target: str) -> Optional[str]:
     return removed
 
 
+def authorize_mcp_server(config: dict, target: str, auth: dict) -> bool:
+    servers = config.get("mcp_servers") or []
+    for server in servers:
+        if server.get("id") == target:
+            server["auth"] = auth
+            server["status"] = {"state": "authorized", "message": ""}
+            config["mcp_servers"] = servers
+            return True
+    return False
+
+
 def update_mcp_capabilities(config: dict, url: str, capabilities: dict) -> bool:
     servers = config.get("mcp_servers") or []
     for server in servers:

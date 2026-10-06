@@ -68,6 +68,8 @@ def build_connection(
     auth_type: str = "none",
     auth_secret: str = "",
     auth_header: str = "",
+    oauth_client_id: str = "",
+    oauth_client_secret: str = "",
     policy_mode: str = "read_only",
     command: str = "",
     args: Optional[list[str]] = None,
@@ -107,6 +109,8 @@ def build_connection(
             "type": auth_type,
             "header": header,
             "secret": auth_secret,
+            "client_id": oauth_client_id.strip(),
+            "client_secret": oauth_client_secret,
         },
         "policy": {
             "mode": policy_mode,
@@ -188,6 +192,8 @@ def public_connection(connection: dict[str, Any]) -> dict[str, Any]:
     auth = dict(item.get("auth") or {})
     auth["secret"] = ""
     auth["has_secret"] = bool((item.get("auth") or {}).get("secret"))
+    auth["refresh_token"] = ""
+    auth["client_secret"] = ""
     item["auth"] = auth
     item["env_keys"] = sorted((item.get("env") or {}).keys())
     item["env"] = {}

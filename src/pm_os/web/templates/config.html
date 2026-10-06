@@ -397,6 +397,7 @@
                         <label for="mcp-auth-type">{{ "mcp.auth"|t }}</label>
                         <select name="auth_type" id="mcp-auth-type" onchange="updateMcpAuth()">
                             <option value="none">{{ "mcp.auth_none"|t }}</option>
+                            <option value="oauth">{{ "mcp.auth_browser"|t }}</option>
                             <option value="bearer">Bearer token</option>
                             <option value="api_key">API key</option>
                         </select>
@@ -410,6 +411,20 @@
                         <input type="text" name="auth_header" id="mcp-auth-header" value="X-API-Key">
                     </div>
                 </div>
+                <details class="mcp-advanced" id="mcp-oauth-advanced" hidden>
+                    <summary>{{ "mcp.oauth_advanced"|t }}</summary>
+                    <p class="form-hint">{{ "mcp.oauth_client_hint"|t }}</p>
+                    <div class="mcp-form-grid">
+                        <div class="form-group">
+                            <label for="mcp-oauth-client-id">{{ "mcp.oauth_client_id"|t }}</label>
+                            <input type="text" name="oauth_client_id" id="mcp-oauth-client-id" autocomplete="off">
+                        </div>
+                        <div class="form-group">
+                            <label for="mcp-oauth-client-secret">{{ "mcp.oauth_client_secret"|t }}</label>
+                            <input type="password" name="oauth_client_secret" id="mcp-oauth-client-secret" autocomplete="new-password">
+                        </div>
+                    </div>
+                </details>
                 <div class="mcp-policy">
                     <label for="mcp-policy">{{ "mcp.policy"|t }}</label>
                     <select name="policy_mode" id="mcp-policy">
@@ -461,6 +476,14 @@
                         </div>
                     </div>
                     <div style="display: flex; align-items: center; gap: 8px;">
+                        {% if server.auth and server.auth.type == "oauth" %}
+                        <form method="POST" action="/config/mcp/oauth/start" style="margin: 0;">
+                            <input type="hidden" name="target" value="{{ server.id }}">
+                            <button type="submit" class="btn btn-primary btn-sm" style="font-size: 11px;">
+                                {% if server.status and server.status.state == "connected" %}{{ "mcp.oauth_reconnect"|t }}{% else %}{{ "mcp.oauth_connect"|t }}{% endif %}
+                            </button>
+                        </form>
+                        {% endif %}
                         <form method="POST" action="/config/mcp/toggle" style="margin: 0;">
                             <input type="hidden" name="target" value="{{ server.id }}">
                             <button type="submit" class="btn btn-ghost btn-sm" style="font-size: 11px;">
@@ -693,8 +716,9 @@ function updateMcpForm() {
 
 function updateMcpAuth() {
     var type = document.getElementById('mcp-auth-type').value;
-    document.getElementById('mcp-secret-field').hidden = type === 'none';
+    document.getElementById('mcp-secret-field').hidden = type === 'none' || type === 'oauth';
     document.getElementById('mcp-header-field').hidden = type !== 'api_key';
+    document.getElementById('mcp-oauth-advanced').hidden = type !== 'oauth';
 }
 
 async function testGatewayConnection(btn) {

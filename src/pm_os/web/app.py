@@ -86,6 +86,7 @@ from pm_os.web.cursor_installer_service import (
 )
 from pm_os.web.mcp_context_service import MCPContextService
 from pm_os.web.mcp_client import MCPAuthorizationRequired, MCPClient, MCPError
+from pm_os.web.mcp_oauth_service import MCPOAuthError, MCPOAuthService
 from pm_os.web.mcp_stdio_client import MCPStdioClient
 from pm_os.web.mcp_tool_service import MCPToolService
 from pm_os.web.mcp_connections import (
@@ -122,6 +123,7 @@ import logging
 _logger = logging.getLogger("pm_os")
 initiative_chat_service = InitiativeChatService()
 mcp_tool_service = MCPToolService()
+mcp_oauth_service = MCPOAuthService()
 backlog_export_service = BacklogExportService()
 backlog_mcp_write_service = BacklogMCPWriteService()
 security_assessment_service = SecurityAssessmentService()
@@ -803,10 +805,26 @@ def _build_prd_validation_service(lang: str) -> PRDValidationService:
 
 
 def _get_mcp_servers() -> list[dict]:
-    return [
+    servers = [
         normalize_connection(server)
         for server in (config_manager.get("mcp_servers") or [])
     ]
+    refreshed = {}
+    for server in servers:
+        try:
+            auth = mcp_oauth_service.refresh(server)
+        except MCPOAuthError:
+            auth = None
+        if auth:
+            server["auth"] = auth
+            refreshed[server["id"]] = auth
+    if refreshed:
+        def persist(config):
+            for server in config.get("mcp_servers") or []:
+                if server.get("id") in refreshed:
+                    server["auth"] = refreshed[server["id"]]
+        config_manager.transaction(persist)
+    return servers
 
 
 def _validate_mcp_url(url: str) -> str:
@@ -2855,12 +2873,12 @@ async def revalidate_prd(request: Request, initiative_name: str):
 # ─── Config ───
 
 @app.get("/config", response_class=HTMLResponse)
-async def config_page(request: Request):
+async def config_page(request: Request, notice: str = ""):
     _require_installation_admin(request)
     return templates.TemplateResponse(
         request,
         "config.html",
-        _ctx(request, saved=False),
+        _ctx(request, saved=False, notice=notice),
     )
 
 
@@ -3004,6 +3022,8 @@ async def add_mcp_server(
     auth_type: str = Form("none"),
     auth_secret: str = Form(""),
     auth_header: str = Form(""),
+    oauth_client_id: str = Form(""),
+    oauth_client_secret: str = Form(""),
     policy_mode: str = Form("read_only"),
     discovery_json: str = Form(""),
     transport: str = Form("streamable_http"),
@@ -3033,6 +3053,8 @@ async def add_mcp_server(
             auth_type=auth_type,
             auth_secret=auth_secret,
             auth_header=auth_header,
+            oauth_client_id=oauth_client_id,
+            oauth_client_secret=oauth_client_secret,
             policy_mode=policy_mode,
             command=command,
             args=parse_stdio_args(stdio_args),
@@ -3107,6 +3129,66 @@ async def delete_mcp_server(
     )
 
 
+@app.post("/config/mcp/oauth/start")
+async def start_mcp_oauth(request: Request, target: str = Form(...)):
+    _require_installation_admin(request)
+    connection = next((item for item in _get_mcp_servers() if item.get("id") == target), None)
+    if not connection or (connection.get("auth") or {}).get("type") != "oauth":
+        return RedirectResponse("/config#mcp", status_code=303)
+    redirect_uri = str(request.base_url).rstrip("/") + "/config/mcp/oauth/callback"
+    try:
+        started = mcp_oauth_service.begin(connection, redirect_uri)
+    except (MCPOAuthError, ValueError) as exc:
+        return templates.TemplateResponse(
+            request,
+            "config.html",
+            _ctx(request, saved=False, error=str(exc)),
+            status_code=422,
+        )
+    return RedirectResponse(started.authorization_url, status_code=303)
+
+
+@app.get("/config/mcp/oauth/callback")
+async def complete_mcp_oauth(
+    request: Request,
+    code: str = "",
+    state: str = "",
+    iss: str = "",
+    error: str = "",
+):
+    _require_installation_admin(request)
+    if error:
+        return templates.TemplateResponse(
+            request,
+            "config.html",
+            _ctx(request, saved=False, error=_t("mcp.oauth_denied", _get_lang())),
+            status_code=422,
+        )
+    try:
+        target, auth = mcp_oauth_service.complete(state, code, iss)
+        updated = config_manager.transaction(
+            lambda config: config_ops.authorize_mcp_server(config, target, auth)
+        )
+        if not updated:
+            raise MCPOAuthError("A conexão MCP não foi encontrada.")
+        connection = next(item for item in _get_mcp_servers() if item.get("id") == target)
+        discovery = sanitize_capabilities(MCPClient().discover(connection).as_dict())
+        def save_discovery(config):
+            for server in config.get("mcp_servers") or []:
+                if server.get("id") == target:
+                    server["capabilities"] = discovery
+                    server["status"] = {"state": "connected", "message": ""}
+        config_manager.transaction(save_discovery)
+    except (MCPOAuthError, MCPError, ValueError) as exc:
+        return templates.TemplateResponse(
+            request,
+            "config.html",
+            _ctx(request, saved=False, error=str(exc)),
+            status_code=422,
+        )
+    return RedirectResponse("/config?notice=mcp.oauth_connected#mcp", status_code=303)
+
+
 @app.post("/config/mcp/test", response_class=JSONResponse)
 async def test_mcp_connection(
     request: Request,
@@ -3118,6 +3200,8 @@ async def test_mcp_connection(
     auth_type: str = Form("none"),
     auth_secret: str = Form(""),
     auth_header: str = Form(""),
+    oauth_client_id: str = Form(""),
+    oauth_client_secret: str = Form(""),
     policy_mode: str = Form("read_only"),
     transport: str = Form("streamable_http"),
     command: str = Form(""),
@@ -3146,6 +3230,8 @@ async def test_mcp_connection(
             auth_type=auth_type,
             auth_secret=auth_secret,
             auth_header=auth_header,
+            oauth_client_id=oauth_client_id,
+            oauth_client_secret=oauth_client_secret,
             policy_mode=policy_mode,
             command=command,
             args=parse_stdio_args(stdio_args),
@@ -3261,6 +3347,7 @@ async def ask_initiative_chat(
     use_product_docs: bool = Form(False),
     use_mcp: bool = Form(False),
     mcp_tool: str = Form(""),
+    mcp_instructions: str = Form(""),
     mcp_arguments: str = Form("{}"),
     ai_provider: str = Form(""),
 ):
@@ -3275,10 +3362,16 @@ async def ask_initiative_chat(
         try:
             tool_context = []
             if mcp_tool:
+                tool_request = (mcp_instructions or question).strip()
+                tool_arguments = mcp_tool_service.arguments_from_request(tool_request)
+                # Keep previously submitted forms compatible while the UI moves
+                # from technical JSON to plain-language instructions.
+                if not mcp_instructions.strip() and mcp_arguments.strip() not in {"", "{}"}:
+                    tool_arguments = mcp_arguments
                 executed = mcp_tool_service.execute(
                     _get_mcp_servers(),
                     mcp_tool,
-                    mcp_arguments,
+                    tool_arguments,
                 )
                 tool_context.append({
                     "name": f"{executed.connection_name} · {executed.tool_name}",

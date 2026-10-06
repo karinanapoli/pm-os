@@ -441,8 +441,9 @@ Emissão automática de pedidos de compra.
 
         page = client.get(f"/initiative/{init_id}/chat")
         assert page.status_code == 200
-        assert "Assistente da iniciativa" in page.text
+        assert "Chat com IA e integrações" in page.text
         assert "não executa ferramentas de escrita automaticamente" in page.text
+        assert "Configurar integrações" in page.text
 
         response = client.post(
             f"/initiative/{init_id}/chat",
@@ -494,7 +495,7 @@ Emissão automática de pedidos de compra.
         monkeypatch.setattr(mcp_tool_service, "execute", execute)
 
         page = client.get(f"/initiative/{init_id}/chat")
-        assert "Chamar uma ferramenta MCP" in page.text
+        assert "Usar uma integração nesta mensagem" in page.text
         assert "Roadmap · search" in page.text
 
         response = client.post(
@@ -503,14 +504,14 @@ Emissão automática de pedidos de compra.
                 "question": "Consulte o roadmap e resuma os riscos.",
                 "ai_provider": "demo",
                 "mcp_tool": "mcp-roadmap::search",
-                "mcp_arguments": '{"query":"riscos"}',
+                "mcp_instructions": "Considere apenas riscos do trimestre atual.",
             },
         )
 
         assert response.status_code == 200
         assert captured == {
             "selection": "mcp-roadmap::search",
-            "arguments": '{"query":"riscos"}',
+            "arguments": '{"query": "Considere apenas riscos do trimestre atual."}',
         }
         history_path = (
             session_base / "workspace" / "initiatives" / init_id
@@ -1628,6 +1629,39 @@ class TestAuth:
 # ═══════════════════════════════════════════
 
 class TestConfiguration:
+    def test_synthetic_nontechnical_pm_sees_browser_login_without_credential_fields(
+        self, client
+    ):
+        page = client.get("/config#mcp")
+
+        assert page.status_code == 200
+        assert "Conectar pelo navegador (OAuth)" in page.text
+        assert 'id="mcp-oauth-advanced" hidden' in page.text
+        assert "Configuração avançada de OAuth" in page.text
+        assert "Use somente quando o administrador do MCP fornecer essas credenciais." in page.text
+
+    def test_synthetic_pm_gets_a_clear_connect_action_after_saving_oauth_mcp(
+        self, client
+    ):
+        response = client.post("/config/mcp/add", data={
+            "name": "Pesquisa de clientes",
+            "url": "https://research.example.com/mcp",
+            "connection_type": "mcp",
+            "auth_type": "oauth",
+        })
+
+        assert response.status_code == 200
+        assert "Autorização necessária" in response.text
+        assert "Conectar conta" in response.text
+
+    def test_synthetic_user_who_cancels_login_gets_a_recoverable_message(self, client):
+        response = client.get(
+            "/config/mcp/oauth/callback?error=access_denied&state=cancelled"
+        )
+
+        assert response.status_code == 422
+        assert "A autorização foi cancelada ou recusada." in response.text
+
     def test_non_admin_cannot_access_global_configuration(
         self, unauth_client, session_base
     ):
@@ -1693,6 +1727,76 @@ class TestConfiguration:
         assert server["auth"]["type"] == "oauth"
         assert server["policy"]["mode"] == "read_only"
         assert server["status"]["state"] == "authorization_required"
+
+    def test_oauth_connection_can_start_and_complete_browser_authorization(
+        self, client, session_base, monkeypatch
+    ):
+        from types import SimpleNamespace
+        from pm_os.web.app import mcp_oauth_service
+        from pm_os.web.mcp_client import MCPClient, MCPDiscovery
+
+        client.post("/config/mcp/add", data={
+            "name": "OAuth MCP",
+            "url": "https://mcp.example.com/mcp",
+            "connection_type": "mcp",
+            "auth_type": "oauth",
+        })
+        cfg = json.loads((session_base / ".pm_os" / "config.json").read_text())
+        target = cfg["mcp_servers"][0]["id"]
+
+        monkeypatch.setattr(
+            mcp_oauth_service,
+            "begin",
+            lambda connection, redirect_uri: SimpleNamespace(
+                authorization_url="https://auth.example.com/authorize?state=safe",
+                state="safe",
+            ),
+        )
+        started = client.post(
+            "/config/mcp/oauth/start",
+            data={"target": target},
+            follow_redirects=False,
+        )
+        assert started.status_code == 303
+        assert started.headers["location"].startswith("https://auth.example.com/authorize")
+
+        monkeypatch.setattr(
+            mcp_oauth_service,
+            "complete",
+            lambda state, code, issuer="": (target, {
+                "type": "oauth",
+                "header": "",
+                "secret": "access-token",
+                "refresh_token": "refresh-token",
+                "expires_at": time.time() + 3600,
+                "token_endpoint": "https://auth.example.com/token",
+                "issuer": "https://auth.example.com",
+                "client_id": "pm-studio",
+                "client_secret": "",
+            }),
+        )
+        monkeypatch.setattr(
+            MCPClient,
+            "discover",
+            lambda self, connection: MCPDiscovery(
+                protocol_version="2025-06-18",
+                server_name="OAuth MCP",
+                server_version="1",
+                tools=[{"name": "search", "description": "Search"}],
+                resources_supported=False,
+                prompts_supported=False,
+            ),
+        )
+        completed = client.get(
+            "/config/mcp/oauth/callback?code=code&state=safe",
+            follow_redirects=False,
+        )
+
+        assert completed.status_code == 303
+        saved = json.loads((session_base / ".pm_os" / "config.json").read_text())
+        assert saved["mcp_servers"][0]["status"]["state"] == "connected"
+        assert saved["mcp_servers"][0]["capabilities"]["tools"][0]["name"] == "search"
+        assert saved["mcp_servers"][0]["auth"]["secret"] != "access-token"
 
     def test_adds_generic_stdio_server_and_protects_environment(
         self, client, session_base, monkeypatch
