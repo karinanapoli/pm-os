@@ -51,23 +51,30 @@
                 </div>
             </div>
             {% if mcp_tools %}
-            <fieldset class="card" style="padding:16px;margin:4px 0 16px;">
-                <legend style="padding:0 6px;font-weight:600;">{{ "chat.mcp_title"|t }}</legend>
+            <fieldset class="card chat-integration-card">
+                <legend>{{ "chat.mcp_title"|t }}</legend>
+                <p class="form-hint">{{ "chat.mcp_desc"|t }}</p>
                 <div class="form-group">
                     <label for="chat-mcp-tool">{{ "chat.mcp_tool"|t }}</label>
                     <select id="chat-mcp-tool" name="mcp_tool">
                         <option value="">{{ "chat.mcp_none"|t }}</option>
                         {% for tool in mcp_tools %}
-                        <option value="{{ tool.value }}">{{ tool.connection }} · {{ tool.name }}</option>
+                        <option value="{{ tool.value }}">{{ tool.connection }} · {{ tool.name }}{% if tool.description %} — {{ tool.description }}{% endif %}</option>
                         {% endfor %}
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="chat-mcp-arguments">{{ "chat.mcp_arguments"|t }}</label>
-                    <textarea id="chat-mcp-arguments" name="mcp_arguments" rows="3" spellcheck="false">{}</textarea>
-                    <div class="form-hint">{{ "chat.mcp_arguments_hint"|t }}</div>
+                    <label for="chat-mcp-instructions">{{ "chat.mcp_instructions"|t }}</label>
+                    <textarea id="chat-mcp-instructions" name="mcp_instructions" rows="2" placeholder="{{ 'chat.mcp_instructions_placeholder'|t }}"></textarea>
+                    <div class="form-hint">{{ "chat.mcp_instructions_hint"|t }}</div>
                 </div>
             </fieldset>
+            {% else %}
+            <aside class="learning-callout chat-integration-empty">
+                <strong>{{ "chat.mcp_empty_title"|t }}</strong>
+                <span>{{ "chat.mcp_empty_desc"|t }}</span>
+                <a class="btn btn-secondary btn-sm" href="/config#mcp">{{ "chat.mcp_empty_action"|t }}</a>
+            </aside>
             {% endif %}
             <div class="form-hint">{{ "chat.read_only"|t }}</div>
             <button type="submit" class="btn btn-ai">{{ "chat.send"|t }}</button>

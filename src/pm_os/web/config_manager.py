@@ -175,11 +175,12 @@ class ConfigManager:
                             pass
                 for server in raw.get("mcp_servers") or []:
                     auth = server.get("auth") or {}
-                    if auth.get("secret"):
-                        try:
-                            auth["secret"] = decrypt(auth["secret"])
-                        except Exception:
-                            pass
+                    for auth_key in ("secret", "refresh_token", "client_secret"):
+                        if auth.get(auth_key):
+                            try:
+                                auth[auth_key] = decrypt(auth[auth_key])
+                            except Exception:
+                                pass
                     for key, value in (server.get("env") or {}).items():
                         if value:
                             try:
@@ -205,8 +206,9 @@ class ConfigManager:
                 cp["api_key"] = encrypt(cp["api_key"])
         for server in to_save.get("mcp_servers") or []:
             auth = server.get("auth") or {}
-            if auth.get("secret"):
-                auth["secret"] = encrypt(auth["secret"])
+            for auth_key in ("secret", "refresh_token", "client_secret"):
+                if auth.get(auth_key):
+                    auth[auth_key] = encrypt(auth[auth_key])
             for key, value in (server.get("env") or {}).items():
                 if value:
                     server["env"][key] = encrypt(value)

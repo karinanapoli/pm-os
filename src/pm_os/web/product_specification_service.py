@@ -422,8 +422,6 @@ class ProductSpecificationService:
             }
         if source != "specification":
             raise ValueError("Unsupported backlog source.")
-        if current.get("status") != "approved":
-            raise ValueError("Approve the specification before generating a backlog.")
         return {
             "sections": current["sections"],
             "marker": f"SPEC-v{current['version']}",
@@ -435,8 +433,6 @@ class ProductSpecificationService:
         try:
             source_state = self._backlog_source_state(initiative_path, current, source)
         except ValueError:
-            if source == "specification" and current.get("status") != "approved":
-                return False, "backlog.specification_requires_approval"
             if source == "prd":
                 return False, "backlog.prd_missing"
             if source == "upload":

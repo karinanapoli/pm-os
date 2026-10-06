@@ -73,6 +73,16 @@ class MCPToolService:
         )
 
     @staticmethod
+    def arguments_from_request(request: str) -> str:
+        """Turn a user's plain-language request into safe MCP query arguments.
+
+        The chat deliberately does not expose raw JSON. Read-only MCP tools receive
+        the user's instruction as a query, while ``execute`` remains the single
+        validation and authorization boundary.
+        """
+        return json.dumps({"query": str(request or "").strip()}, ensure_ascii=False)
+
+    @staticmethod
     def _executable(connection: dict) -> bool:
         return bool(
             connection.get("enabled")

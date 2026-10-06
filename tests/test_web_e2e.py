@@ -340,10 +340,7 @@ class TestGuidedSpecification:
         assert page.status_code == 200
         assert 'name="source" value="prd" checked' in page.text
         assert 'name="source" value="prd" checked disabled' not in page.text
-        assert (
-            "Aprove uma versão da especificação antes de usá-la como fonte do backlog."
-            in page.text
-        )
+        assert "A fonte não contém requisitos reconhecíveis" in page.text
 
     def test_uses_uploaded_file_as_source_to_generate_backlog(self, client, session_base):
         init_id = _create_initiative(client, "Uploaded Source", "INT-UPLOADED-SOURCE")
@@ -373,7 +370,8 @@ Emissão automática de pedidos de compra.
 
         upload_page = client.get(f"/initiative/{init_id}/backlog?source=upload")
         assert 'name="source" value="upload" checked' in upload_page.text
-        assert "Novo arquivo" in upload_page.text
+        assert "Ideia ou material inicial" in upload_page.text
+        assert "Uma ou duas frases são suficientes" in upload_page.text
         assert "Escolher automaticamente — recomendado" in upload_page.text
         assert "Automático escolhe entre User, Technical e Job Story" in upload_page.text
         assert "backlog.upload." not in upload_page.text
@@ -443,8 +441,9 @@ Emissão automática de pedidos de compra.
 
         page = client.get(f"/initiative/{init_id}/chat")
         assert page.status_code == 200
-        assert "Assistente da iniciativa" in page.text
+        assert "Chat com IA e integrações" in page.text
         assert "não executa ferramentas de escrita automaticamente" in page.text
+        assert "Configurar integrações" in page.text
 
         response = client.post(
             f"/initiative/{init_id}/chat",
@@ -496,7 +495,7 @@ Emissão automática de pedidos de compra.
         monkeypatch.setattr(mcp_tool_service, "execute", execute)
 
         page = client.get(f"/initiative/{init_id}/chat")
-        assert "Chamar uma ferramenta MCP" in page.text
+        assert "Usar uma integração nesta mensagem" in page.text
         assert "Roadmap · search" in page.text
 
         response = client.post(
@@ -505,14 +504,14 @@ Emissão automática de pedidos de compra.
                 "question": "Consulte o roadmap e resuma os riscos.",
                 "ai_provider": "demo",
                 "mcp_tool": "mcp-roadmap::search",
-                "mcp_arguments": '{"query":"riscos"}',
+                "mcp_instructions": "Considere apenas riscos do trimestre atual.",
             },
         )
 
         assert response.status_code == 200
         assert captured == {
             "selection": "mcp-roadmap::search",
-            "arguments": '{"query":"riscos"}',
+            "arguments": '{"query": "Considere apenas riscos do trimestre atual."}',
         }
         history_path = (
             session_base / "workspace" / "initiatives" / init_id
@@ -691,7 +690,7 @@ Emissão automática de pedidos de compra.
         assert page.text.count("Verificação estrutural — avaliação incompleta") == 1
         assert "Avaliação estrutural de recuperação" not in page.text
 
-    def test_records_decision_and_rejects_backlog_before_approval(self, client):
+    def test_records_decision_and_exposes_progressive_backlog_entry(self, client):
         init_id = _create_initiative(client, "Decision Flow", "INT-DECISION")
         response = client.post(
             f"/initiative/{init_id}/decisions",
@@ -722,12 +721,12 @@ Emissão automática de pedidos de compra.
             f"/initiative/{init_id}/backlog/generate",
             follow_redirects=False,
         )
-        assert "notice=backlog.specification_requires_approval" in blocked.headers["location"]
+        assert "notice=backlog.requirements_missing" in blocked.headers["location"]
 
         deliverables = client.get(f"/initiative/{init_id}/deliverables")
         assert "BACKLOG · BETA" in deliverables.text
-        assert "Revisar e aprovar especificação" in deliverables.text
-        assert 'disabled title="Aprove uma versão' not in deliverables.text
+        assert "Criar backlog" in deliverables.text
+        assert "Revisar e aprovar especificação" not in deliverables.text
 
     def test_prepares_specification_from_overview_context(self, client, session_base, monkeypatch):
         from pm_os.infrastructure.ai.clients.fake_ai_client import FakeAIClient
@@ -1630,6 +1629,39 @@ class TestAuth:
 # ═══════════════════════════════════════════
 
 class TestConfiguration:
+    def test_synthetic_nontechnical_pm_sees_browser_login_without_credential_fields(
+        self, client
+    ):
+        page = client.get("/config#mcp")
+
+        assert page.status_code == 200
+        assert "Conectar pelo navegador (OAuth)" in page.text
+        assert 'id="mcp-oauth-advanced" hidden' in page.text
+        assert "Configuração avançada de OAuth" in page.text
+        assert "Use somente quando o administrador do MCP fornecer essas credenciais." in page.text
+
+    def test_synthetic_pm_gets_a_clear_connect_action_after_saving_oauth_mcp(
+        self, client
+    ):
+        response = client.post("/config/mcp/add", data={
+            "name": "Pesquisa de clientes",
+            "url": "https://research.example.com/mcp",
+            "connection_type": "mcp",
+            "auth_type": "oauth",
+        })
+
+        assert response.status_code == 200
+        assert "Autorização necessária" in response.text
+        assert "Conectar conta" in response.text
+
+    def test_synthetic_user_who_cancels_login_gets_a_recoverable_message(self, client):
+        response = client.get(
+            "/config/mcp/oauth/callback?error=access_denied&state=cancelled"
+        )
+
+        assert response.status_code == 422
+        assert "A autorização foi cancelada ou recusada." in response.text
+
     def test_non_admin_cannot_access_global_configuration(
         self, unauth_client, session_base
     ):
@@ -1695,6 +1727,76 @@ class TestConfiguration:
         assert server["auth"]["type"] == "oauth"
         assert server["policy"]["mode"] == "read_only"
         assert server["status"]["state"] == "authorization_required"
+
+    def test_oauth_connection_can_start_and_complete_browser_authorization(
+        self, client, session_base, monkeypatch
+    ):
+        from types import SimpleNamespace
+        from pm_os.web.app import mcp_oauth_service
+        from pm_os.web.mcp_client import MCPClient, MCPDiscovery
+
+        client.post("/config/mcp/add", data={
+            "name": "OAuth MCP",
+            "url": "https://mcp.example.com/mcp",
+            "connection_type": "mcp",
+            "auth_type": "oauth",
+        })
+        cfg = json.loads((session_base / ".pm_os" / "config.json").read_text())
+        target = cfg["mcp_servers"][0]["id"]
+
+        monkeypatch.setattr(
+            mcp_oauth_service,
+            "begin",
+            lambda connection, redirect_uri: SimpleNamespace(
+                authorization_url="https://auth.example.com/authorize?state=safe",
+                state="safe",
+            ),
+        )
+        started = client.post(
+            "/config/mcp/oauth/start",
+            data={"target": target},
+            follow_redirects=False,
+        )
+        assert started.status_code == 303
+        assert started.headers["location"].startswith("https://auth.example.com/authorize")
+
+        monkeypatch.setattr(
+            mcp_oauth_service,
+            "complete",
+            lambda state, code, issuer="": (target, {
+                "type": "oauth",
+                "header": "",
+                "secret": "access-token",
+                "refresh_token": "refresh-token",
+                "expires_at": time.time() + 3600,
+                "token_endpoint": "https://auth.example.com/token",
+                "issuer": "https://auth.example.com",
+                "client_id": "pm-studio",
+                "client_secret": "",
+            }),
+        )
+        monkeypatch.setattr(
+            MCPClient,
+            "discover",
+            lambda self, connection: MCPDiscovery(
+                protocol_version="2025-06-18",
+                server_name="OAuth MCP",
+                server_version="1",
+                tools=[{"name": "search", "description": "Search"}],
+                resources_supported=False,
+                prompts_supported=False,
+            ),
+        )
+        completed = client.get(
+            "/config/mcp/oauth/callback?code=code&state=safe",
+            follow_redirects=False,
+        )
+
+        assert completed.status_code == 303
+        saved = json.loads((session_base / ".pm_os" / "config.json").read_text())
+        assert saved["mcp_servers"][0]["status"]["state"] == "connected"
+        assert saved["mcp_servers"][0]["capabilities"]["tools"][0]["name"] == "search"
+        assert saved["mcp_servers"][0]["auth"]["secret"] != "access-token"
 
     def test_adds_generic_stdio_server_and_protects_environment(
         self, client, session_base, monkeypatch
@@ -2325,7 +2427,7 @@ class TestInitiativeCreationPage:
         """Page should show 'em Pessoal' or current squad."""
         resp = client.get("/initiatives/new")
         assert resp.status_code == 200
-        assert "Observa" in resp.text  # "Observações" label
+        assert "O que você já sabe ou quer resolver?" in resp.text
         assert "Pessoal" in resp.text  # Workspace indicator
 
     def test_new_initiative_has_status_chips(self, client):
@@ -2334,12 +2436,25 @@ class TestInitiativeCreationPage:
         assert resp.status_code == 200
         assert 'type="radio"' in resp.text
         assert "status-chip" in resp.text
+        assert "Opções avançadas" in resp.text
 
     def test_new_initiative_auto_generates_id(self, client):
         """JS must be present for auto-ID generation."""
         resp = client.get("/initiatives/new")
         assert resp.status_code == 200
         assert "auto-gerado" in resp.text or "document.getElementById('name')" in resp.text
+
+    def test_default_creation_leads_to_outcome_choices(self, client):
+        response = client.post(
+            "/initiatives/new",
+            data={"name": "Jornada simples", "context": "Reduzir abandono."},
+            follow_redirects=False,
+        )
+
+        assert response.status_code == 303
+        assert response.headers["location"].startswith("/initiative/INT-JORNADA-SIMPLES")
+        page = client.get(response.headers["location"])
+        assert "O que você quer produzir agora?" in page.text
 
 
 class TestDashboardEmptyState:
@@ -2377,14 +2492,28 @@ class TestDashboardEmptyState:
         assert "/workspace/default" in resp.text
         assert "Default" in resp.text
 
-    def test_dashboard_exposes_recent_capabilities_and_version(self, client):
+    def test_dashboard_exposes_product_capabilities_without_technical_plugin_cta(self, client):
         response = client.get("/")
 
         assert response.status_code == 200
         assert 'href="/signals"' in response.text
         assert 'href="/decisions"' in response.text
-        assert 'href="/config#plugins"' in response.text
+        assert 'href="/config#plugins"' not in response.text
         assert "PM Studio v0.2.0" in response.text
+
+    def test_dashboard_prioritizes_next_action_and_collapses_secondary_features(
+        self, client
+    ):
+        _create_initiative(client, "Prioridade visual", "INT-UI-PRIORITY")
+
+        response = client.get("/")
+
+        assert response.status_code == 200
+        assert "Próximo passo recomendado" in response.text
+        assert '<details class="capability-section capability-disclosure">' in response.text
+        assert response.text.index("Próximo passo recomendado") < response.text.index(
+            "Explorar recursos"
+        )
 
 
 class TestGenerateLinks:
@@ -2602,3 +2731,143 @@ class TestCursorConnection:
         assert response.status_code == 303
         assert "cursor.install_error" in response.headers["location"]
         assert cursor_config.read_text(encoding="utf-8") == "{invalid"
+
+
+class TestSyntheticPartialSpecificationJourneys:
+    """Journeys for PMs who do not have a complete specification yet."""
+
+    def test_specification_starts_with_essentials_and_keeps_details_optional(
+        self, client
+    ):
+        initiative_id = _create_initiative(
+            client, "Especificação progressiva", "INT-PROGRESSIVE-SPEC"
+        )
+
+        page = client.get(f"/initiative/{initiative_id}/specification")
+
+        assert page.status_code == 200
+        assert "Comece pelo essencial" in page.text
+        assert "Detalhar iniciativa — opcional" in page.text
+        assert page.text.index('id="requirements"') < page.text.index(
+            "Detalhar iniciativa — opcional"
+        )
+        assert 'id="acceptance_criteria"' in page.text
+
+    def test_primary_outcomes_precede_initiative_metrics(self, client):
+        initiative_id = _create_initiative(
+            client, "Hierarquia visual", "INT-VISUAL-HIERARCHY"
+        )
+
+        page = client.get(f"/initiative/{initiative_id}")
+
+        assert page.text.index("O que você quer produzir agora?") < page.text.index(
+            'class="stats-row"'
+        )
+
+    def test_backlog_keeps_generation_tuning_optional(self, client):
+        initiative_id = _create_initiative(
+            client, "Backlog focado", "INT-FOCUSED-BACKLOG"
+        )
+
+        page = client.get(f"/initiative/{initiative_id}/backlog?source=upload")
+
+        assert "Ajustar formato e detalhamento — opcional" in page.text
+        assert 'class="advanced-options backlog-generation-options"' in page.text
+
+    def test_lia_can_generate_backlog_with_only_minimum_requirements(
+        self, client, session_base
+    ):
+        initiative_id = _create_initiative(
+            client, "Melhorar recuperação de senha", "INT-LIA-MINIMAL"
+        )
+
+        saved = client.post(
+            f"/initiative/{initiative_id}/specification",
+            data={
+                "requirements": (
+                    "- Permitir solicitar um link de recuperação\n"
+                    "- Informar quando o link expirar"
+                )
+            },
+            follow_redirects=False,
+        )
+        approved = client.post(
+            f"/initiative/{initiative_id}/specification/approve",
+            follow_redirects=False,
+        )
+        generated = client.post(
+            f"/initiative/{initiative_id}/backlog/generate",
+            data={"source": "specification", "ai_provider": "demo"},
+            follow_redirects=False,
+        )
+
+        assert saved.status_code == 303
+        assert approved.status_code == 303
+        assert "notice=backlog.created" in generated.headers["location"]
+        backlog = (
+            session_base / "workspace" / "initiatives" / initiative_id
+            / "artifacts" / "backlog.md"
+        ).read_text(encoding="utf-8")
+        assert "Rastreabilidade: SPEC-v1" in backlog
+        assert "## Épico:" in backlog
+        assert "### História:" in backlog
+
+    def test_caio_can_approve_partial_spec_but_backlog_then_blocks_without_requirement(
+        self, client
+    ):
+        initiative_id = _create_initiative(
+            client, "Entender abandono", "INT-CAIO-PARTIAL"
+        )
+        client.post(
+            f"/initiative/{initiative_id}/specification",
+            data={"problem": "Clientes abandonam o cadastro na etapa de documentos."},
+        )
+
+        approved = client.post(
+            f"/initiative/{initiative_id}/specification/approve",
+            follow_redirects=False,
+        )
+        backlog_page = client.get(f"/initiative/{initiative_id}/backlog")
+
+        assert "notice=spec.approved" in approved.headers["location"]
+        assert "A fonte não contém requisitos reconhecíveis" in backlog_page.text
+        assert 'name="source" value="specification"' in backlog_page.text
+        assert re.search(
+            r'<input[^>]+name="source" value="specification"[^>]+disabled',
+            backlog_page.text,
+        )
+
+    def test_bia_can_skip_specification_and_generate_from_an_unstructured_note(
+        self, client, session_base
+    ):
+        initiative_id = _create_initiative(
+            client, "Alerta de renovação", "INT-BIA-NOTE"
+        )
+        note = (
+            "Precisamos avisar clientes sete dias antes da renovação e permitir "
+            "que alterem a forma de pagamento antes da cobrança."
+        )
+
+        generated = client.post(
+            f"/initiative/{initiative_id}/backlog/generate",
+            data={
+                "source": "upload",
+                "ai_provider": "demo",
+                "backlog_source_text": note,
+            },
+            follow_redirects=False,
+        )
+
+        assert "notice=backlog.created" in generated.headers["location"]
+        state = json.loads((
+            session_base / "workspace" / "initiatives" / initiative_id
+            / "artifacts" / "specification.json"
+        ).read_text(encoding="utf-8"))
+        assert state["artifacts"]["backlog"]["source"] == "upload"
+        assert state["artifacts"]["backlog_source"]["source_filename"] == "ideia-inicial.txt"
+
+        initiative_page = client.get(f"/initiative/{initiative_id}")
+        assert "O que você quer produzir agora?" in initiative_page.text
+        assert "Explorar com IA" in initiative_page.text
+        assert "Detalhar a iniciativa" in initiative_page.text
+        assert f'/initiative/{initiative_id}/backlog?source=upload' in initiative_page.text

@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', function() {
 {% endif %}
 
 {# ── Workspace Selector ── #}
-<div class="card" style="margin-bottom: 16px;">
+<div class="card workspace-switcher" style="margin-bottom: 16px;">
     <div class="card-body" style="padding: 12px 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
         <span style="font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.3px;">{{ "nav.workspace"|t }}:</span>
 
@@ -35,40 +35,6 @@ document.addEventListener('DOMContentLoaded', function() {
         <a href="/squad" class="btn btn-sm btn-secondary">+ {{ "squad.create"|t }} / {{ "squad.join"|t }}</a>
     </div>
 </div>
-
-{# ── Capability Discovery ── #}
-<section class="capability-section" aria-labelledby="capability-title">
-    <div class="capability-section-heading">
-        <div>
-            <span class="eyebrow">{{ "dashboard.capabilities.eyebrow"|t }}</span>
-            <h3 id="capability-title">{{ "dashboard.capabilities.title"|t }}</h3>
-            <p>{{ "dashboard.capabilities.desc"|t }}</p>
-        </div>
-        <a href="/timeline" class="btn btn-ghost btn-sm">{{ "dashboard.capabilities.roadmap"|t }} →</a>
-    </div>
-    <div class="capability-grid">
-        <a href="/signals" class="capability-card">
-            <span class="capability-icon">◌</span>
-            <div><strong>{{ "nav.signals"|t }}</strong><p>{{ "dashboard.capabilities.signals"|t }}</p></div>
-            <span class="capability-status status-live">{{ "timeline.live"|t }}</span>
-        </a>
-        <a href="/decisions" class="capability-card">
-            <span class="capability-icon">◆</span>
-            <div><strong>{{ "nav.decisions"|t }}</strong><p>{{ "dashboard.capabilities.decisions"|t }}</p></div>
-            <span class="capability-status status-live">{{ "timeline.live"|t }}</span>
-        </a>
-        <a href="{% if initiatives %}/initiative/{{ initiatives[0].name }}/map{% else %}/initiatives/new{% endif %}" class="capability-card">
-            <span class="capability-icon">◈</span>
-            <div><strong>{{ "map.tab"|t }}</strong><p>{{ "dashboard.capabilities.map"|t }}</p></div>
-            <span class="capability-status status-live">{{ "timeline.live"|t }}</span>
-        </a>
-        <a href="/config#plugins" class="capability-card">
-            <span class="capability-icon">✦</span>
-            <div><strong>{{ "timeline.feat_mcp_generic"|t }}</strong><p>{{ "dashboard.capabilities.mcp"|t }}</p></div>
-            <span class="capability-status status-live">{{ "timeline.live"|t }}</span>
-        </a>
-    </div>
-</section>
 
 {% if initiatives %}
 
@@ -96,6 +62,30 @@ document.addEventListener('DOMContentLoaded', function() {
     <a href="/consult" class="btn btn-ai">{{ "dashboard.next.consult_cta"|t }}</a>
     {% endif %}
 </section>
+
+{# ── Secondary capability discovery ── #}
+<details class="capability-section capability-disclosure">
+    <summary>
+        <span><strong>{{ "dashboard.capabilities.title"|t }}</strong><small>{{ "dashboard.capabilities.desc"|t }}</small></span>
+        <span>{{ "dashboard.capabilities.show"|t }}</span>
+    </summary>
+    <div class="capability-grid">
+        <a href="/signals" class="capability-card">
+            <span class="capability-icon">◌</span><div><strong>{{ "nav.signals"|t }}</strong><p>{{ "dashboard.capabilities.signals"|t }}</p></div>
+        </a>
+        <a href="/decisions" class="capability-card">
+            <span class="capability-icon">◆</span><div><strong>{{ "nav.decisions"|t }}</strong><p>{{ "dashboard.capabilities.decisions"|t }}</p></div>
+        </a>
+        <a href="/initiative/{{ initiatives[0].name }}/map" class="capability-card">
+            <span class="capability-icon">◈</span><div><strong>{{ "map.tab"|t }}</strong><p>{{ "dashboard.capabilities.map"|t }}</p></div>
+        </a>
+        {% if is_installation_admin %}
+        <a href="/config#plugins" class="capability-card">
+            <span class="capability-icon">✦</span><div><strong>{{ "timeline.feat_mcp_generic"|t }}</strong><p>{{ "dashboard.capabilities.mcp"|t }}</p></div>
+        </a>
+        {% endif %}
+    </div>
+</details>
 
 {# ── Stats Row ── #}
 <div class="stats-row">
@@ -177,7 +167,7 @@ document.addEventListener('DOMContentLoaded', function() {
 {% else %}
 
 {# ── Empty State (no initiatives) ── #}
-<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 64px 24px; text-align: center;">
+<div class="dashboard-empty-state">
     <div style="width: 64px; height: 64px; border-radius: 16px; background: linear-gradient(135deg, var(--primary-glow), var(--ai-glow)); display: flex; align-items: center; justify-content: center; font-size: 28px; margin-bottom: 20px; opacity: 0.6;">◇</div>
     <h2 style="font-size: 18px; font-weight: 700; color: var(--text-secondary); margin: 0 0 6px;">{{ "dashboard.empty.title"|t }}</h2>
     <p style="font-size: 14px; color: var(--text-muted); max-width: 420px; line-height: 1.6; margin: 0 0 32px;">{{ "dashboard.empty.desc_full"|t }}</p>

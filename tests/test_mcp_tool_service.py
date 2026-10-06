@@ -54,3 +54,16 @@ def test_blocks_write_policy_forged_tool_and_invalid_arguments():
         service.execute([_connection()], "mcp-example::delete", "{}")
     with pytest.raises(MCPError, match="JSON válido"):
         service.execute([_connection()], "mcp-example::search", "not-json")
+
+
+def test_builds_tool_arguments_from_plain_language_request():
+    service = MCPToolService(client=FakeMCPClient())
+
+    arguments = service.arguments_from_request(
+        "Considere apenas o trimestre atual e agrupe por status."
+    )
+    service.execute([_connection()], "mcp-example::search", arguments)
+
+    assert service.client.calls[0][2] == {
+        "query": "Considere apenas o trimestre atual e agrupe por status."
+    }
