@@ -3643,3 +3643,15 @@ def test_initiative_links_to_other_tool_setup(client):
     page = client.get(f"/initiative/{init_id}")
 
     assert 'href="/config#external-tools-other"' in page.text
+
+
+def test_editor_and_agent_setup_has_its_own_settings_tab(client):
+    page = client.get("/config")
+
+    tab = page.text.index('id="tab-tools"')
+    providers = page.text.index('id="tab-providers"')
+    mcp = page.text.index('id="tab-mcp"')
+    assert ">Editores e agentes</button>" in page.text
+    assert page.text.index('id="external-tools"') > tab
+    assert page.text.index('id="external-tools-other"') > tab
+    assert not providers < page.text.index('id="external-tools"') < mcp
