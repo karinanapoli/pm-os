@@ -3807,3 +3807,13 @@ select { color-scheme: dark; }
 .provider-demo-hint { color: var(--amber); }
 
 .inline-form { display: inline; margin: 0; }
+
+/* ── Other external tools (VS Code, Claude Code, generic MCP) ── */
+.external-tools-other { margin: 0 24px 24px; display: grid; gap: 10px; }
+.external-tools-other h4 { margin: 0; font-size: var(--fs-md); }
+.external-tool-config { border: 1px solid var(--border); border-radius: var(--radius); background: rgba(255,255,255,.02); }
+.external-tool-config summary { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; padding: 10px 14px; cursor: pointer; }
+.external-tool-config summary span { color: var(--text-muted); font-size: var(--fs-sm); }
+.external-tool-snippet { display: grid; gap: 8px; padding: 0 14px 14px; }
+.external-tool-snippet pre { margin: 0; padding: 12px; overflow-x: auto; border-radius: var(--radius-sm); background: var(--bg); font-family: var(--font-mono); font-size: var(--fs-sm); white-space: pre; }
+.external-tool-snippet .btn { justify-self: start; }

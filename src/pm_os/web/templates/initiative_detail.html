@@ -69,7 +69,7 @@
                 {% if metadata.repository_url %}<small>GitHub · {{ metadata.repository_url }}</small>{% endif %}
                 <div class="external-tool-actions">
                     <a href="{{ cursor_prompt_url }}" target="_blank" rel="noopener noreferrer">Cursor</a>
-                    <a href="/config#external-tools">{{ "external_tools.other"|t }}</a>
+                    {% if is_installation_admin %}<a href="/config#external-tools-other">{{ "external_tools.other"|t }}</a>{% else %}<span class="form-hint">{{ "external_tools.ask_admin"|t }}</span>{% endif %}
                 </div>
             </div>
             {% else %}
@@ -80,7 +80,7 @@
                 {% if metadata.repository_url %}<small>GitHub · {{ metadata.repository_url }}</small>{% endif %}
                 <div class="external-tool-actions">
                     <a href="/initiative/{{ initiative.name }}/specification#cursor-ai">Cursor</a>
-                    <a href="/config#external-tools">{{ "external_tools.other"|t }}</a>
+                    {% if is_installation_admin %}<a href="/config#external-tools-other">{{ "external_tools.other"|t }}</a>{% else %}<span class="form-hint">{{ "external_tools.ask_admin"|t }}</span>{% endif %}
                 </div>
             </div>
             {% endif %}

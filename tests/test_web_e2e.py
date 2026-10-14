@@ -976,7 +976,7 @@ class TestRouteAccessibility:
         assert b"Test Initiative" in resp.content
         assert "VS Code ou outra" in resp.text
         assert f'/initiative/{init_name}/specification#cursor-ai' in resp.text
-        assert 'href="/config#external-tools"' in resp.text
+        assert 'href="/config#external-tools-other"' in resp.text
 
     def test_initiative_data_prototype_uses_real_sources_without_leaking_tokens(
         self, client
@@ -1008,7 +1008,7 @@ class TestRouteAccessibility:
         assert ">Evidências<" not in response.text
         assert 'href="#connect-automation"' in response.text
         assert f'action="/initiative/{init_name}/data/automations"' in response.text
-        assert 'href="/config#external-tools"' in response.text
+        assert 'href="/config#external-tools-other"' in response.text
         assert "/specification#cursor-ai" not in response.text
 
     def test_registers_existing_automation_inside_data_hub(self, client):
@@ -3046,7 +3046,7 @@ class TestCursorConnection:
         overview = client.get(f"/initiative/{initiative_id}")
         assert "Continuar em ferramenta externa" in overview.text
         assert "VS Code ou outra" in overview.text
-        assert 'href="/config#external-tools"' in overview.text
+        assert 'href="/config#external-tools-other"' in overview.text
         assert "https://cursor.com/link/prompt?" in overview.text
         assert initiative_id in overview.text
 
@@ -3625,3 +3625,21 @@ def test_local_ollama_switch_rejects_external_redirects(client, monkeypatch):
     response = client.post("/config/provider/use-local-ollama", data={"next_path": "//evil.example"}, follow_redirects=False)
 
     assert response.headers["location"].startswith("/?notice=provider.ollama_unavailable")
+
+
+def test_settings_explain_how_to_connect_vscode_and_other_agents(client):
+    page = client.get("/config")
+
+    assert 'id="external-tools-other"' in page.text
+    assert ".vscode/mcp.json" in page.text
+    assert "claude mcp add pm-studio" in page.text
+    assert "mcpServers" in page.text
+    assert "target.closest('.tab-panel')" in page.text
+
+
+def test_initiative_links_to_other_tool_setup(client):
+    init_id = _create_initiative(client, "Other Tools", "INT-OTHER-TOOLS")
+
+    page = client.get(f"/initiative/{init_id}")
+
+    assert 'href="/config#external-tools-other"' in page.text

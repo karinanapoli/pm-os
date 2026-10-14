@@ -258,7 +258,7 @@
                     <button type="submit" class="btn btn-secondary btn-sm btn-block">{{ "cursor.simulate"|t }}</button>
                 </form>
                 {% endif %}
-                <a class="btn btn-ghost btn-sm btn-block" href="/config#external-tools">{{ "external_tools.configure_other"|t }}</a>
+                {% if is_installation_admin %}<a class="btn btn-ghost btn-sm btn-block" href="/config#external-tools-other">{{ "external_tools.configure_other"|t }}</a>{% else %}<span class="form-hint">{{ "external_tools.ask_admin"|t }}</span>{% endif %}
             </div>
         </section>
 

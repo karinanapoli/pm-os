@@ -92,3 +92,25 @@ def test_invalid_mcp_servers_is_never_overwritten(tmp_path):
         service.install()
 
     assert service.config_path.read_text(encoding="utf-8") == '{"mcpServers": []}'
+
+
+def test_external_tool_configs_reuse_the_pm_studio_mcp_entry(tmp_path):
+    import json
+    from pm_os.web.external_tool_configs import external_tool_configs
+
+    installer = CursorInstallerService(
+        cursor_config_path=tmp_path / "mcp.json",
+        workspace_dir=tmp_path / "work space",
+        python_executable="/usr/bin/python3",
+    )
+
+    configs = {item["id"]: item for item in external_tool_configs(installer)}
+
+    vscode = json.loads(configs["vscode"]["snippet"])["servers"]["pm-studio"]
+    assert vscode == installer.desired_entry()
+    generic = json.loads(configs["generic"]["snippet"])["mcpServers"]["pm-studio"]
+    assert generic["args"] == ["-m", "pm_os.mcp_server"]
+    assert "type" not in generic
+    assert configs["claude-code"]["snippet"].startswith("claude mcp add pm-studio --env ")
+    assert f"'PM_OS_WORKSPACE_DIR={tmp_path / 'work space'}'" in configs["claude-code"]["snippet"]
+    assert configs["claude-code"]["snippet"].endswith("-- /usr/bin/python3 -m pm_os.mcp_server")

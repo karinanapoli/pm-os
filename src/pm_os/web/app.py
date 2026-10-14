@@ -67,6 +67,7 @@ from pm_os.web.squad_access import authorized_squad, normalize_squad_key
 from pm_os.web.markdown_renderer import render_safe_markdown
 from pm_os.web.icons import icon as _icon
 from pm_os.web.local_provider_detection import detect_ollama_models
+from pm_os.web.external_tool_configs import external_tool_configs
 from pm_os.web.middleware import AuthMiddleware, CSRFMiddleware, NoCacheMiddleware
 from pm_os.web.product_docs_service import ProductDocsService
 from pm_os.web.prd_validation_service import PRDValidationService
@@ -3442,7 +3443,7 @@ async def config_page(request: Request, notice: str = ""):
     return templates.TemplateResponse(
         request,
         "config.html",
-        _ctx(request, saved=False, notice=notice),
+        _ctx(request, saved=False, notice=notice, external_tools=external_tool_configs()),
     )
 
 
