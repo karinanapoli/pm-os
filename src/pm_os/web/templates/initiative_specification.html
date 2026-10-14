@@ -43,7 +43,7 @@
             <small>{{ "spec.source_prd_upload_help"|t }}</small>
         </div>
         <label class="spec-provider">
-            <span>{{ "spec.provider_label"|t }}</span>
+            <span>{{ "spec.provider_step_label"|t }}</span>
             <select name="ai_provider">
                 {% for provider in available_ai_providers %}
                 <option value="{{ provider.id }}" {% if provider.id == active_ai_provider %}selected{% endif %}>{{ provider.label }}</option>
@@ -205,8 +205,8 @@
                 <div class="cursor-ai-heading">
                     <span class="spec-prepare-icon">⌁</span>
                     <div>
-                        <h3>{{ "cursor.title"|t }}</h3>
-                        <p class="spec-caption">{{ "cursor.desc"|t }}</p>
+                        <h3>{{ "external_tools.spec_title"|t }}</h3>
+                        <p class="spec-caption">{{ "external_tools.spec_desc"|t }}</p>
                     </div>
                 </div>
 
@@ -253,6 +253,7 @@
                     <button type="submit" class="btn btn-secondary btn-sm btn-block">{{ "cursor.simulate"|t }}</button>
                 </form>
                 {% endif %}
+                <a class="btn btn-ghost btn-sm btn-block" href="/config#external-tools">{{ "external_tools.configure_other"|t }}</a>
             </div>
         </section>
 
