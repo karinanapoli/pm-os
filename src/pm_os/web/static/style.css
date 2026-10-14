@@ -3792,7 +3792,6 @@ select { color-scheme: dark; }
 .generate-demo-block { display: grid; gap: 6px; margin-bottom: 12px; }
 .generate-demo-block[hidden] { display: none; }
 .generate-demo-block-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
-.spec-approval-warning { color: var(--amber); }
 .markdown-body ul,
 .markdown-body ol { margin: 0 0 10px; padding-left: 22px; }
 .markdown-body p { margin: 0 0 10px; }

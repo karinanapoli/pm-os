@@ -279,7 +279,7 @@ A primeira rodada avaliou telas estáticas. Nesta, as cinco personas percorreram
 | Persona | Jornada | Antes | Depois |
 |---------|---------|-------|--------|
 | Lucas (APM, mobile) | Quickstart → iniciativa | Exemplo com **nota 0.0/10** (“não foi possível interpretar a resposta da IA”) | Nota 7.5/10 demonstrativa, sinalizada como tal |
-| Marina (PM pleno) | Iniciativa → docs → PRD → spec → backlog | **Travava**: “Não foi possível conectar ao Ollama” depois do clique; Dashboard insistia em “Gerar PRD”; spec vazia podia ser aprovada | Aviso antes do clique, botão desabilitado com caminho alternativo; Dashboard recomenda conectar provedor; aprovação exige conteúdo e avisa quando faltam requisitos; backlog gerado e aprovado |
+| Marina (PM pleno) | Iniciativa → docs → PRD → spec → backlog | **Travava**: “Não foi possível conectar ao Ollama” depois do clique; Dashboard insistia em “Gerar PRD”; spec vazia podia ser aprovada | Aviso antes do clique, botão desabilitado com caminho alternativo; Dashboard recomenda conectar provedor; aprovação nunca é bloqueada: especificação vazia sugere gerar rascunho a partir de dados, documentos ou PRD; backlog gerado e aprovado |
 | Helena (Head) | Decisões + roadmap | OK | OK, com nome da iniciativa no lugar do código |
 | Ana (Ops) | Planilha, automação, sinal, filtro | OK | OK |
 | Diego (Tech Lead) | Assistente + consulta | Respondia **qualquer pergunta com um PRD de exemplo** | Demo mostra os trechos das fontes mais próximos da pergunta, com citação `[SRC-…]`, renderizados em Markdown |

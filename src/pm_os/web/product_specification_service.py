@@ -11,10 +11,6 @@ from pathlib import Path
 from typing import Iterable, Optional
 
 
-class EmptySpecificationError(ValueError):
-    """Raised when approval is requested for a specification with no content."""
-
-
 SPECIFICATION_FIELDS = (
     "problem",
     "users",
@@ -114,8 +110,6 @@ class ProductSpecificationService:
         current = self.load(initiative_path)
         if not current.get("version"):
             raise ValueError("A specification must be saved before approval.")
-        if not any(str(value).strip() for value in current["sections"].values()):
-            raise EmptySpecificationError("An empty specification cannot be approved.")
         current.update({
             "status": "approved",
             "approved_version": current["version"],

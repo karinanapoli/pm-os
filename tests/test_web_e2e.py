@@ -3412,20 +3412,16 @@ class TestDemoModeJourneys:
         assert "Conecte um provedor de IA para gerar o PRD" in page.text
         assert f'href="/generate?initiative={init_id}"' not in page.text
 
-    def test_empty_specification_cannot_be_approved(self, client, session_base):
+    def test_empty_specification_is_not_a_barrier_and_suggests_autofill(self, client, session_base):
         init_id = _create_initiative(client, "Empty Spec", "INT-EMPTY-SPEC")
         client.post(f"/initiative/{init_id}/specification", data={})
 
         page = client.get(f"/initiative/{init_id}/specification")
         approved = client.post(f"/initiative/{init_id}/specification/approve", follow_redirects=False)
 
-        assert "A especificação está vazia" in page.text
-        assert "notice=spec.approve_empty" in approved.headers["location"]
-        spec = json.loads(
-            (session_base / "workspace" / "initiatives" / init_id / "artifacts" / "specification.json")
-            .read_text(encoding="utf-8")
-        )
-        assert spec["status"] != "approved"
+        assert 'href="#spec-prepare"' in page.text
+        assert "Gere um rascunho a partir de dados, documentos ou PRD" in page.text
+        assert "notice=spec.approved" in approved.headers["location"]
 
     def test_partial_specification_warns_that_backlog_needs_requirements(self, client):
         init_id = _create_initiative(client, "Partial Spec", "INT-PARTIAL-SPEC")
@@ -3433,7 +3429,7 @@ class TestDemoModeJourneys:
 
         page = client.get(f"/initiative/{init_id}/specification")
 
-        assert "não poderá gerar backlog" in page.text
+        assert "ainda não serve de base para o backlog" in page.text
 
     def test_consult_renders_demo_excerpts_as_markdown_with_initiative_names(self, client):
         init_id = _create_initiative(client, "Consulta de Fornecedores", "INT-DEMO-CONSULT")

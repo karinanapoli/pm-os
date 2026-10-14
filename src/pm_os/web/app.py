@@ -80,7 +80,6 @@ from pm_os.web.provider_routes import create_provider_router
 from pm_os.web.backlog_export_service import BacklogExportService, EXPORT_TARGETS
 from pm_os.web.backlog_mcp_write_service import BacklogMCPWriteService
 from pm_os.web.product_specification_service import (
-    EmptySpecificationError,
     ProductSpecificationService,
     SPECIFICATION_FIELDS,
 )
@@ -2279,11 +2278,6 @@ async def approve_specification(request: Request, initiative_name: str):
         product_specification_service.approve(
             selected.path,
             actor=_get_session_user_email(request),
-        )
-    except EmptySpecificationError:
-        return RedirectResponse(
-            url=f"/initiative/{initiative_name}/specification?notice=spec.approve_empty&notice_kind=error",
-            status_code=303,
         )
     except ValueError:
         return RedirectResponse(
