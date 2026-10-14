@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block page_title %}{{ "map.title"|t }} — {{ initiative.name }}{% endblock %}
+{% block page_title %}{{ "map.title"|t }} · {{ initiative|display_name }}{% endblock %}
 {% block topbar_actions %}
 <a href="/initiative/{{ initiative.name }}" class="btn btn-ghost btn-sm">{{ "map.back"|t }}</a>
 {% endblock %}
@@ -16,7 +16,7 @@
     <section class="map-column">
         <div class="map-column-heading"><span>1</span><h3>{{ "map.inputs"|t }}</h3></div>
         <article class="map-node">
-            <div class="map-node-title"><span>◌</span><strong>{{ "nav.signals"|t }}</strong><em>{{ signals|length }}</em></div>
+            <div class="map-node-title"><span>{{ icon("activity") }}</span><strong>{{ "nav.signals"|t }}</strong><em>{{ signals|length }}</em></div>
             {% if signals %}
                 {% for signal in signals[:4] %}
                 <a href="/signals/{{ signal.signal_id }}">{{ signal.title }}</a>
@@ -25,7 +25,7 @@
             <a href="/signals#new-signal" class="map-node-action">+ {{ "signals.register"|t }}</a>
         </article>
         <article class="map-node">
-            <div class="map-node-title"><span>📄</span><strong>{{ "map.sources"|t }}</strong><em>{{ sources|length }}</em></div>
+            <div class="map-node-title"><span>{{ icon("files") }}</span><strong>{{ "map.sources"|t }}</strong><em>{{ sources|length }}</em></div>
             {% if sources %}
                 {% for source in sources[:4] %}<span>{{ source.name }}</span>{% endfor %}
             {% else %}<p>{{ "map.no_sources"|t }}</p>{% endif %}
@@ -38,12 +38,12 @@
     <section class="map-column map-column-core">
         <div class="map-column-heading"><span>2</span><h3>{{ "map.thinking"|t }}</h3></div>
         <article class="map-node map-node-primary">
-            <div class="map-node-title"><span>◇</span><strong>{{ "spec.tab_specification"|t }}</strong><em>{{ specification.version or 0 }}</em></div>
+            <div class="map-node-title"><span>{{ icon("target") }}</span><strong>{{ "spec.tab_specification"|t }}</strong><em>{{ specification.version or 0 }}</em></div>
             <p>{{ ("spec.status_" ~ specification.status)|t }}</p>
             <a href="/initiative/{{ initiative.name }}/specification" class="map-node-action">{{ "map.open_spec"|t }}</a>
         </article>
         <article class="map-node">
-            <div class="map-node-title"><span>◆</span><strong>{{ "nav.decisions"|t }}</strong><em>{{ decisions|length }}</em></div>
+            <div class="map-node-title"><span>{{ icon("scale") }}</span><strong>{{ "nav.decisions"|t }}</strong><em>{{ decisions|length }}</em></div>
             {% if decisions %}
                 {% for decision in decisions[:4] %}
                 <span>{{ decision.title }} · {{ ("decisions.status." ~ decision.status)|t }}</span>

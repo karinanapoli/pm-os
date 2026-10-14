@@ -17,7 +17,7 @@
 
 <div class="card">
     {# ─── Tab Navigation ─── #}
-    <div class="tab-bar" role="tablist" aria-label="{{ 'nav.settings'|t }}" style="display:flex;border-bottom:1px solid var(--border);padding:0 20px;">
+    <div class="tab-bar" role="tablist" aria-label="{{ 'nav.settings'|t }}">
         <button class="tab-btn active" id="control-general" role="tab" aria-selected="true" aria-controls="tab-general" tabindex="0" data-tab="general" type="button" onclick="switchTab('general')">{{ "config.tab_general"|t }}</button>
         <button class="tab-btn" id="control-providers" role="tab" aria-selected="false" aria-controls="tab-providers" tabindex="-1" data-tab="providers" type="button" onclick="switchTab('providers')">{{ "config.tab_providers"|t }}</button>
         <button class="tab-btn" id="control-mcp" role="tab" aria-selected="false" aria-controls="tab-mcp" tabindex="-1" data-tab="mcp" type="button" onclick="switchTab('mcp')">{{ "config.tab_mcp"|t }}</button>
@@ -540,7 +540,7 @@
     <div class="tab-panel" id="tab-plugins" role="tabpanel" aria-labelledby="control-plugins">
         <div class="card-body">
             <div class="empty-state" style="text-align:center;padding:40px 20px;">
-                <div style="font-size: 40px; margin-bottom: 16px;">🧩</div>
+                <div style="margin-bottom: 16px; color: var(--primary-light);">{{ icon("puzzle", 40) }}</div>
                 <h4 style="margin-bottom: 8px;">{{ "config.extensions_title"|t }}</h4>
                 <p style="color: var(--text-muted); font-size: 14px; max-width: 400px; margin: 0 auto;">{{ "config.extensions_desc"|t }}</p>
             </div>
@@ -565,7 +565,7 @@
 {# ─── MCP Delete Modal ─── #}
 <div class="modal-overlay" id="modal-delete-mcp">
     <div class="modal modal-sm">
-        <div class="modal-icon-box coral">✕</div>
+        <div class="modal-icon-box coral" aria-hidden="true">{{ icon("trash-2", 22) }}</div>
         <div class="modal-title">{{ "mcp.modal_title"|t }}</div>
         <div class="modal-desc">
             {{ "mcp.modal_desc"|t }}
@@ -811,11 +811,20 @@ async function testGatewayConnection(btn) {
 </script>
 
 <style>
+.tab-bar {
+    display: flex;
+    padding: 0 20px;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    scrollbar-width: thin;
+}
 .tab-btn {
+    flex-shrink: 0;
+    white-space: nowrap;
     background: none;
     border: none;
     border-bottom: 2px solid transparent;
-    padding: 12px 20px;
+    padding: 12px 16px;
     cursor: pointer;
     font-size: 14px;
     font-weight: 500;

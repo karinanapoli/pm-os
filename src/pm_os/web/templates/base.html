@@ -21,23 +21,23 @@
             <div class="sidebar-section">{{ "nav.workspace"|t }}</div>
             <nav class="sidebar-nav">
                 <a href="/" class="nav-item {% if request.url.path == '/' %}active{% endif %}" {% if request.url.path == '/' %}aria-current="page"{% endif %}>
-                    <span class="nav-icon">◈</span>
+                    <span class="nav-icon" aria-hidden="true">{{ icon("layout-dashboard") }}</span>
                     <span>{{ "nav.dashboard"|t }}</span>
                 </a>
                 <a href="/initiatives/new" class="nav-item {% if request.url.path == '/initiatives/new' %}active{% endif %}" {% if request.url.path == '/initiatives/new' %}aria-current="page"{% endif %}>
-                    <span class="nav-icon">+</span>
+                    <span class="nav-icon" aria-hidden="true">{{ icon("circle-plus") }}</span>
                     <span>{{ "nav.new_initiative"|t }}</span>
                 </a>
                 <a href="/generate" class="nav-item {% if request.url.path == '/generate' %}active{% endif %}" {% if request.url.path == '/generate' %}aria-current="page"{% endif %}>
-                    <span class="nav-icon">◇</span>
+                    <span class="nav-icon" aria-hidden="true">{{ icon("file-text") }}</span>
                     <span>{{ "nav.generate_prd"|t }}</span>
                 </a>
                 <a href="/consult" class="nav-item {% if request.url.path == '/consult' %}active{% endif %}" {% if request.url.path == '/consult' %}aria-current="page"{% endif %}>
-                    <span class="nav-icon">◆</span>
+                    <span class="nav-icon" aria-hidden="true">{{ icon("message-circle-question") }}</span>
                     <span>{{ "nav.qa"|t }}</span>
                 </a>
                 <a href="/archived" class="nav-item {% if request.url.path == '/archived' %}active{% endif %}">
-                    <span class="nav-icon">▫</span>
+                    <span class="nav-icon" aria-hidden="true">{{ icon("archive") }}</span>
                     <span>{{ "nav.archived"|t }}</span>
                 </a>
             </nav>
@@ -46,25 +46,25 @@
             <div class="sidebar-section">{{ "nav.squads"|t }}</div>
             <nav class="sidebar-nav">
                 <a href="/workspace/personal" class="nav-item {% if not current_squad %}active{% endif %}" style="{% if not current_squad %}color: var(--primary-light); font-weight: 600;{% endif %}">
-                    <span class="nav-icon">👤</span>
+                    <span class="nav-icon" aria-hidden="true">{{ icon("user") }}</span>
                     <span>{{ "nav.personal"|t }}</span>
-                    {% if not current_squad %}<span style="margin-left: auto; font-size: 9px; background: var(--primary); color: #fff; padding: 1px 6px; border-radius: 8px;">ativo</span>{% endif %}
+                    {% if not current_squad %}<span class="nav-active-badge">{{ "nav.active_badge"|t }}</span>{% endif %}
                 </a>
                 {% for sq in user_squads %}
                 <div style="display: flex; align-items: center; {% if current_squad == sq.name %}color: var(--primary-light); font-weight: 600;{% endif %}">
                     <a href="/workspace/{{ sq.name }}" class="nav-item {% if current_squad == sq.name %}active{% endif %}" style="flex: 1; {% if current_squad == sq.name %}color: var(--primary-light); font-weight: 600;{% endif %}">
-                        <span class="nav-icon">▸</span>
+                        <span class="nav-icon" aria-hidden="true">{{ icon("users") }}</span>
                         <span>{{ sq.display_name }}</span>
-                        <span style="margin-left: auto; font-size: 10px; color: var(--text-muted);">{{ sq.member_count }}</span>
-                        {% if current_squad == sq.name %}<span style="margin-left: 4px; font-size: 9px; background: var(--primary); color: #fff; padding: 1px 6px; border-radius: 8px;">ativo</span>{% endif %}
+                        <span style="margin-left: auto; font-size: 11px; color: var(--text-muted);">{{ sq.member_count }}</span>
+                        {% if current_squad == sq.name %}<span class="nav-active-badge">{{ "nav.active_badge"|t }}</span>{% endif %}
                     </a>
                     {% if sq.is_admin %}
-                    <a href="/squad/admin/{{ sq.name }}" style="font-size: 11px; color: var(--text-muted); text-decoration: none; padding: 4px 6px;" title="{{ 'squad.admin'|t }}">⚙</a>
+                    <a href="/squad/admin/{{ sq.name }}" style="font-size: 11px; color: var(--text-muted); text-decoration: none; padding: 4px 6px;" title="{{ 'squad.admin'|t }}" aria-label="{{ 'squad.admin'|t }}">{{ icon("settings", 14) }}</a>
                     {% endif %}
                 </div>
                 {% endfor %}
                 <a href="/squad" class="nav-item" style="font-size: 12px; color: var(--text-muted);">
-                    <span class="nav-icon">+</span>
+                    <span class="nav-icon" aria-hidden="true">{{ icon("plus") }}</span>
                     <span>{{ "nav.create_or_enter"|t }}</span>
                 </a>
             </nav>
@@ -73,54 +73,37 @@
             <div class="sidebar-section">{{ "nav.system"|t }}</div>
             <nav class="sidebar-nav">
                 <a href="/timeline" class="nav-item {% if request.url.path == '/timeline' %}active{% endif %}">
-                    <span class="nav-icon">◈</span>
+                    <span class="nav-icon" aria-hidden="true">{{ icon("milestone") }}</span>
                     <span>{{ "nav.timeline"|t }}</span>
                 </a>
                 <a href="/product-docs" class="nav-item {% if request.url.path == '/product-docs' %}active{% endif %}">
-                    <span class="nav-icon">📄</span>
+                    <span class="nav-icon" aria-hidden="true">{{ icon("library") }}</span>
                     <span>{{ "product_docs.title"|t }}</span>
                 </a>
                 {% if is_installation_admin %}<a href="/config" class="nav-item {% if request.url.path == '/config' %}active{% endif %}">
-                    <span class="nav-icon">✦</span>
+                    <span class="nav-icon" aria-hidden="true">{{ icon("settings") }}</span>
                     <span>{{ "nav.settings"|t }}</span>
                 </a>{% endif %}
             </nav>
 
             <div class="sidebar-footer">
-                <div style="display: flex; flex-direction: column; gap: 6px;">
+                <div class="sidebar-footer-stack">
                     {% if user_email %}
-                    <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: var(--text-muted); padding: 0 4px;">
-                        <span>{{ user_email }}</span>
-                        <form method="post" action="/logout" style="margin: 0;">
+                    <div class="sidebar-user">
+                        <span class="sidebar-user-email" title="{{ user_email }}">{{ user_email }}</span>
+                        <form method="post" action="/logout">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                            <button type="submit" class="link-button" style="font-size: 11px; color: var(--text-muted); padding: 2px 8px;">{{ "login.logout"|t }}</button>
+                            <button type="submit" class="btn btn-ghost btn-xs">{{ "login.logout"|t }}</button>
                         </form>
                     </div>
                     {% endif %}
-                    <div style="display: flex; align-items: center; justify-content: space-between;">
-                        <span class="model-badge">
-                            <span class="model-dot configured" title="{{ 'model.configured_not_verified'|t }}"></span>
-                            {% set ai_provider = config.ai_provider or 'ollama' %}
-                            {% if ai_provider == 'openai' %}
-                                OpenAI · {{ config.openai_model or 'gpt-4o-mini' }}
-                            {% elif ai_provider == 'anthropic' %}
-                                Anthropic · {{ config.anthropic_model or 'claude-3-haiku' }}
-                            {% elif ai_provider == 'gateway' %}
-                                Gateway · {{ config.gateway_provider or '—' }} · {{ config.gateway_identifier or '—' }}
-                            {% else %}
-                                {% set ns = namespace(custom_found=false) %}
-                                {% for p in (config.custom_providers or []) %}
-                                    {% if p.name == ai_provider %}
-                                        {{ p.name }} · {{ p.model }}
-                                        {% set ns.custom_found = true %}
-                                    {% endif %}
-                                {% endfor %}
-                                {% if not ns.custom_found %}
-                                    Ollama · {{ config.model }}
-                                {% endif %}
-                            {% endif %}
-                        </span>
-                        <a href="/onboarding/show" aria-label="{{ 'a11y.open_tour'|t }}" style="width: 36px; height: 36px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.04); color: var(--text-muted); text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.2s ease;">?</a>
+                    <div class="sidebar-model-row">
+                        {% set model_tag = 'a' if is_installation_admin else 'span' %}
+                        <{{ model_tag }} class="model-badge"{% if is_installation_admin %} href="/config#general"{% endif %} title="{{ 'model.configured_not_verified'|t }}">
+                            <span class="model-dot {{ 'demo' if is_demo_provider else 'configured' }}" aria-hidden="true"></span>
+                            <span>{{ model_label }}</span>
+                        </{{ model_tag }}>
+                        <a href="/onboarding/show" class="sidebar-tour-button" aria-label="{{ 'a11y.open_tour'|t }}">?</a>
                     </div>
                     <div class="app-version" title="{{ 'version.help'|t }}">
                         PM Studio {{ "app.version"|t }}
@@ -133,7 +116,7 @@
             <header class="topbar">
                 <button type="button" class="mobile-menu-toggle" id="mobileMenuToggle"
                         aria-controls="appSidebar" aria-expanded="false"
-                        aria-label="{{ 'a11y.open_menu'|t }}">☰</button>
+                        aria-label="{{ 'a11y.open_menu'|t }}">{{ icon("menu", 20) }}</button>
                 <h1 class="page-title">{% block page_title %}{{ "dashboard.title"|t }}{% endblock %}</h1>
                 {% block topbar_actions %}{% endblock %}
             </header>
@@ -277,6 +260,40 @@
                     if (e.target === modal) closeModal(modal.id.replace('modal-', ''));
                 });
             });
+            // File inputs: localized button + selected file names instead of the browser's own labels
+            var fileTexts = {
+                one: {{ "upload.choose_file"|t|tojson }},
+                many: {{ "upload.choose_files"|t|tojson }},
+                none: {{ "upload.no_file"|t|tojson }},
+                selected: {{ "upload.files_selected"|t|tojson }}
+            };
+            document.querySelectorAll('input[type="file"]').forEach(function(input, index) {
+                var form = input.closest('form');
+                if ((form && form.style.display === 'none') || input.closest('.file-picker')) return;
+                if (!input.id) input.id = 'file-picker-' + index;
+                var wrapper = document.createElement('div');
+                wrapper.className = 'file-picker';
+                input.parentNode.insertBefore(wrapper, input);
+                wrapper.appendChild(input);
+                input.classList.add('file-picker-input');
+                var button = document.createElement('label');
+                button.className = 'btn btn-secondary btn-sm';
+                button.htmlFor = input.id;
+                button.textContent = input.multiple ? fileTexts.many : fileTexts.one;
+                var name = document.createElement('span');
+                name.className = 'file-picker-name';
+                name.setAttribute('aria-live', 'polite');
+                name.textContent = fileTexts.none;
+                wrapper.appendChild(button);
+                wrapper.appendChild(name);
+                input.addEventListener('change', function() {
+                    var files = Array.from(input.files || []);
+                    name.textContent = !files.length ? fileTexts.none
+                        : files.length === 1 ? files[0].name
+                        : fileTexts.selected.replace('{n}', files.length);
+                });
+            });
+
             var activeInitiativeTab = document.querySelector('.initiative-tabs [aria-current="page"]');
             if (activeInitiativeTab) activeInitiativeTab.scrollIntoView({block: 'nearest', inline: 'center'});
 

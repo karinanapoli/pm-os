@@ -28,7 +28,10 @@ Provider is selected in Settings → AI Provider. API keys can also be set via `
 ## Visual Identity (v2)
 - Dark theme (`#0f0d1e` bg, `#16132b` cards)
 - Purple/teal gradient accents
-- Inter font
+- System font stack (`--font`), no web font is loaded; monospace via `--font-mono`
+- Type scale tokens `--fs-xs` (11px, minimum) … `--fs-2xl` (32px); weights 400/500/600/700
+- Icons: inline Lucide SVGs via `{{ icon("name") }}` (`src/pm_os/web/icons.py`), decorative by default (`aria-hidden`); no emoji or Unicode glyphs as UI icons
+- Counts use `{{ n|tn("key") }}` with an optional `key.one` singular; initiative titles use `{{ initiative|display_name }}`
 - Card-based layout with subtle borders/shadows
 - Sidebar with sections: Discovery, Workspace, System
 - Models configured in `static/style.css`
@@ -218,7 +221,7 @@ All templates use `|t` filter for i18n:
 - `docs/retrospectives/sprint-006-retrospective.md` — Sprint 006 retrospective
 
 ## Tests
-- 151 tests pass (138 original + 13 auth/async)
+- 483 tests pass (incl. UI regressions from the synthetic-user audit in `docs/reviews/ux-audit-2026-10/`)
 - Run: `.venv/bin/python -m pytest tests/ -v`
 
 ## Running

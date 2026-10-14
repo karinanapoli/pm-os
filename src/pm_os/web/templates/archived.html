@@ -3,7 +3,7 @@
 
 {% block content %}
 <div class="archived-hero">
-    <div class="archived-hero-icon">📦</div>
+    <div class="archived-hero-icon">{{ icon("package", 28) }}</div>
     <div class="archived-hero-title">{{ "archive.title"|t }}</div>
     <div class="archived-hero-desc">{{ "archive.subtitle"|t }}</div>
     {% if archived %}
@@ -21,7 +21,7 @@
     {% for item in archived %}
     <div class="archived-card">
         <div class="archived-card-left">
-            <div class="archived-card-icon">📦</div>
+            <div class="archived-card-icon">{{ icon("archive", 20) }}</div>
             <div class="archived-card-info">
                 <div class="archived-card-name">{{ item.name }}</div>
                 {% if item.archived_at %}
@@ -32,7 +32,7 @@
         <div class="archived-card-actions">
             <form method="POST" action="/archived/restore" style="margin: 0;" data-loading="restoring">
                 <input type="hidden" name="name" value="{{ item.name }}">
-                <button type="submit" class="btn btn-secondary btn-sm">↺ {{ "archive.restore"|t }}</button>
+                <button type="submit" class="btn btn-secondary btn-sm">{{ icon("rotate-ccw") }} {{ "archive.restore"|t }}</button>
             </form>
             <button type="button" class="btn btn-ghost btn-sm" style="color: var(--coral);" data-target="permArchiveTarget" data-open="perm-archive" data-value="{{ item.name }}">{{ "archive.button"|t }}</button>
         </div>
@@ -43,7 +43,7 @@
 <div class="card">
     <div class="card-body">
         <div class="empty-state">
-            <div class="empty-icon">🗄</div>
+            <div class="empty-icon">{{ icon("archive", 32) }}</div>
             <div class="empty-title">{{ "archive.empty_title"|t }}</div>
             <div class="empty-desc">{{ "archive.empty_desc"|t }}</div>
         </div>
@@ -53,7 +53,7 @@
 
 <div class="modal-overlay" id="modal-perm-archive">
     <div class="modal modal-sm">
-        <div class="modal-icon-box coral">🗄</div>
+        <div class="modal-icon-box coral" aria-hidden="true">{{ icon("trash-2", 22) }}</div>
         <div class="modal-title">{{ "archive.warning_title"|t }}</div>
         <div class="modal-desc">
             {{ "archive.warning_desc"|t }}

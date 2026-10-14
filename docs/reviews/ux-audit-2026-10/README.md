@@ -208,7 +208,7 @@ Ponto de atenção: o `btn-ai` usa texto escuro (correto); qualquer novo botão 
 |---------|----------------|--------------|
 | Família | `--font: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui` — renderiza San Francisco no Mac, Segoe no Windows, outra coisa no Linux. AGENTS.md promete **Inter** | Decidir: (a) empacotar **Inter Variable** em `static/fonts/` (woff2, ~300 KB, funciona offline) e colocar como primeira da pilha; ou (b) atualizar a documentação para “pilha do sistema” |
 | Mono | `--font-mono` ok; `style.css:3383` força `"JetBrains Mono"` sem carregá-la → cai em outra fonte; versão da sidebar (`PM Studio v0.2.0`) em mono destoa | Usar `var(--font-mono)` em todo lugar; versão na sidebar em `--font` 11px |
-| Escala | **32 tamanhos distintos** (mais usados: 13px ×120, 12px ×86, 14px ×65, 11px ×55, 10px ×37; além de 9, 10.5, 11.5, 12.5, 13.5, 15.5…) | Escala de 7 tokens: `--fs-xs 11` · `--fs-sm 12` · `--fs-base 14` · `--fs-md 16` · `--fs-lg 20` · `--fs-xl 26` · `--fs-2xl 32`; nada abaixo de 11px |
+| Escala | **32 tamanhos distintos** (mais usados: 13px ×120, 12px ×86, 14px ×65, 11px ×55, 10px ×37; além de 9, 10.5, 11.5, 12.5, 13.5, 15.5…) | Escala de 7 tokens: `--fs-xs 11` · `--fs-sm 12` · `--fs-base 13` · `--fs-md 14` · `--fs-lg 16` · `--fs-xl 26` · `--fs-2xl 32`; nada abaixo de 11px |
 | Pesos | 400, 500, 600 (×70), **650**, 700 (×41), 800 (×14) | 400 texto · 500 UI · 600 títulos · 700 números/KPIs. 650 e 800 só se a fonte variável for adotada |
 | Hierarquia | `page-title` 26px com gradiente → ok. Títulos de card 14px; títulos de card lateral (Especificação) 20px; empty-state 16px bold | `h2` de card = `--fs-md/600` em todo lugar; laterais nunca maiores que o principal |
 | Texto pequeno | média de 15 elementos < 12px por tela; pico 29 (Mapa) | Legendas/hints em 12px; eyebrow (“PRÓXIMO PASSO RECOMENDADO”) pode ficar 11px uppercase com tracking |
@@ -242,3 +242,30 @@ Roteiro de 30 min, 5 PMs (1 por persona), tarefas:
 4. “Registre uma evidência vinda de uma planilha.” — testa a lista de fontes em Dados (§2.5).
 
 Métricas: taxa de sucesso, tempo na tarefa, SEQ (1–7) por tarefa e SUS ao final. Comparar com as notas sintéticas acima para calibrar o método.
+
+---
+
+## 9. Status das correções (mesma PR)
+
+Todas as correções foram verificadas no app rodando (capturas `*-after.png` em [`screens/`](screens/)) e cobertas por testes de regressão em `tests/test_web_e2e.py::TestSyntheticUserUIFindings`.
+
+| # | Achado | Status | Como foi resolvido |
+|---|--------|--------|--------------------|
+| 1 | Título quebrando letra por letra no mobile | ✅ Corrigido | `.topbar` e `.topbar-actions` com `flex-wrap`; título com `min-width: 0` e quebra por palavra; no mobile as ações vão para a linha de baixo |
+| 2 | Status “discovery” sem tradução | ✅ Corrigido | Chaves `status.*` restauradas e templates usando `"status." ~ status` |
+| 3 | Modelo contraditório (Ollama × Demo) | ✅ Corrigido | Rótulo único `model_label` calculado no `_ctx`; ponto âmbar quando o provedor é Demo |
+| 4 | Controles nativos fora do tema | ✅ Corrigido | `color-scheme: dark` + `accent-color`; “Sair” e “Conectar/Registrar” como `btn` (`btn-xs`); seletor de arquivos com botão e texto traduzidos (“Escolher arquivos”) |
+| 5 | CTAs duplicados de “Gerar PRD” | ✅ Corrigido | Topbar só mostra “Gerar PRD” quando ainda não há PRD; card vira “Gerar nova versão do PRD — a atual continua no histórico”; removido o “Gerar PRD agora” do editor da Especificação |
+| 6 | Relatório de validação em inglês | ✅ Corrigido | Rótulos estruturais (título, nota, resumo, seções) localizados na exibição; novos relatórios em pt-BR usam “**Nota:**” por seção |
+| 7 | Vocabulário (Score × Nota, slug no título, separadores) | ✅ Corrigido | “Score” → “Nota”; títulos das abas usam o nome da iniciativa (`display_name`) e sempre “·” |
+| 8 | Pluralização (“1 arquivos”) | ✅ Corrigido | Filtro `tn` com chave `.one` para singular (arquivos, validações, versões, fontes, itens, docs, linhas, colunas) |
+| 9 | “Nota de segurança 0.0 — Crítico” sem avaliação | ✅ Corrigido | Estado “Não avaliado · Avaliar segurança →” até a primeira resposta |
+| 10 | Ícones híbridos | ✅ Corrigido | Set único Lucide (SVG inline, offline, ISC) via `icon()`; `aria-hidden` por padrão; Roadmap e Dashboard com ícones distintos; emoji removidos da UI (o tour guiado mantém os seus) |
+| 11 | Escala tipográfica | ✅ Corrigido | Tokens `--fs-*`; tamanhos fora da escala normalizados (nada abaixo de 11px); pesos 650/800 → 600/700 |
+| 12 | Fonte documentada ≠ real | ✅ Corrigido | AGENTS.md atualizado para a pilha do sistema; “JetBrains Mono” não carregada substituída por `--font-mono` |
+| — | Item “validation” no histórico de PRDs | ✅ Corrigido | `prd-validation*.md` não é mais listado como versão |
+| — | Filtros do Feed de insights sem efeito | ✅ Corrigido | Botões filtram por métrica/feedback (com `aria-pressed`) e só aparecem quando há insights |
+| — | Botão “Aprovar versão” desabilitado sem motivo | ✅ Corrigido | Texto explicando que é preciso salvar um rascunho; mesmo padrão no “Gerar e validar PRD” |
+| — | Hierarquia invertida na lateral da Especificação | ✅ Corrigido | Títulos de cards laterais em `--fs-md`; hero da Especificação reorganizado em linhas |
+| — | Abas cortadas no mobile | ✅ Corrigido | Fade lateral indicando rolagem em abas da iniciativa, stepper e Configurações |
+| — | Estilos inline | ◐ Parcial | Extraídos os que causavam bugs (topbar, sidebar, seletor de workspace, abas de Configurações); o restante fica para uma limpeza dedicada |

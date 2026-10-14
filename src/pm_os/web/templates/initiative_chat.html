@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block page_title %}{{ "chat.title"|t }} · {{ initiative.name }}{% endblock %}
+{% block page_title %}{{ "chat.title"|t }} · {{ initiative|display_name }}{% endblock %}
 
 {% block content %}
 {% if notice %}<div class="alert alert-success" role="status">{{ notice|t }}</div>{% endif %}

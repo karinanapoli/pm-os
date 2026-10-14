@@ -96,7 +96,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <div class="modal-overlay" id="modal-delete-doc">
     <div class="modal modal-sm">
-        <div class="modal-icon-box coral">✕</div>
+        <div class="modal-icon-box coral" aria-hidden="true">{{ icon("trash-2", 22) }}</div>
         <div class="modal-title">{{ "product_docs.delete_confirm_title"|t }}</div>
         <div class="modal-desc">
             {{ "product_docs.delete_confirm_desc"|t }}
@@ -114,7 +114,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <div class="modal-overlay" id="modal-delete-link">
     <div class="modal modal-sm">
-        <div class="modal-icon-box coral">✕</div>
+        <div class="modal-icon-box coral" aria-hidden="true">{{ icon("trash-2", 22) }}</div>
         <div class="modal-title">{{ "product_docs.delete_link_title"|t }}</div>
         <div class="modal-desc">
             {{ "product_docs.delete_link_desc"|t }}

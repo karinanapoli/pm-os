@@ -95,3 +95,14 @@ def test_to_markdown_identifies_structural_fallback_once():
 
     assert md.count("Verificação estrutural") == 1
     assert "não representam uma análise completa do conteúdo" in md
+
+
+def test_to_markdown_ptbr_uses_localized_section_score_label():
+    report = ValidationReport(
+        overall_score=7.0,
+        summary="Bom.",
+        sections=[SectionEvaluation(name="Métricas", score=7.0)],
+    )
+    md = report.to_markdown(lang="pt-BR")
+    assert "**Nota:** 7.0/10" in md
+    assert "**Score:**" not in md

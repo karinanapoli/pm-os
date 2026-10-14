@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block page_title %}{{ "data.title"|t }} · {{ initiative.name }}{% endblock %}
+{% block page_title %}{{ "data.title"|t }} · {{ initiative|display_name }}{% endblock %}
 
 {% block content %}
 {% if notice %}<div class="alert alert-{{ notice_kind or 'success' }}" role="status">{{ notice|t }}</div>{% endif %}
@@ -29,17 +29,19 @@
         <section class="card data-section">
             <div class="card-header data-section-header">
                 <div><h3>{{ "data.insight_feed"|t }}</h3><p>{{ "data.insight_feed_desc"|t }}</p></div>
-                <div class="data-filter" aria-label="{{ 'data.filter'|t }}">
-                    <button type="button" class="active">{{ "data.filter_all"|t }}</button>
-                    <button type="button">{{ "data.filter_metrics"|t }}</button>
-                    <button type="button">{{ "data.filter_feedback"|t }}</button>
+                {% if linked_signals %}
+                <div class="data-filter" role="group" aria-label="{{ 'data.filter'|t }}" data-insight-filter>
+                    <button type="button" class="active" aria-pressed="true" data-filter="all">{{ "data.filter_all"|t }}</button>
+                    <button type="button" aria-pressed="false" data-filter="metric">{{ "data.filter_metrics"|t }}</button>
+                    <button type="button" aria-pressed="false" data-filter="feedback">{{ "data.filter_feedback"|t }}</button>
                 </div>
+                {% endif %}
             </div>
             <div class="data-insight-list">
                 {% for signal in linked_signals %}
-                <article class="data-insight">
+                <article class="data-insight" data-kind="{{ 'metric' if signal.source_type == 'metric' else 'feedback' }}">
                     <div class="data-insight-topline">
-                        <span class="data-source-icon">{{ "↗" if signal.source_type == "metric" else "✦" }}</span>
+                        <span class="data-source-icon">{{ icon("trending-up" if signal.source_type == "metric" else "message-square", 14) }}</span>
                         <span class="data-source-label">{{ ("signals.source." ~ signal.source_type)|t }}</span>
                         <span class="data-strength strength-{{ signal.strength }}">{{ ("signals.strength." ~ signal.strength)|t }}</span>
                     </div>
@@ -73,7 +75,7 @@
             <div class="card-header data-section-header"><div><h3>{{ "data.decisions_title"|t }}</h3><p>{{ "data.decisions_desc"|t }}</p></div><a href="/initiative/{{ initiative.name }}/specification#decisions" class="btn btn-ghost btn-sm">{{ "data.add_decision"|t }}</a></div>
             <div class="data-insight-list">
                 {% for decision in decisions %}
-                <article class="data-insight"><div class="data-insight-topline"><span class="data-source-icon">◆</span><span class="decision-status decision-status-{{ decision.status }}">{{ ("decisions.status." ~ decision.status)|t }}</span></div><h4>{{ decision.title }}</h4><p>{{ decision.rationale }}</p>{% if decision.revisit_if %}<footer><span>{{ "decisions.revisit_if"|t }}: {{ decision.revisit_if }}</span></footer>{% endif %}</article>
+                <article class="data-insight"><div class="data-insight-topline"><span class="data-source-icon">{{ icon("scale", 14) }}</span><span class="decision-status decision-status-{{ decision.status }}">{{ ("decisions.status." ~ decision.status)|t }}</span></div><h4>{{ decision.title }}</h4><p>{{ decision.rationale }}</p>{% if decision.revisit_if %}<footer><span>{{ "decisions.revisit_if"|t }}: {{ decision.revisit_if }}</span></footer>{% endif %}</article>
                 {% else %}<div class="data-empty-action"><strong>{{ "decisions.empty_title"|t }}</strong><span>{{ "decisions.empty_desc"|t }}</span></div>{% endfor %}
             </div>
         </section>
@@ -84,18 +86,18 @@
             <div class="card-header"><div><h3>{{ "data.source_health"|t }}</h3><p>{{ "data.source_health_desc"|t }}</p></div></div>
             <div class="data-source-list">
                 <article class="data-source-row">
-                    <span class="data-connector-icon sheet">▦</span>
-                    <div><strong>{{ "data.spreadsheets"|t }}</strong><small>{% if spreadsheets %}{{ spreadsheets|length }} {{ "data.items"|t }}{% else %}{{ "data.not_connected"|t }}{% endif %}</small></div>
-                    <button type="button" class="link-button" onclick="document.getElementById('spreadsheet-input').click()">{{ "data.connect"|t }}</button>
+                    <span class="data-connector-icon sheet">{{ icon("sheet") }}</span>
+                    <div><strong>{{ "data.spreadsheets"|t }}</strong><small>{% if spreadsheets %}{{ spreadsheets|length|tn("data.items") }}{% else %}{{ "data.not_connected"|t }}{% endif %}</small></div>
+                    <button type="button" class="btn btn-secondary btn-xs" onclick="document.getElementById('spreadsheet-input').click()">{{ "data.connect"|t }}</button>
                 </article>
                 <form method="POST" action="/initiative/{{ initiative.name }}/data/spreadsheets" enctype="multipart/form-data" style="display:none" id="spreadsheet-form"><input id="spreadsheet-input" type="file" name="spreadsheet" accept=".csv,.tsv" onchange="this.form.submit()"></form>
-                {% for sheet in spreadsheets %}<article class="data-source-row"><span class="data-connector-icon sheet">▦</span><div><strong>{{ sheet.name }}</strong><small>{{ sheet.rows }} linhas · {{ sheet.columns }} colunas</small></div><span class="data-source-state healthy">{{ "data.ready"|t }}</span></article>{% endfor %}
+                {% for sheet in spreadsheets %}<article class="data-source-row"><span class="data-connector-icon sheet">{{ icon("sheet") }}</span><div><strong>{{ sheet.name }}</strong><small>{{ sheet.rows|tn("data.rows") }} · {{ sheet.columns|tn("data.columns") }}</small></div><span class="data-source-state healthy">{{ "data.ready"|t }}</span></article>{% endfor %}
                 <article class="data-source-row" id="automations">
-                    <span class="data-connector-icon automation">⚡</span>
+                    <span class="data-connector-icon automation">{{ icon("workflow") }}</span>
                     <div><strong>{{ "data.automations"|t }}</strong><small>{{ "data.automations_help"|t }}</small></div>
-                    <a href="#connect-automation">{{ "data.register"|t }}</a>
+                    <a href="#connect-automation" class="btn btn-secondary btn-xs" onclick="document.getElementById('connect-automation').open = true">{{ "data.register"|t }}</a>
                 </article>
-                {% for automation in automations %}<article class="data-source-row"><span class="data-connector-icon automation">⚡</span><div><strong>{{ automation.name }}</strong><small>{{ automation.tool }}{% if automation.description %} · {{ automation.description }}{% endif %}</small></div><span class="data-source-state healthy">{{ "data.synced"|t }}</span></article>{% endfor %}
+                {% for automation in automations %}<article class="data-source-row"><span class="data-connector-icon automation">{{ icon("workflow") }}</span><div><strong>{{ automation.name }}</strong><small>{{ automation.tool }}{% if automation.description %} · {{ automation.description }}{% endif %}</small></div><span class="data-source-state healthy">{{ "data.synced"|t }}</span></article>{% endfor %}
                 <details class="data-automation-connect" id="connect-automation">
                     <summary>{{ "data.register_automation"|t }}</summary>
                     <div class="data-automation-body">
@@ -124,14 +126,14 @@
                 </details>
                 {% if context_files %}
                 <article class="data-source-row">
-                    <span class="data-connector-icon files">≡</span>
-                    <div><strong>{{ "data.context_files"|t }}</strong><small>{{ context_files|length }} {{ "data.items"|t }}</small></div>
+                    <span class="data-connector-icon files">{{ icon("files") }}</span>
+                    <div><strong>{{ "data.context_files"|t }}</strong><small>{{ context_files|length|tn("data.items") }}</small></div>
                     <span class="data-source-state healthy">{{ "data.ready"|t }}</span>
                 </article>
                 {% endif %}
                 {% for server in mcp_sources %}
                 <article class="data-source-row">
-                    <span class="data-connector-icon mcp">⌁</span>
+                    <span class="data-connector-icon mcp">{{ icon("plug") }}</span>
                     <div><strong>{{ server.name }}</strong><small>MCP · {{ server.transport }}</small></div>
                     {% if server.status and server.status.state == "connected" %}
                     <span class="data-source-state healthy">{{ "data.synced"|t }}</span>
@@ -144,11 +146,30 @@
         </section>
 
         <section class="card data-question-card">
-            <span>✦</span>
+            <span>{{ icon("sparkles", 18) }}</span>
             <h3>{{ "data.ask_title"|t }}</h3>
             <p>{{ "data.ask_desc"|t }}</p>
             <a href="/initiative/{{ initiative.name }}/chat" class="btn btn-ai btn-sm btn-block">{{ "data.ask_cta"|t }}</a>
         </section>
     </aside>
 </div>
+<script>
+(function () {
+    var filter = document.querySelector('[data-insight-filter]');
+    if (!filter) return;
+    filter.addEventListener('click', function (event) {
+        var button = event.target.closest('button[data-filter]');
+        if (!button) return;
+        var kind = button.dataset.filter;
+        filter.querySelectorAll('button').forEach(function (item) {
+            var active = item === button;
+            item.classList.toggle('active', active);
+            item.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
+        document.querySelectorAll('.data-insight[data-kind]').forEach(function (item) {
+            item.hidden = kind !== 'all' && item.dataset.kind !== kind;
+        });
+    });
+})();
+</script>
 {% endblock %}
