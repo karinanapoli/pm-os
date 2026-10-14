@@ -2,6 +2,7 @@ import os
 import json
 import re
 import shutil
+import tempfile
 import urllib.parse
 import time
 import yaml
@@ -43,6 +44,7 @@ from pm_os.infrastructure.utils import (
     read_validation_history,
     read_validation_score_from_file,
     safe_upload_filename,
+    extract_pdf_text,
 )
 from pm_os.repositories.initiative_repository import InitiativeRepository
 from pm_os.repositories.job_repository import JobRepository
@@ -1950,14 +1952,41 @@ async def prepare_specification_from_context(
     selected_source_ids: list[str] = Form(default=[]),
     ai_provider: str = Form(""),
     generation_source: str = Form("context"),
+    prd_file: Optional[UploadFile] = File(None),
 ):
     selected = _get_initiative_by_name(initiative_name, request)
     if not selected:
         return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
     selected_ids = set(selected_source_ids)
-    if generation_source == "prd":
+    if generation_source == "prd_upload":
+        safe_name = safe_upload_filename(prd_file.filename if prd_file else "")
+        suffix = Path(safe_name).suffix.casefold() if safe_name else ""
+        if suffix not in {".md", ".txt", ".pdf"}:
+            return RedirectResponse(
+                url=f"/initiative/{initiative_name}/specification?notice=spec.prd_upload_type_error&notice_kind=error",
+                status_code=303,
+            )
+        raw_content = await prd_file.read(MAX_UPLOAD_FILE_BYTES + 1)
+        if len(raw_content) > MAX_UPLOAD_FILE_BYTES:
+            return RedirectResponse(
+                url=f"/initiative/{initiative_name}/specification?notice=spec.prd_upload_size_error&notice_kind=error",
+                status_code=303,
+            )
+        if suffix == ".pdf":
+            with tempfile.TemporaryDirectory() as temporary_dir:
+                temporary_path = Path(temporary_dir) / safe_name
+                temporary_path.write_bytes(raw_content)
+                context = extract_pdf_text(temporary_path)
+        else:
+            try:
+                context = raw_content.decode("utf-8-sig")
+            except UnicodeDecodeError:
+                context = ""
+        selected_ids = {"UPLOADED-PRD"}
+    elif generation_source == "prd":
         prd_path = selected.path / "artifacts" / "prd.md"
         context = prd_path.read_text(encoding="utf-8") if prd_path.is_file() else ""
+        selected_ids = {"CURRENT-PRD"}
     else:
         builder = ContextBuilder()
         context = builder.build_selected(selected, selected_ids) if selected_ids else builder.build(selected)

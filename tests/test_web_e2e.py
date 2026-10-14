@@ -267,6 +267,38 @@ class TestInitiativeMap:
 
 
 class TestGuidedSpecification:
+    def test_prepares_specification_from_an_uploaded_existing_prd(
+        self, client, session_base
+    ):
+        init_id = _create_initiative(client, "Imported PRD", "INT-PRD-UPLOAD")
+
+        page = client.get(f"/initiative/{init_id}/specification")
+        assert "Enviar um PRD pronto" in page.text
+        assert 'value="prd_upload"' in page.text
+
+        response = client.post(
+            f"/initiative/{init_id}/specification/prepare",
+            data={"generation_source": "prd_upload", "ai_provider": "demo"},
+            files={
+                "prd_file": (
+                    "prd-checkout.md",
+                    "# PRD\nProblema: abandono no checkout.\nRequisito: reduzir etapas.",
+                    "text/markdown",
+                )
+            },
+            follow_redirects=False,
+        )
+
+        assert response.status_code == 303
+        assert "notice=spec.prepared" in response.headers["location"]
+        specification = json.loads(
+            (
+                session_base / "workspace" / "initiatives" / init_id
+                / "artifacts" / "specification.json"
+            ).read_text(encoding="utf-8")
+        )
+        assert specification["source_ids"] == ["UPLOADED-PRD"]
+
     def test_quick_prd_offers_direct_backlog_journey(self, client, session_base):
         init_id = _create_initiative(client, "Quick Backlog", "INT-QUICK-BACKLOG")
         artifacts = (
