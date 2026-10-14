@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block page_title %}{{ "data.title"|t }} · {{ initiative.name }}{% endblock %}
+
+{% block content %}
+{% set active_tab = "data" %}{% include "_initiative_tabs.html" %}
+
+<section class="data-hero">
+    <div>
+        <p class="eyebrow">{{ "data.eyebrow"|t }}</p>
+        <h2>{{ "data.title"|t }}</h2>
+        <p>{{ "data.desc"|t }}</p>
+    </div>
+    <div class="data-hero-actions">
+        <a href="/config#mcp" class="btn btn-secondary btn-sm">{{ "data.connect_source"|t }}</a>
+        <a href="/signals#new-signal" class="btn btn-primary btn-sm">{{ "data.add_evidence"|t }}</a>
+    </div>
+</section>
+
+<div class="data-kpi-grid" aria-label="{{ 'data.summary'|t }}">
+    <article><span>{{ "data.sources"|t }}</span><strong>{{ source_count }}</strong><small>{{ "data.sources_help"|t }}</small></article>
+    <article><span>{{ "data.insights"|t }}</span><strong>{{ linked_signals|length }}</strong><small>{{ "data.insights_help"|t }}</small></article>
+    <article><span>{{ "data.strong_signals"|t }}</span><strong>{{ strong_signal_count }}</strong><small>{{ "data.strong_help"|t }}</small></article>
+    <article><span>{{ "data.connected_mcps"|t }}</span><strong>{{ connected_mcp_count }}/{{ mcp_sources|length }}</strong><small>{{ "data.mcp_help"|t }}</small></article>
+</div>
+
+<div class="data-layout">
+    <main class="data-main">
+        <section class="card data-section">
+            <div class="card-header data-section-header">
+                <div><h3>{{ "data.insight_feed"|t }}</h3><p>{{ "data.insight_feed_desc"|t }}</p></div>
+                <div class="data-filter" aria-label="{{ 'data.filter'|t }}">
+                    <button type="button" class="active">{{ "data.filter_all"|t }}</button>
+                    <button type="button">{{ "data.filter_metrics"|t }}</button>
+                    <button type="button">{{ "data.filter_feedback"|t }}</button>
+                </div>
+            </div>
+            <div class="data-insight-list">
+                {% for signal in linked_signals %}
+                <article class="data-insight">
+                    <div class="data-insight-topline">
+                        <span class="data-source-icon">{{ "↗" if signal.source_type == "metric" else "✦" }}</span>
+                        <span class="data-source-label">{{ ("signals.source." ~ signal.source_type)|t }}</span>
+                        <span class="data-strength strength-{{ signal.strength }}">{{ ("signals.strength." ~ signal.strength)|t }}</span>
+                    </div>
+                    <h4>{{ signal.title }}</h4>
+                    <p>{{ signal.summary }}</p>
+                    <footer>
+                        {% if signal.theme %}<span>#{{ signal.theme }}</span>{% endif %}
+                        {% if signal.created_at %}<time>{{ signal.created_at[:10] }}</time>{% endif %}
+                        <a href="/signals/{{ signal.signal_id }}">{{ "data.open_signal"|t }}</a>
+                    </footer>
+                </article>
+                {% else %}
+                <div class="data-demo" role="note">
+                    <span class="data-demo-badge">{{ "data.demo"|t }}</span>
+                    <div class="data-demo-chart" aria-hidden="true"><i style="height:38%"></i><i style="height:53%"></i><i style="height:48%"></i><i style="height:72%"></i><i style="height:86%"></i></div>
+                    <div>
+                        <h4>{{ "data.demo_title"|t }}</h4>
+                        <p>{{ "data.demo_desc"|t }}</p>
+                        <small>{{ "data.demo_source"|t }}</small>
+                    </div>
+                </div>
+                <div class="data-empty-action">
+                    <strong>{{ "data.empty_title"|t }}</strong>
+                    <span>{{ "data.empty_desc"|t }}</span>
+                    <a href="/signals#new-signal" class="btn btn-ghost btn-sm">{{ "data.add_first"|t }}</a>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+    </main>
+
+    <aside class="data-sidebar">
+        <section class="card data-section">
+            <div class="card-header"><div><h3>{{ "data.source_health"|t }}</h3><p>{{ "data.source_health_desc"|t }}</p></div></div>
+            <div class="data-source-list">
+                <article class="data-source-row">
+                    <span class="data-connector-icon sheet">▦</span>
+                    <div><strong>{{ "data.spreadsheets"|t }}</strong><small>{{ "data.not_connected"|t }}</small></div>
+                    <a href="/config#mcp">{{ "data.connect"|t }}</a>
+                </article>
+                <article class="data-source-row">
+                    <span class="data-connector-icon automation">⚡</span>
+                    <div><strong>{{ "data.automations"|t }}</strong><small>{{ "data.prototype"|t }}</small></div>
+                    <span class="data-source-state waiting">{{ "data.soon"|t }}</span>
+                </article>
+                {% if context_files %}
+                <article class="data-source-row">
+                    <span class="data-connector-icon files">≡</span>
+                    <div><strong>{{ "data.context_files"|t }}</strong><small>{{ context_files|length }} {{ "data.items"|t }}</small></div>
+                    <span class="data-source-state healthy">{{ "data.ready"|t }}</span>
+                </article>
+                {% endif %}
+                {% for server in mcp_sources %}
+                <article class="data-source-row">
+                    <span class="data-connector-icon mcp">⌁</span>
+                    <div><strong>{{ server.name }}</strong><small>MCP · {{ server.transport }}</small></div>
+                    {% if server.status and server.status.state == "connected" %}
+                    <span class="data-source-state healthy">{{ "data.synced"|t }}</span>
+                    {% else %}
+                    <span class="data-source-state waiting">{{ "data.review"|t }}</span>
+                    {% endif %}
+                </article>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="card data-question-card">
+            <span>✦</span>
+            <h3>{{ "data.ask_title"|t }}</h3>
+            <p>{{ "data.ask_desc"|t }}</p>
+            <a href="/initiative/{{ initiative.name }}/chat" class="btn btn-ai btn-sm btn-block">{{ "data.ask_cta"|t }}</a>
+        </section>
+    </aside>
+</div>
+{% endblock %}

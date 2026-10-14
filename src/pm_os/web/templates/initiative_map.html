@@ -29,7 +29,7 @@
             {% if sources %}
                 {% for source in sources[:4] %}<span>{{ source.name }}</span>{% endfor %}
             {% else %}<p>{{ "map.no_sources"|t }}</p>{% endif %}
-            <a href="/initiative/{{ initiative.name }}#context" class="map-node-action">{{ "map.manage_sources"|t }}</a>
+            <a href="/initiative/{{ initiative.name }}/data" class="map-node-action">{{ "map.manage_sources"|t }}</a>
         </article>
     </section>
 

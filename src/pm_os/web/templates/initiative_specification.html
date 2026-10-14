@@ -204,6 +204,7 @@
                 {% elif ai_contributions.initiative_access != "shared" %}
                 <p class="cursor-status connected">✓ {{ "cursor.connected"|t }}</p>
                 <p class="spec-caption">{{ "cursor.connected_help"|t }}</p>
+                <p class="spec-caption cursor-restart-help">{{ "cursor.restart_help"|t }}</p>
                 <form method="POST" action="/initiative/{{ initiative.name }}/cursor/share">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <button type="submit" class="btn btn-primary btn-sm btn-block">{{ "cursor.share"|t }}</button>
@@ -215,9 +216,11 @@
                     <span>{{ "cursor.proposals_help"|t }}</span>
                 </div>
                 <a class="btn btn-primary btn-sm btn-block" href="#cursor-proposals">{{ "cursor.review"|t }}</a>
+                <a class="btn btn-secondary btn-sm btn-block" href="{{ cursor_prompt_url }}" target="_blank" rel="noopener noreferrer">{{ "cursor.continue"|t }}</a>
                 {% else %}
                 <p class="cursor-status connected">✓ {{ "cursor.shared"|t }}</p>
                 <p class="spec-caption">{{ "cursor.shared_help"|t }}</p>
+                <a class="btn btn-ai btn-sm btn-block" href="{{ cursor_prompt_url }}" target="_blank" rel="noopener noreferrer">{{ "cursor.continue"|t }}</a>
                 <form method="POST" action="/initiative/{{ initiative.name }}/cursor/simulate">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <button type="submit" class="btn btn-secondary btn-sm btn-block">{{ "cursor.simulate"|t }}</button>
@@ -369,4 +372,23 @@
         {% endif %}
     </aside>
 </div>
+{% if ai_contributions.initiative_access == "shared" %}
+<div class="cursor-live-notice" id="cursor-live-notice" role="status" aria-live="polite" hidden>
+    <span>{{ "cursor.live_proposals"|t }}</span>
+    <a href="#cursor-proposals">{{ "cursor.review"|t }}</a>
+</div>
+<script>
+window.setInterval(function() {
+    fetch('/initiative/{{ initiative.name }}/cursor/status')
+        .then(function(response) { return response.ok ? response.json() : null; })
+        .then(function(status) {
+            if (!status || status.pending_count <= {{ pending_ai_proposals|length }}) return;
+            var notice = document.getElementById('cursor-live-notice');
+            notice.hidden = false;
+            notice.querySelector('a').href = status.review_url;
+        })
+        .catch(function() {});
+}, 10000);
+</script>
+{% endif %}
 {% endblock %}
