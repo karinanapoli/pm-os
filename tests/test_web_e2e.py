@@ -1002,6 +1002,32 @@ class TestRouteAccessibility:
         assert f'/initiative/{init_name}/data' in response.text
         assert f'/initiative/{init_name}#context' not in response.text
         assert ">Evidências<" not in response.text
+        assert 'href="#connect-automation"' in response.text
+        assert f'action="/initiative/{init_name}/data/automations"' in response.text
+        assert 'href="/config#external-tools"' in response.text
+        assert "/specification#cursor-ai" not in response.text
+
+    def test_registers_existing_automation_inside_data_hub(self, client):
+        init_name = _create_initiative(client, "Automation data", "INT-AUTOMATION-DATA")
+
+        response = client.post(
+            f"/initiative/{init_name}/data/automations",
+            data={
+                "name": "Feedback semanal",
+                "tool": "GitHub Actions",
+                "description": "Envia novos sinais toda segunda-feira",
+            },
+            follow_redirects=False,
+        )
+
+        assert response.status_code == 303
+        assert response.headers["location"].endswith(
+            "notice=data.automation_registered&notice_kind=success#automations"
+        )
+        page = client.get(f"/initiative/{init_name}/data")
+        assert "Feedback semanal" in page.text
+        assert "GitHub Actions" in page.text
+        assert "Envia novos sinais toda segunda-feira" in page.text
 
     def test_validate_page_not_found(self, client):
         resp = client.get("/validate/nonexistent")

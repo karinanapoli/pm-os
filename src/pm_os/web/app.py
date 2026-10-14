@@ -1626,6 +1626,34 @@ async def connect_initiative_spreadsheet(
     )
 
 
+@app.post("/initiative/{initiative_name}/data/automations")
+async def register_initiative_automation(
+    request: Request,
+    initiative_name: str,
+    name: str = Form(...),
+    tool: str = Form(...),
+    description: str = Form(""),
+):
+    """Register an existing collection automation without leaving the data hub."""
+    selected = _get_initiative_by_name(initiative_name, request)
+    if not selected:
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    try:
+        InitiativeDataService().register_automation(
+            selected.path,
+            name=name,
+            tool=tool,
+            description=description,
+        )
+        notice, kind = "data.automation_registered", "success"
+    except ValueError:
+        notice, kind = "data.automation_invalid", "error"
+    return RedirectResponse(
+        f"/initiative/{initiative_name}/data?notice={notice}&notice_kind={kind}#automations",
+        status_code=303,
+    )
+
+
 @app.post("/initiative/{initiative_name}/cursor/connect")
 async def connect_cursor(request: Request, initiative_name: str):
     selected = _get_initiative_by_name(initiative_name, request)
