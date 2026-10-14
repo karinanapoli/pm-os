@@ -36,15 +36,22 @@ class PRDValidationService:
         self.lang = lang
         self.markdown_writer = markdown_writer or MarkdownWriter()
 
-    def validate(self, prd_path: Path) -> PRDValidationResult:
+    def validate(
+        self,
+        prd_path: Path,
+        report_name: str = "prd-validation.md",
+    ) -> PRDValidationResult:
+        """Validate ``prd_path``; ``report_name`` lets candidate documents keep their own report."""
         artifacts_dir = prd_path.parent
-        report_path = artifacts_dir / "prd-validation.md"
-        previous_score = read_validation_score_from_file(report_path)
+        report_path = artifacts_dir / report_name
+        official = report_name == "prd-validation.md"
+        previous_score = read_validation_score_from_file(artifacts_dir / "prd-validation.md")
         prd_content = prd_path.read_text(encoding="utf-8")
         report = self.validator.validate(prd_content)
 
         if report.is_valid:
-            version_file(report_path)
+            if official:
+                version_file(report_path)
             self.markdown_writer.write(
                 content=report.to_markdown(lang=self.lang),
                 output_path=str(report_path),

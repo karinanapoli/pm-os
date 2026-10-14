@@ -117,7 +117,7 @@
                             </label>
                             <label class="data-automation-full">{{ "data.automation_description"|t }}<textarea name="description" rows="2" placeholder="{{ 'data.automation_description_placeholder'|t }}"></textarea></label>
                             <div class="data-automation-actions data-automation-full">
-                                <a href="/config#external-tools">{{ "data.configure_tool"|t }}</a>
+                                {% if is_installation_admin %}<a href="/config#external-tools-other">{{ "data.configure_tool"|t }}</a>{% else %}<span class="form-hint">{{ "external_tools.ask_admin"|t }}</span>{% endif %}
                                 <button type="submit" class="btn btn-primary btn-sm">{{ "data.save_automation"|t }}</button>
                             </div>
                         </form>

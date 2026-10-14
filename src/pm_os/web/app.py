@@ -45,6 +45,7 @@ from pm_os.infrastructure.utils import (
     read_validation_score_from_file,
     safe_upload_filename,
     extract_pdf_text,
+    version_file,
 )
 from pm_os.repositories.initiative_repository import InitiativeRepository
 from pm_os.repositories.job_repository import JobRepository
@@ -65,6 +66,8 @@ from pm_os.web.login_security import LoginRateLimiter, resolve_client_ip
 from pm_os.web.squad_access import authorized_squad, normalize_squad_key
 from pm_os.web.markdown_renderer import render_safe_markdown
 from pm_os.web.icons import icon as _icon
+from pm_os.web.local_provider_detection import detect_ollama_models
+from pm_os.web.external_tool_configs import external_tool_configs
 from pm_os.web.middleware import AuthMiddleware, CSRFMiddleware, NoCacheMiddleware
 from pm_os.web.product_docs_service import ProductDocsService
 from pm_os.web.prd_validation_service import PRDValidationService
@@ -163,6 +166,9 @@ def _cursor_prompt_url(
     )
     return "https://cursor.com/link/prompt?" + urllib.parse.urlencode({"text": prompt})
 
+
+_PRD_CANDIDATE = ".prd-candidate.md"
+_PRD_CANDIDATE_REPORT = ".prd-candidate-validation.md"
 
 _REPORT_LABELS_PT = (
     ("# PRD Validation Report", "# Relatório de Validação de PRD"),
@@ -791,6 +797,18 @@ def _model_label(cfg: dict) -> str:
     return f"Ollama · {cfg.get('model')}"
 
 
+def _local_ollama_suggestion() -> dict:
+    """Offer a detected local Ollama when the installation still runs in Demo mode."""
+    cfg = config_manager.get_all()
+    if (cfg.get("ai_provider") or "demo") != "demo":
+        return {}
+    models = detect_ollama_models(cfg.get("ollama_url") or "")
+    if not models:
+        return {}
+    preferred = cfg.get("model") if cfg.get("model") in models else models[0]
+    return {"model": preferred}
+
+
 def _ctx(request: Request, **extra: object) -> dict:
     """Build base context with i18n for every template."""
     cfg = config_manager.get_all()
@@ -1141,6 +1159,9 @@ async def _dashboard(request: Request, force_onboarding: bool = False, squad_nam
             has_validation=has_validation,
             archived_count=archived_count,
             attention_items=attention_items,
+            notice=request.query_params.get("notice", ""),
+            notice_kind=request.query_params.get("notice_kind", "success"),
+            local_ollama=_local_ollama_suggestion(),
         ),
     )
 
@@ -3014,7 +3035,10 @@ async def generate_page(request: Request):
         _ctx(request, initiatives=initiatives, result=None, error=None,
              product_docs_count=product_docs_count,
              mcp_count=len(_get_mcp_context_servers()),
-             selected_initiative=selected_initiative),
+             selected_initiative=selected_initiative,
+             notice=request.query_params.get("notice", ""),
+             notice_kind=request.query_params.get("notice_kind", "success"),
+             local_ollama=_local_ollama_suggestion()),
     )
 
 
@@ -3193,7 +3217,7 @@ async def generate_result(request: Request, task_id: str):
 # ─── Validate PRD ───
 
 @app.get("/validate/{initiative_name}", response_class=HTMLResponse)
-async def validate_page(request: Request, initiative_name: str):
+async def validate_page(request: Request, initiative_name: str, notice: str = "", notice_kind: str = "success"):
     repo = _repo(_get_session_squad(request))
     selected = repo.get(initiative_name, load_content=False)
 
@@ -3219,6 +3243,9 @@ async def validate_page(request: Request, initiative_name: str):
         _ctx(request, initiative=selected, report=None, error=None,
              validation_history=read_validation_history(selected.path / "artifacts"),
              prd_content=prd_content,
+             official_prd_exists=prd_path.exists(),
+             notice=notice,
+             notice_kind=notice_kind,
              validation_report_content=validation_report_content),
     )
 
@@ -3241,6 +3268,7 @@ async def validate_prd(request: Request, initiative_name: str):
     validation_path = prd_path
     temporary_validation_path: Optional[Path] = None
     validated_document_name = "prd.md"
+    report_name = "prd-validation.md"
 
     if requested_source == "upload" or has_upload:
         if not has_upload:
@@ -3304,9 +3332,10 @@ async def validate_prd(request: Request, initiative_name: str):
                 status_code=422,
             )
         prd_path.parent.mkdir(parents=True, exist_ok=True)
-        temporary_validation_path = prd_path.parent / ".validation-upload.md"
-        temporary_validation_path.write_text(uploaded_content, encoding="utf-8")
-        validation_path = temporary_validation_path
+        # Kept as a candidate so the PM can adopt it as the initiative PRD afterwards.
+        validation_path = prd_path.parent / _PRD_CANDIDATE
+        validation_path.write_text(uploaded_content, encoding="utf-8")
+        report_name = _PRD_CANDIDATE_REPORT
 
     if not validation_path.exists():
         return templates.TemplateResponse(
@@ -3318,9 +3347,12 @@ async def validate_prd(request: Request, initiative_name: str):
         )
 
     try:
-        result = _build_prd_validation_service(_get_lang()).validate(validation_path)
+        result = _build_prd_validation_service(_get_lang()).validate(validation_path, report_name=report_name)
 
         if not result.report.is_valid:
+            if report_name == _PRD_CANDIDATE_REPORT:
+                # An unvalidated upload must not be adoptable as the initiative PRD.
+                validation_path.unlink(missing_ok=True)
             return templates.TemplateResponse(
                 request,
                 "validate.html",
@@ -3338,7 +3370,9 @@ async def validate_prd(request: Request, initiative_name: str):
                  previous_score=result.previous_score,
                  validation_history=result.history,
                  prd_content=result.prd_content,
-                 validated_document_name=validated_document_name),
+                 validated_document_name=validated_document_name,
+                 official_prd_exists=prd_path.exists(),
+                 is_candidate=report_name == _PRD_CANDIDATE_REPORT),
         )
 
     except OllamaConnectionError:
@@ -3353,6 +3387,35 @@ async def validate_prd(request: Request, initiative_name: str):
     finally:
         if temporary_validation_path:
             temporary_validation_path.unlink(missing_ok=True)
+
+
+@app.post("/validate/{initiative_name}/adopt")
+async def adopt_validated_prd(request: Request, initiative_name: str):
+    """Promote the last uploaded, validated document to the initiative PRD."""
+    selected = _get_initiative_by_name(initiative_name, request)
+    if not selected:
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    artifacts = selected.path / "artifacts"
+    candidate = artifacts / _PRD_CANDIDATE
+    candidate_report = artifacts / _PRD_CANDIDATE_REPORT
+    if not candidate.is_file():
+        return RedirectResponse(
+            url=f"/validate/{initiative_name}?notice=validate.adopt_missing&notice_kind=error",
+            status_code=303,
+        )
+    version_file(artifacts / "prd.md")
+    candidate.replace(artifacts / "prd.md")
+    if candidate_report.is_file():
+        version_file(artifacts / "prd-validation.md")
+        candidate_report.replace(artifacts / "prd-validation.md")
+    else:
+        (artifacts / "prd-validation.md").unlink(missing_ok=True)
+    product_specification_service.register_prd(selected.path, actor=_get_session_user_email(request))
+    create_change_tracker().update_manifest(str(selected.path))
+    return RedirectResponse(
+        url=f"/initiative/{initiative_name}?notice=validate.adopted",
+        status_code=303,
+    )
 
 
 @app.post("/validate/{initiative_name}/revalidate")
@@ -3380,8 +3443,21 @@ async def config_page(request: Request, notice: str = ""):
     return templates.TemplateResponse(
         request,
         "config.html",
-        _ctx(request, saved=False, notice=notice),
+        _ctx(request, saved=False, notice=notice, external_tools=external_tool_configs()),
     )
+
+
+@app.post("/config/provider/use-local-ollama")
+async def use_local_ollama(request: Request, next_path: str = Form("/")):
+    """One-click switch from Demo to a detected local Ollama model."""
+    _require_installation_admin(request)
+    suggestion = _local_ollama_suggestion()
+    destination = next_path if next_path.startswith("/") and not next_path.startswith("//") else "/"
+    separator = "&" if "?" in destination else "?"
+    if not suggestion:
+        return RedirectResponse(url=f"{destination}{separator}notice=provider.ollama_unavailable&notice_kind=error", status_code=303)
+    config_manager.set_all({"ai_provider": "ollama", "model": suggestion["model"]})
+    return RedirectResponse(url=f"{destination}{separator}notice=provider.ollama_enabled", status_code=303)
 
 
 @app.post("/config/cursor/connect")
@@ -3835,7 +3911,7 @@ async def delete_initiative(request: Request, initiative_name: str):
         return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
 
     _logger.info("Initiative archived: %s", initiative_name)
-    return await dashboard(request)
+    return RedirectResponse(url="/?notice=archive.archived_notice", status_code=303)
 
 
 # ─── Consult Documentation (Q&A) ───
@@ -4156,7 +4232,7 @@ async def timeline_page(request: Request):
 # ─── Archived Initiatives ───
 
 @app.get("/archived", response_class=HTMLResponse)
-async def archived_page(request: Request):
+async def archived_page(request: Request, notice: str = "", notice_kind: str = "success"):
     repo = _repo(_get_session_squad(request))
     archived = InitiativeLifecycleService(
         repo, create_change_tracker
@@ -4164,7 +4240,7 @@ async def archived_page(request: Request):
     return templates.TemplateResponse(
         request,
         "archived.html",
-        _ctx(request, archived=archived),
+        _ctx(request, archived=archived, notice=notice, notice_kind=notice_kind),
     )
 
 
@@ -4174,9 +4250,13 @@ async def restore_initiative(request: Request, name: str = Form(...)):
     restored_name = InitiativeLifecycleService(
         repo, create_change_tracker
     ).restore(name)
-    if restored_name:
-        _logger.info("Initiative restored: %s → %s", name, restored_name)
-    return await archived_page(request)
+    if not restored_name:
+        return RedirectResponse(url="/archived?notice=archive.restore_failed&notice_kind=error", status_code=303)
+    _logger.info("Initiative restored: %s → %s", name, restored_name)
+    return RedirectResponse(
+        url=f"/initiative/{urllib.parse.quote(restored_name)}?notice=archive.restored_notice",
+        status_code=303,
+    )
 
 
 # ─── Squad ───

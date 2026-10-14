@@ -125,6 +125,7 @@ class SecurityAssessmentService:
         score = round(min(raw_score, 5.0) if critical_blockers else raw_score, 1)
         band = "critical" if score <= 3 else "mitigation" if score <= 6 else "validation" if score <= 8 else "verified"
         pending = [key for key, item in answers.items() if item["status"] in {"not_assessed", "planned"}]
+        assessed_count = sum(item["status"] != "not_assessed" for item in answers.values())
         evidence_count = sum(bool(item["evidence"]) for item in applicable)
         ai_generated_count = sum(item.get("origin") == "ai" for item in answers.values())
         return {
@@ -132,5 +133,7 @@ class SecurityAssessmentService:
             "critical_blockers": critical_blockers, "evidence_count": evidence_count,
             "ai_generated_count": ai_generated_count,
             "applicable_count": len(applicable), "updated_at": updated_at,
+            "assessed_count": assessed_count, "dimension_count": len(answers),
+            "coverage_complete": assessed_count == len(answers),
             "updated_by": updated_by, "history": history,
         }

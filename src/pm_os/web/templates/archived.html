@@ -2,6 +2,7 @@
 {% block page_title %}{{ "archive.title"|t }}{% endblock %}
 
 {% block content %}
+{% if notice %}<div class="alert alert-{{ notice_kind or 'success' }}" role="status" aria-live="polite">{{ notice|t }}</div>{% endif %}
 <div class="archived-hero">
     <div class="archived-hero-icon">{{ icon("package", 28) }}</div>
     <div class="archived-hero-title">{{ "archive.title"|t }}</div>

@@ -317,6 +317,23 @@
             </div>
         </section>
 
+        {% if external_tools %}
+        <section class="external-tools-other" id="external-tools-other" aria-labelledby="external-tools-other-title">
+            <h4 id="external-tools-other-title">{{ "external_tools.other_title"|t }}</h4>
+            <p class="form-hint">{{ "external_tools.other_desc"|t }}</p>
+            {% for tool in external_tools %}
+            <details class="external-tool-config" {% if loop.first %}open{% endif %}>
+                <summary><strong>{{ tool.name }}</strong><span>{{ ("external_tools.where_" ~ tool.id)|t }}</span></summary>
+                <div class="external-tool-snippet">
+                    <pre id="snippet-{{ tool.id }}"><code>{{ tool.snippet }}</code></pre>
+                    <button type="button" class="btn btn-secondary btn-xs" data-copy-target="snippet-{{ tool.id }}">{{ icon("files", 14) }} {{ "external_tools.copy"|t }}</button>
+                </div>
+            </details>
+            {% endfor %}
+            <p class="form-hint">{{ "external_tools.restart_hint"|t }}</p>
+        </section>
+        {% endif %}
+
         {# ─── Custom Providers (inside Providers tab, separate form) ─── #}
         <div class="card-body" style="border-top:1px solid var(--border);">
             <h4 style="margin-bottom: 16px;">{{ "config.provider_custom"|t }}</h4>
@@ -628,11 +645,28 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Tab from URL hash
+    // Tab from URL hash: a tab name (#providers) or any section inside a tab (#external-tools)
     var hash = window.location.hash.replace('#', '');
     if (hash && document.getElementById('tab-' + hash)) {
         switchTab(hash);
+    } else if (hash) {
+        var target = document.getElementById(hash);
+        var panel = target && target.closest('.tab-panel');
+        if (panel) {
+            switchTab(panel.id.replace('tab-', ''));
+            target.scrollIntoView({block: 'start'});
+        }
     }
+
+    document.querySelectorAll('[data-copy-target]').forEach(function(button) {
+        button.addEventListener('click', function() {
+            var source = document.getElementById(button.dataset.copyTarget);
+            if (!source || !navigator.clipboard) return;
+            navigator.clipboard.writeText(source.textContent).then(function() {
+                PMOS.toast({{ "external_tools.copied"|t|tojson }});
+            });
+        });
+    });
 
     // Update hash on tab click
     document.querySelectorAll('.tab-btn').forEach(function(btn) {

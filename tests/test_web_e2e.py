@@ -723,6 +723,9 @@ Emissão automática de pedidos de compra.
         )
         assert "notice=backlog.export_prepared" in prepared.headers["location"]
         assert prepared.headers["location"].endswith("#export-preview")
+        preview_page = client.get(prepared.headers["location"])
+        assert preview_page.status_code == 200
+        assert f"{len(item_ids)} itens · github" in preview_page.text
         preview_path = path.parent / "backlog-export-preview.json"
         preview = json.loads(preview_path.read_text(encoding="utf-8"))
 
@@ -733,6 +736,7 @@ Emissão automática de pedidos de compra.
         )
         assert "notice=backlog.export_confirmed" in confirmed.headers["location"]
         assert confirmed.headers["location"].endswith("#export-result")
+        assert client.get(confirmed.headers["location"]).status_code == 200
         download = client.get(f"/initiative/{init_id}/backlog/export/download")
         assert download.status_code == 200
         assert json.loads(download.content)["status"] == "confirmed"
@@ -972,7 +976,7 @@ class TestRouteAccessibility:
         assert b"Test Initiative" in resp.content
         assert "VS Code ou outra" in resp.text
         assert f'/initiative/{init_name}/specification#cursor-ai' in resp.text
-        assert 'href="/config#external-tools"' in resp.text
+        assert 'href="/config#external-tools-other"' in resp.text
 
     def test_initiative_data_prototype_uses_real_sources_without_leaking_tokens(
         self, client
@@ -1004,7 +1008,7 @@ class TestRouteAccessibility:
         assert ">Evidências<" not in response.text
         assert 'href="#connect-automation"' in response.text
         assert f'action="/initiative/{init_name}/data/automations"' in response.text
-        assert 'href="/config#external-tools"' in response.text
+        assert 'href="/config#external-tools-other"' in response.text
         assert "/specification#cursor-ai" not in response.text
 
     def test_registers_existing_automation_inside_data_hub(self, client):
@@ -1056,8 +1060,9 @@ class TestRouteAccessibility:
         captured = {}
 
         class FakeValidationService:
-            def validate(self, path):
+            def validate(self, path, report_name="prd-validation.md"):
                 captured["path"] = path
+                captured["report_name"] = report_name
                 captured["content"] = path.read_text(encoding="utf-8")
                 return SimpleNamespace(
                     report=SimpleNamespace(is_valid=False, summary="Relatório simulado"),
@@ -1080,7 +1085,8 @@ class TestRouteAccessibility:
         assert response.status_code == 502
         assert captured["content"] == "# PRD alternativo\n\nTeste."
         assert official_prd.read_text(encoding="utf-8") == "# PRD oficial\n\nConteúdo aprovado."
-        assert not (artifacts / ".validation-upload.md").exists()
+        assert captured["report_name"] != "prd-validation.md"
+        assert not (artifacts / ".prd-candidate.md").exists()
 
     def test_validation_rejects_unsupported_document_type(self, client):
         init_name = _create_initiative(client, "Validation type", "INT-VALIDATION-TYPE")
@@ -3040,7 +3046,7 @@ class TestCursorConnection:
         overview = client.get(f"/initiative/{initiative_id}")
         assert "Continuar em ferramenta externa" in overview.text
         assert "VS Code ou outra" in overview.text
-        assert 'href="/config#external-tools"' in overview.text
+        assert 'href="/config#external-tools-other"' in overview.text
         assert "https://cursor.com/link/prompt?" in overview.text
         assert initiative_id in overview.text
 
@@ -3500,3 +3506,140 @@ def test_generation_does_not_persist_unreadable_validation_report(tmp_path):
     assert (artifacts / "prd.md").exists()
     assert not (artifacts / "prd-validation.md").exists()
     assert list(artifacts.glob("prd-validation-*.md"))  # previous report kept as history
+
+
+class TestSyntheticBatteryFixes:
+    """Regressions from the 9-persona synthetic battery (docs/reviews/ux-audit-2026-10/synthetic-battery.md)."""
+
+    def test_uploaded_prd_can_be_adopted_without_touching_official_report_first(self, client, session_base):
+        init_id = _create_initiative(client, "Portal do Fornecedor", "INT-ADOPT-PRD")
+        artifacts = session_base / "workspace" / "initiatives" / init_id / "artifacts"
+
+        validated = client.post(
+            f"/validate/{init_id}",
+            data={"validation_source": "upload"},
+            files={"prd_file": ("prd-externo.md", "# PRD externo\n\n## Problema\nTexto.".encode(), "text/markdown")},
+        )
+
+        assert validated.status_code == 200
+        assert "Adotar como PRD da iniciativa" in validated.text
+        assert "Documento oficial desta iniciativa" not in validated.text
+        assert not (artifacts / "prd-validation.md").exists()
+        assert not (artifacts / "prd.md").exists()
+
+        adopted = client.post(f"/validate/{init_id}/adopt", follow_redirects=False)
+
+        assert "notice=validate.adopted" in adopted.headers["location"]
+        assert (artifacts / "prd.md").read_text(encoding="utf-8").startswith("# PRD externo")
+        assert (artifacts / "prd-validation.md").exists()
+        assert not (artifacts / ".prd-candidate.md").exists()
+        detail = client.get(adopted.headers["location"])
+        assert "PRD adotado" in detail.text
+        assert "Gerado" in detail.text
+
+    def test_adopt_without_candidate_explains_next_step(self, client):
+        init_id = _create_initiative(client, "No Candidate", "INT-NO-CANDIDATE")
+
+        response = client.post(f"/validate/{init_id}/adopt", follow_redirects=False)
+
+        assert "notice=validate.adopt_missing" in response.headers["location"]
+
+    def test_archive_and_restore_redirect_with_confirmation(self, client, session_base):
+        init_id = _create_initiative(client, "Archive Flow", "INT-ARCHIVE-FLOW")
+
+        archived = client.post(f"/initiative/{init_id}/delete", follow_redirects=False)
+        assert archived.status_code == 303
+        assert "notice=archive.archived_notice" in archived.headers["location"]
+        assert "Iniciativa arquivada" in client.get(archived.headers["location"]).text
+
+        archived_name = next(
+            d.name for d in (session_base / "workspace" / "archived").iterdir() if d.is_dir()
+        )
+        restored = client.post("/archived/restore", data={"name": archived_name}, follow_redirects=False)
+        assert restored.status_code == 303
+        assert restored.headers["location"].startswith(f"/initiative/{init_id}?notice=archive.restored_notice")
+        assert "Iniciativa restaurada" in client.get(restored.headers["location"]).text
+
+    def test_security_score_is_partial_until_every_dimension_is_assessed(self, client):
+        init_id = _create_initiative(client, "Security Coverage", "INT-SECURITY-COVERAGE")
+        page = client.get(f"/initiative/{init_id}/security")
+        first = re.search(r'id="([a-z_]+)_status"', page.text).group(1)
+
+        client.post(
+            f"/initiative/{init_id}/security",
+            data={f"{first}_status": "implemented", f"{first}_evidence": "Tokens criptografados (KMS)."},
+        )
+        detail = client.get(f"/initiative/{init_id}")
+        security = client.get(f"/initiative/{init_id}/security")
+
+        assert "Parcial · 1/6 dimensões avaliadas" in detail.text
+        assert "Crítico" not in detail.text
+        assert "1/6 dimensões avaliadas" in security.text
+
+    def test_demo_provider_is_flagged_before_security_and_spec_drafts(self, client):
+        init_id = _create_initiative(client, "Demo Hints", "INT-DEMO-HINTS")
+
+        security = client.get(f"/initiative/{init_id}/security")
+        spec = client.get(f"/initiative/{init_id}/specification")
+
+        assert re.search(r'id="security-ai-submit"[^>]*disabled', security.text)
+        assert "O modo Demo não gera o rascunho de segurança" in security.text
+        assert re.search(r'<p class="form-hint provider-demo-hint" id="spec-demo-hint"\s*>', spec.text)
+
+    def test_one_signal_uses_singular_label(self, client):
+        client.post("/signals", data={"title": "NPS caiu", "summary": "De 42 para 35.", "source_type": "metric", "strength": "strong"})
+
+        page = client.get("/signals")
+
+        assert "sinal neste espaço" in page.text
+        assert "sinais neste espaço" not in page.text
+
+
+def test_dashboard_offers_one_click_local_ollama_and_switches_provider(client, monkeypatch):
+    import pm_os.web.app as web_app
+
+    monkeypatch.setattr(web_app, "detect_ollama_models", lambda url: ["llama3.2:1b"])
+    init_id = _create_initiative(client, "Ollama Local", "INT-OLLAMA-LOCAL")
+    client.post(
+        f"/initiative/{init_id}/upload",
+        files={"docs": ("pesquisa.md", b"Analistas gastam 14 minutos.", "text/markdown")},
+    )
+
+    dashboard = client.get("/")
+    assert "Encontramos o Ollama rodando" in dashboard.text
+    assert 'action="/config/provider/use-local-ollama"' in dashboard.text
+
+    switched = client.post("/config/provider/use-local-ollama", data={"next_path": "/generate"}, follow_redirects=False)
+
+    assert switched.headers["location"] == "/generate?notice=provider.ollama_enabled"
+    assert web_app.config_manager.get("ai_provider") == "ollama"
+    assert web_app.config_manager.get("model") == "llama3.2:1b"
+    assert "Ollama ativado" in client.get(switched.headers["location"]).text
+
+
+def test_local_ollama_switch_rejects_external_redirects(client, monkeypatch):
+    import pm_os.web.app as web_app
+
+    monkeypatch.setattr(web_app, "detect_ollama_models", lambda url: [])
+
+    response = client.post("/config/provider/use-local-ollama", data={"next_path": "//evil.example"}, follow_redirects=False)
+
+    assert response.headers["location"].startswith("/?notice=provider.ollama_unavailable")
+
+
+def test_settings_explain_how_to_connect_vscode_and_other_agents(client):
+    page = client.get("/config")
+
+    assert 'id="external-tools-other"' in page.text
+    assert ".vscode/mcp.json" in page.text
+    assert "claude mcp add pm-studio" in page.text
+    assert "mcpServers" in page.text
+    assert "target.closest('.tab-panel')" in page.text
+
+
+def test_initiative_links_to_other_tool_setup(client):
+    init_id = _create_initiative(client, "Other Tools", "INT-OTHER-TOOLS")
+
+    page = client.get(f"/initiative/{init_id}")
+
+    assert 'href="/config#external-tools-other"' in page.text

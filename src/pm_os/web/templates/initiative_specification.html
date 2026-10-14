@@ -64,6 +64,7 @@
             </div>
         </details>
         {% endif %}
+        <p class="form-hint provider-demo-hint" id="spec-demo-hint" {% if active_ai_provider != 'demo' %}hidden{% endif %}>{{ "spec.demo_hint"|t }}</p>
         <button type="submit" class="btn btn-ai" id="spec-prepare-submit">
             <span data-context-label>{{ "spec.prepare_cta"|t }}</span>
         </button>
@@ -76,6 +77,11 @@
     var upload = document.getElementById('spec-prd-upload');
     var picker = form.querySelector('.spec-source-picker');
     var buttonLabel = form.querySelector('[data-context-label]');
+    var providerSelect = form.querySelector('select[name="ai_provider"]');
+    var demoHint = document.getElementById('spec-demo-hint');
+    if (providerSelect && demoHint) {
+        providerSelect.addEventListener('change', function () { demoHint.hidden = providerSelect.value !== 'demo'; });
+    }
     var labels = {context: {{ "spec.prepare_cta"|t|tojson }}, prd: {{ "spec.prepare_from_prd"|t|tojson }}, prd_upload: {{ "spec.prepare_from_uploaded_prd"|t|tojson }}};
     form.querySelectorAll('input[name="generation_source"]').forEach(function (radio) {
         radio.addEventListener('change', function () {
@@ -252,7 +258,7 @@
                     <button type="submit" class="btn btn-secondary btn-sm btn-block">{{ "cursor.simulate"|t }}</button>
                 </form>
                 {% endif %}
-                <a class="btn btn-ghost btn-sm btn-block" href="/config#external-tools">{{ "external_tools.configure_other"|t }}</a>
+                {% if is_installation_admin %}<a class="btn btn-ghost btn-sm btn-block" href="/config#external-tools-other">{{ "external_tools.configure_other"|t }}</a>{% else %}<span class="form-hint">{{ "external_tools.ask_admin"|t }}</span>{% endif %}
             </div>
         </section>
 

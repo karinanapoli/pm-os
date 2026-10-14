@@ -2,6 +2,7 @@
 {% block page_title %}{{ "generate.title"|t }}{% endblock %}
 
 {% block content %}
+{% if notice %}<div class="alert alert-{{ notice_kind or 'success' }}" role="status" aria-live="polite">{{ notice|t }}</div>{% endif %}
 <div class="card">
     <div class="card-body">
         <div class="learning-callout">
@@ -127,8 +128,14 @@
             <div class="alert alert-warning generate-demo-block" id="genDemoBlock" role="status" hidden>
                 <strong>{{ "generate.demo_block_title"|t }}</strong>
                 <span>{{ "generate.demo_block_desc"|t }}</span>
+                {% if local_ollama and is_installation_admin %}<span>{{ "provider.ollama_detected"|t }}</span>{% endif %}
                 <div class="generate-demo-block-actions">
-                    {% if is_installation_admin %}<a href="/config#general" class="btn btn-primary btn-sm">{{ "generate.demo_warning_cta"|t }}</a>{% endif %}
+                    {% if local_ollama and is_installation_admin %}
+                    <form method="POST" action="/config/provider/use-local-ollama" class="inline-form">
+        <input type="hidden" name="next_path" value="/generate">
+        <button type="submit" class="btn btn-primary btn-sm">{{ "provider.use_ollama"|t }} · {{ local_ollama.model }}</button>
+    </form>
+                    {% elif is_installation_admin %}<a href="/config#general" class="btn btn-primary btn-sm">{{ "generate.demo_warning_cta"|t }}</a>{% endif %}
                     <a href="/consult" class="btn btn-secondary btn-sm" id="genDemoConsult">{{ "generate.demo_block_consult"|t }}</a>
                 </div>
             </div>

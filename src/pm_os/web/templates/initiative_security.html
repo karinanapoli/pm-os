@@ -18,7 +18,8 @@
         </div>
         <div class="security-score" aria-label="{{ 'security.score'|t }} {{ assessment.score }}">
             <strong>{{ assessment.score }}</strong><span>/10</span>
-            <small>{{ ("security.band." ~ assessment.band)|t }}</small>
+            <small>{% if assessment.coverage_complete %}{{ ("security.band." ~ assessment.band)|t }}{% elif assessment.assessed_count %}{{ "security.partial"|t }}{% else %}{{ "security.status.not_assessed"|t }}{% endif %}</small>
+            <small class="security-coverage">{{ assessment.assessed_count }}/{{ assessment.dimension_count }} {{ "security.dimensions_assessed"|t }}</small>
         </div>
     </div>
 </section>
@@ -39,8 +40,22 @@
                 <option value="{{ provider.id }}" {% if provider.id == active_ai_provider %}selected{% endif %}>{{ provider.label }}</option>
             {% endfor %}
             </select>
-            <button type="submit" class="btn btn-primary">{{ "security.ai.generate"|t }}</button>
+            <p class="form-hint provider-demo-hint" id="security-demo-hint" {% if active_ai_provider != 'demo' %}hidden{% endif %}>{{ "security.ai.demo_hint"|t }}</p>
+            <button type="submit" class="btn btn-primary" id="security-ai-submit" {% if active_ai_provider == 'demo' %}disabled aria-describedby="security-demo-hint"{% endif %}>{{ "security.ai.generate"|t }}</button>
         </form>
+        <script>
+        (function () {
+            var select = document.getElementById('security_ai_provider');
+            var hint = document.getElementById('security-demo-hint');
+            var button = document.getElementById('security-ai-submit');
+            if (!select || !hint || !button) return;
+            select.addEventListener('change', function () {
+                var demo = select.value === 'demo';
+                hint.hidden = !demo;
+                button.disabled = demo;
+            });
+        })();
+        </script>
     </div>
 </section>
 

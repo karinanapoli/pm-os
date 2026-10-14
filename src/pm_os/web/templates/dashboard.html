@@ -6,6 +6,7 @@
 {% endblock %}
 
 {% block content %}
+{% if notice %}<div class="alert alert-{{ notice_kind or 'success' }}" role="status" aria-live="polite">{{ notice|t }}</div>{% endif %}
 
 {% if show_onboarding %}
 <script src="/static/tour.js"></script>
@@ -49,7 +50,7 @@ document.addEventListener('DOMContentLoaded', function() {
         <p>{{ "dashboard.next.add_context_desc"|t }}</p>
         {% elif demo_needs_provider %}
         <h3 id="next-action-title">{{ "dashboard.next.provider_title"|t }}</h3>
-        <p>{{ "dashboard.next.provider_desc"|t }}</p>
+        <p>{{ ("provider.ollama_detected" if local_ollama and is_installation_admin else "dashboard.next.provider_desc")|t }}</p>
         {% elif without_prd %}
         <h3 id="next-action-title">{{ "dashboard.next.generate_title"|t }}</h3>
         <p>{{ "dashboard.next.generate_desc"|t }}</p>
@@ -60,6 +61,11 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
     {% if total_docs == 0 %}
     <a href="/initiative/{{ initiatives[0].name }}" class="btn btn-primary">{{ "dashboard.next.add_context_cta"|t }}</a>
+    {% elif demo_needs_provider and local_ollama and is_installation_admin %}
+    <form method="POST" action="/config/provider/use-local-ollama" class="inline-form">
+        <input type="hidden" name="next_path" value="/">
+        <button type="submit" class="btn btn-primary">{{ "provider.use_ollama"|t }} · {{ local_ollama.model }}</button>
+    </form>
     {% elif demo_needs_provider %}
     <a href="{{ '/config#general' if is_installation_admin else '/consult' }}" class="btn btn-primary">{{ ("dashboard.next.provider_cta" if is_installation_admin else "dashboard.next.consult_cta")|t }}</a>
     {% elif without_prd %}
