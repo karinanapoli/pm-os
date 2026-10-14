@@ -3631,10 +3631,20 @@ def test_settings_explain_how_to_connect_vscode_and_other_agents(client):
     page = client.get("/config")
 
     assert 'id="external-tools-other"' in page.text
-    assert ".vscode/mcp.json" in page.text
+    assert "não salve no repositório" in page.text
+    assert "&lt;LOCAL_WORKSPACE_PATH&gt;" in page.text
+    assert "PM_OS_WORKSPACE_DIR&quot;: &quot;/" not in page.text
     assert "claude mcp add pm-studio" in page.text
     assert "mcpServers" in page.text
     assert "target.closest('.tab-panel')" in page.text
+
+    revealed = client.get("/config/external-tools/vscode/snippet")
+    assert revealed.status_code == 200
+    assert "PM_OS_WORKSPACE_DIR" in revealed.json()["snippet"]
+    assert "<LOCAL_WORKSPACE_PATH>" not in revealed.json()["snippet"]
+
+    missing = client.get("/config/external-tools/unknown/snippet")
+    assert missing.status_code == 404
 
 
 def test_initiative_links_to_other_tool_setup(client):

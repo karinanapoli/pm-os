@@ -114,3 +114,6 @@ def test_external_tool_configs_reuse_the_pm_studio_mcp_entry(tmp_path):
     assert configs["claude-code"]["snippet"].startswith("claude mcp add pm-studio --env ")
     assert f"'PM_OS_WORKSPACE_DIR={tmp_path / 'work space'}'" in configs["claude-code"]["snippet"]
     assert configs["claude-code"]["snippet"].endswith("-- /usr/bin/python3 -m pm_os.mcp_server")
+    for config in configs.values():
+        assert str(tmp_path) not in config["masked_snippet"]
+        assert "<LOCAL_WORKSPACE_PATH>" in config["masked_snippet"]

@@ -21,7 +21,7 @@ def external_tool_configs(installer: CursorInstallerService | None = None) -> li
         f"--env {shlex.quote(f'{key}={value}')}" for key, value in entry["env"].items()
     )
     command = " ".join(shlex.quote(part) for part in [entry["command"], *entry["args"]])
-    return [
+    configs = [
         {
             "id": "vscode",
             "name": "VS Code",
@@ -41,3 +41,9 @@ def external_tool_configs(installer: CursorInstallerService | None = None) -> li
             "snippet": json.dumps({"mcpServers": {name: generic}}, indent=2, ensure_ascii=False),
         },
     ]
+    workspace = str(entry["env"]["PM_OS_WORKSPACE_DIR"])
+    for config in configs:
+        config["masked_snippet"] = config["snippet"].replace(
+            workspace, "<LOCAL_WORKSPACE_PATH>"
+        )
+    return configs
