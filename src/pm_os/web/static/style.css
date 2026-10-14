@@ -2122,17 +2122,22 @@ body {
     border: 1px solid var(--border);
 }
 
-.prd-content.markdown-body h1,
-.prd-content.markdown-body h2,
-.prd-content.markdown-body h3,
-.prd-content.markdown-body h4 {
+/* Embedded Markdown headings are demoted one level (see _markdown_filter) */
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4,
+.markdown-body h5,
+.markdown-body h6 {
     margin: 16px 0 8px;
     color: var(--text);
     font-weight: 600;
+    line-height: 1.3;
 }
-.prd-content.markdown-body h1 { font-size: 1.4em; }
-.prd-content.markdown-body h2 { font-size: 1.2em; }
-.prd-content.markdown-body h3 { font-size: 1.1em; }
+.markdown-body h2 { font-size: 1.4em; }
+.markdown-body h3 { font-size: 1.2em; }
+.markdown-body h4 { font-size: 1.1em; }
+.markdown-body h5,
+.markdown-body h6 { font-size: 1em; }
 .prd-content.markdown-body p { margin: 0 0 10px; color: var(--text-secondary); }
 .prd-content.markdown-body ul, .prd-content.markdown-body ol {
     margin: 0 0 10px; padding-left: 24px;
@@ -2753,13 +2758,22 @@ body {
     display: flex;
     align-items: center;
     gap: 10px;
+    min-width: 0;
     font-weight: 500;
+    overflow-wrap: anywhere;
 }
 
 .doc-size {
     font-size: 12px;
     color: var(--text-muted);
     font-family: var(--font-mono);
+    white-space: nowrap;
+}
+
+@media (max-width: 560px) {
+    .doc-item { flex-wrap: wrap; gap: 6px 12px; }
+    .doc-name { flex: 1 1 100%; }
+    .doc-actions { width: 100%; justify-content: flex-start !important; flex-wrap: wrap; gap: 4px 8px !important; }
 }
 
 .doc-delete {
@@ -3773,3 +3787,12 @@ select { color-scheme: dark; }
     outline: 2px solid var(--primary-light);
     outline-offset: 2px;
 }
+
+/* ── Demo-mode guidance on Generate PRD ── */
+.generate-demo-block { display: grid; gap: 6px; margin-bottom: 12px; }
+.generate-demo-block[hidden] { display: none; }
+.generate-demo-block-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.spec-approval-warning { color: var(--amber); }
+.markdown-body ul,
+.markdown-body ol { margin: 0 0 10px; padding-left: 22px; }
+.markdown-body p { margin: 0 0 10px; }

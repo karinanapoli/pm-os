@@ -162,7 +162,7 @@
                     {{ icon("file") }}
                     {{ doc.name }}
                 </span>
-                <div style="display: flex; align-items: center; gap: 12px;">
+                <div class="doc-actions" style="display: flex; align-items: center; gap: 12px;">
                     <span class="doc-size">{{ doc.size }}</span>
                     <button type="button" class="btn btn-ghost btn-sm context-document-open" data-document-name="{{ doc.name }}" data-document-url="/initiative/{{ initiative.name }}/context/{{ doc.name|urlencode }}/preview">{{ icon("eye") }} {{ "initiative.detail.preview"|t }}</button>
                     <a href="/initiative/{{ initiative.name }}/context/{{ doc.name|urlencode }}/download" class="btn btn-ghost btn-sm">{{ icon("download") }} {{ "initiative.detail.download"|t }}</a>

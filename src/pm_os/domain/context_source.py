@@ -25,4 +25,5 @@ class ContextSource:
 
     @property
     def estimated_tokens(self) -> int:
-        return max(1, (len(self.content) + 3) // 4) if self.content else 0
+        length = len(self.content) if self.content else self.size_bytes
+        return max(1, (length + 3) // 4) if length else 0

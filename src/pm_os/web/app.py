@@ -80,6 +80,7 @@ from pm_os.web.provider_routes import create_provider_router
 from pm_os.web.backlog_export_service import BacklogExportService, EXPORT_TARGETS
 from pm_os.web.backlog_mcp_write_service import BacklogMCPWriteService
 from pm_os.web.product_specification_service import (
+    EmptySpecificationError,
     ProductSpecificationService,
     SPECIFICATION_FIELDS,
 )
@@ -752,8 +753,22 @@ def _display_name_filter(initiative: object) -> str:
 templates.env.filters["display_name"] = _display_name_filter
 
 
+@pass_context
+def _initiative_label_filter(ctx, slug: object) -> str:
+    """Display name for an initiative slug in the current workspace (falls back to the text)."""
+    text = str(slug or "")
+    request = ctx.get("request")
+    squad_name = _get_session_squad(request) if isinstance(request, Request) else None
+    initiative = InitiativeRepository(squad_name=squad_name).get(text, load_content=False) if text else None
+    return _display_name_filter(initiative) if initiative else text
+
+
+templates.env.filters["initiative_label"] = _initiative_label_filter
+
+
 def _markdown_filter(text: str) -> str:
-    return render_safe_markdown(text)
+    # Embedded documents sit below the page title, so their headings start at h2.
+    return render_safe_markdown(text, heading_offset=1)
 
 
 templates.env.filters["markdown"] = _markdown_filter
@@ -1059,6 +1074,7 @@ async def _dashboard(request: Request, force_onboarding: bool = False, squad_nam
             "score": score_str,
             "has_prd": prd_exists,
             "doc_count": doc_count,
+            "has_uploaded_sources": init.has_uploaded_sources,
         })
 
     avg_score = round(total_score / scored_count, 1) if scored_count > 0 else "-"
@@ -1189,8 +1205,9 @@ async def quickstart(request: Request) -> HTMLResponse:
 
             validator = create_prd_validator(ai_client=ai_client, lang=_get_lang())
             report = validator.validate(prd_content)
-            report_path = str(selected.path / "artifacts" / "prd-validation.md")
-            MarkdownWriter().write(content=report.to_markdown(lang=_get_lang()), output_path=report_path)
+            if report.is_valid:
+                report_path = str(selected.path / "artifacts" / "prd-validation.md")
+                MarkdownWriter().write(content=report.to_markdown(lang=_get_lang()), output_path=report_path)
 
             tracker.update_manifest(str(selected.path))
     except OllamaConnectionError:
@@ -2263,6 +2280,11 @@ async def approve_specification(request: Request, initiative_name: str):
             selected.path,
             actor=_get_session_user_email(request),
         )
+    except EmptySpecificationError:
+        return RedirectResponse(
+            url=f"/initiative/{initiative_name}/specification?notice=spec.approve_empty&notice_kind=error",
+            status_code=303,
+        )
     except ValueError:
         return RedirectResponse(
             url=f"/initiative/{initiative_name}/specification?notice=spec.approve_error&notice_kind=error",
@@ -3026,10 +3048,7 @@ async def generate_prd(
                  mcp_count=len(_get_mcp_context_servers())),
         )
 
-    has_uploaded_sources = any(
-        source.name != "context.md" for source in selected.sources
-    )
-    if config_manager.get("ai_provider") == "demo" and has_uploaded_sources:
+    if config_manager.get("ai_provider") == "demo" and selected.has_uploaded_sources:
         message = _t("generate.demo_context_error", _get_lang())
         if request.headers.get("x-requested-with") == "fetch":
             return JSONResponse({"error": message}, status_code=422)

@@ -221,7 +221,7 @@ All templates use `|t` filter for i18n:
 - `docs/retrospectives/sprint-006-retrospective.md` — Sprint 006 retrospective
 
 ## Tests
-- 483 tests pass (incl. UI regressions from the synthetic-user audit in `docs/reviews/ux-audit-2026-10/`)
+- 495 tests pass (incl. UI regressions from the synthetic-user audit in `docs/reviews/ux-audit-2026-10/`)
 - Run: `.venv/bin/python -m pytest tests/ -v`
 
 ## Running

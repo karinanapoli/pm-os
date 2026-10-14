@@ -34,7 +34,7 @@
         <div class="card-body">
             <div class="decision-heading">
                 <div>
-                    <a href="/initiative/{{ decision.initiative_id }}/specification#decisions" class="decision-initiative">{{ decision.initiative_id }}</a>
+                    <a href="/initiative/{{ decision.initiative_id }}/specification#decisions" class="decision-initiative">{{ decision.initiative_id|initiative_label }}</a>
                     <h3>{{ decision.title }}</h3>
                 </div>
                 <span class="decision-status decision-status-{{ decision.status }}">{{ ("decisions.status." ~ decision.status)|t }}</span>
@@ -69,7 +69,7 @@
         <strong>{{ "decisions.choose_initiative"|t }}</strong>
         <div>
             {% for initiative in initiatives[:4] %}
-            <a href="/initiative/{{ initiative.name }}/specification#decisions" class="btn btn-secondary btn-sm">{{ initiative.name }}</a>
+            <a href="/initiative/{{ initiative.name }}/specification#decisions" class="btn btn-secondary btn-sm">{{ initiative|display_name }}</a>
             {% endfor %}
         </div>
     </div>

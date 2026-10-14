@@ -3378,3 +3378,129 @@ def test_icon_helper_marks_decorative_icons_and_labels_icon_only_controls():
     assert 'aria-hidden="true"' in decorative
     assert 'role="img" aria-label="Excluir"' in labelled
     assert str(icon("does-not-exist")) == ""
+
+
+class TestDemoModeJourneys:
+    """Journeys re-run with synthetic users in the default Demo provider."""
+
+    def _upload(self, client, init_id):
+        response = client.post(
+            f"/initiative/{init_id}/upload",
+            files={"docs": ("pesquisa.md", "Analistas gastam 14 minutos por consulta.".encode(), "text/markdown")},
+        )
+        assert response.status_code == 200
+
+    def test_generate_page_explains_demo_limit_before_submit(self, client):
+        init_id = _create_initiative(client, "Consulta de Fornecedores", "INT-DEMO-GUARD")
+        self._upload(client, init_id)
+
+        page = client.get(f"/generate?initiative={init_id}")
+
+        assert 'data-uploaded="1"' in page.text
+        assert ">Consulta de Fornecedores</option>" in page.text
+        assert 'id="genDemoBlock"' in page.text
+        assert "Esta iniciativa tem documentos que o modo Demo não lê" in page.text
+        assert "Não foi possível gerar o PRD" in page.text
+        assert "Não foi possível conectar ao Ollama" not in page.text
+
+    def test_dashboard_recommends_provider_when_demo_cannot_read_documents(self, client):
+        init_id = _create_initiative(client, "Next Step Demo", "INT-DEMO-NEXT")
+        self._upload(client, init_id)
+
+        page = client.get("/")
+
+        assert "Conecte um provedor de IA para gerar o PRD" in page.text
+        assert f'href="/generate?initiative={init_id}"' not in page.text
+
+    def test_empty_specification_cannot_be_approved(self, client, session_base):
+        init_id = _create_initiative(client, "Empty Spec", "INT-EMPTY-SPEC")
+        client.post(f"/initiative/{init_id}/specification", data={})
+
+        page = client.get(f"/initiative/{init_id}/specification")
+        approved = client.post(f"/initiative/{init_id}/specification/approve", follow_redirects=False)
+
+        assert "A especificação está vazia" in page.text
+        assert "notice=spec.approve_empty" in approved.headers["location"]
+        spec = json.loads(
+            (session_base / "workspace" / "initiatives" / init_id / "artifacts" / "specification.json")
+            .read_text(encoding="utf-8")
+        )
+        assert spec["status"] != "approved"
+
+    def test_partial_specification_warns_that_backlog_needs_requirements(self, client):
+        init_id = _create_initiative(client, "Partial Spec", "INT-PARTIAL-SPEC")
+        client.post(f"/initiative/{init_id}/specification", data={"problem": "Abandono no cadastro."})
+
+        page = client.get(f"/initiative/{init_id}/specification")
+
+        assert "não poderá gerar backlog" in page.text
+
+    def test_consult_renders_demo_excerpts_as_markdown_with_initiative_names(self, client):
+        init_id = _create_initiative(client, "Consulta de Fornecedores", "INT-DEMO-CONSULT")
+        self._upload(client, init_id)
+
+        page = client.post(
+            "/consult",
+            data={"question": "Quanto tempo os analistas gastam por consulta?", "initiatives": [init_id]},
+        )
+
+        assert "<strong>Modo Demo" in page.text
+        assert "Analistas gastam 14 minutos por consulta." in page.text
+        assert "Consulta de Fornecedores" in page.text
+        assert "PRD demonstrativo" not in page.text
+
+    def test_embedded_markdown_does_not_add_a_second_h1(self, client, session_base):
+        init_id = _create_initiative(client, "Heading Levels", "INT-HEADINGS")
+        artifacts = session_base / "workspace" / "initiatives" / init_id / "artifacts"
+        artifacts.mkdir(parents=True, exist_ok=True)
+        (artifacts / "prd.md").write_text("# PRD\n\n## Problema\nTexto.", encoding="utf-8")
+
+        page = client.get(f"/initiative/{init_id}")
+
+        assert page.text.count("<h1") == 1
+        assert "<h2>PRD</h2>" in page.text
+
+
+def test_generation_does_not_persist_unreadable_validation_report(tmp_path):
+    from types import SimpleNamespace
+    from pm_os.domain.initiative import Initiative
+    from pm_os.web.prd_generation_operation import PRDGenerationOperation, PRDGenerationRequest
+
+    class PlainTextClient:
+        def generate(self, prompt):
+            return "# PRD\n\n## Problema\nTexto."  # validation gets no JSON back
+
+    class Job:
+        def __init__(self):
+            self.result, self.error = None, None
+        def set_step(self, *args, **kwargs):
+            pass
+        def complete(self, result):
+            self.result = result
+        def fail(self, message):
+            self.error = message
+
+    initiative_path = tmp_path / "INT-X"
+    artifacts = initiative_path / "artifacts"
+    artifacts.mkdir(parents=True)
+    (artifacts / "prd-validation.md").write_text("**Nota Geral:** 9.0/10", encoding="utf-8")
+    operation = PRDGenerationOperation(
+        ai_client_factory=PlainTextClient,
+        initiative_loader=lambda *args: None,
+        product_docs_service=SimpleNamespace(build_context=lambda: ""),
+        mcp_context_loader=lambda: [],
+        change_tracker_factory=lambda: SimpleNamespace(update_manifest=lambda path: None),
+        translate=lambda key, lang: key,
+    )
+    job = Job()
+
+    operation.run(job, PRDGenerationRequest(
+        initiative_name="INT-X", selected=Initiative(name="INT-X", path=initiative_path),
+        additional=[], selected_source_ids=set(), source_selection_enabled=False,
+        use_product_docs=False, use_mcp=False, squad_name="", lang="pt-BR",
+    ))
+
+    assert job.error is None
+    assert (artifacts / "prd.md").exists()
+    assert not (artifacts / "prd-validation.md").exists()
+    assert list(artifacts.glob("prd-validation-*.md"))  # previous report kept as history

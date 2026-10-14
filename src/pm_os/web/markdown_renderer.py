@@ -1,3 +1,5 @@
+import re
+
 import markdown
 import nh3
 from markupsafe import Markup
@@ -17,8 +19,15 @@ _ALLOWED_ATTRIBUTES = {
 _ALLOWED_SCHEMES = {"http", "https", "mailto"}
 
 
-def render_safe_markdown(text: str) -> Markup:
-    """Render Markdown while removing executable or unsafe HTML."""
+_HEADING_TAG_RE = re.compile(r"<(/?)h([1-6])>")
+
+
+def render_safe_markdown(text: str, heading_offset: int = 0) -> Markup:
+    """Render Markdown while removing executable or unsafe HTML.
+
+    ``heading_offset`` demotes headings (h1 -> h2 …) when the content is embedded
+    in a page that already has its own h1.
+    """
     rendered = markdown.markdown(text or "", extensions=["fenced_code", "tables"])
     cleaned = nh3.clean(
         rendered,
@@ -28,4 +37,9 @@ def render_safe_markdown(text: str) -> Markup:
         url_schemes=_ALLOWED_SCHEMES,
         link_rel="noopener noreferrer",
     )
+    if heading_offset:
+        cleaned = _HEADING_TAG_RE.sub(
+            lambda match: f"<{match.group(1)}h{min(6, int(match.group(2)) + heading_offset)}>",
+            cleaned,
+        )
     return Markup(cleaned)
