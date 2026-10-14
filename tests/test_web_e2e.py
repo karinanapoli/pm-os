@@ -26,6 +26,23 @@ from fastapi.testclient import TestClient
 os.environ["PM_OS_ENV"] = "test"
 
 
+def test_technical_pm_prompt_distinguishes_existing_and_new_products():
+    from urllib.parse import parse_qs, urlsplit
+    from pm_os.web.app import _cursor_prompt_url
+
+    existing = parse_qs(urlsplit(_cursor_prompt_url(
+        "INT-001", "https://github.com/acme/app", "existing"
+    )).query)["text"][0]
+    new = parse_qs(urlsplit(_cursor_prompt_url("INT-002", "", "new")).query)["text"][0]
+
+    assert "Product Manager Técnico" in existing
+    assert "propose_backlog_refinements" in existing
+    assert "https://github.com/acme/app" in existing
+    assert "sem alterar esses documentos" in existing
+    assert "produto novo" in new
+    assert "Não procure nem analise um repositório" in new
+
+
 # ─── Session-scoped: one workspace + config for all tests ───
 
 @pytest.fixture(scope="session")
@@ -267,6 +284,28 @@ class TestInitiativeMap:
 
 
 class TestGuidedSpecification:
+    def test_experienced_pm_generates_specification_from_current_prd(
+        self, client, session_base
+    ):
+        init_id = _create_initiative(client, "Current PRD", "INT-CURRENT-PRD")
+        artifacts = session_base / "workspace" / "initiatives" / init_id / "artifacts"
+        artifacts.mkdir(parents=True, exist_ok=True)
+        (artifacts / "prd.md").write_text(
+            "# PRD Checkout\n\n## Problema\nAbandono alto.\n\n## Requisitos\n- Reduzir etapas",
+            encoding="utf-8",
+        )
+
+        response = client.post(
+            f"/initiative/{init_id}/specification/prepare",
+            data={"generation_source": "prd", "ai_provider": "demo"},
+            follow_redirects=False,
+        )
+
+        assert response.status_code == 303
+        assert "notice=spec.prepared" in response.headers["location"]
+        specification = json.loads((artifacts / "specification.json").read_text(encoding="utf-8"))
+        assert specification["source_ids"] == ["CURRENT-PRD"]
+
     def test_prepares_specification_from_an_uploaded_existing_prd(
         self, client, session_base
     ):
@@ -933,7 +972,7 @@ class TestRouteAccessibility:
         assert b"Test Initiative" in resp.content
         assert "VS Code ou outra" in resp.text
         assert f'/initiative/{init_name}/specification#cursor-ai' in resp.text
-        assert 'href="/config#providers"' in resp.text
+        assert 'href="/config#external-tools"' in resp.text
 
     def test_initiative_data_prototype_uses_real_sources_without_leaking_tokens(
         self, client
@@ -963,6 +1002,32 @@ class TestRouteAccessibility:
         assert f'/initiative/{init_name}/data' in response.text
         assert f'/initiative/{init_name}#context' not in response.text
         assert ">Evidências<" not in response.text
+        assert 'href="#connect-automation"' in response.text
+        assert f'action="/initiative/{init_name}/data/automations"' in response.text
+        assert 'href="/config#external-tools"' in response.text
+        assert "/specification#cursor-ai" not in response.text
+
+    def test_registers_existing_automation_inside_data_hub(self, client):
+        init_name = _create_initiative(client, "Automation data", "INT-AUTOMATION-DATA")
+
+        response = client.post(
+            f"/initiative/{init_name}/data/automations",
+            data={
+                "name": "Feedback semanal",
+                "tool": "GitHub Actions",
+                "description": "Envia novos sinais toda segunda-feira",
+            },
+            follow_redirects=False,
+        )
+
+        assert response.status_code == 303
+        assert response.headers["location"].endswith(
+            "notice=data.automation_registered&notice_kind=success#automations"
+        )
+        page = client.get(f"/initiative/{init_name}/data")
+        assert "Feedback semanal" in page.text
+        assert "GitHub Actions" in page.text
+        assert "Envia novos sinais toda segunda-feira" in page.text
 
     def test_validate_page_not_found(self, client):
         resp = client.get("/validate/nonexistent")
@@ -1047,6 +1112,46 @@ class TestRouteAccessibility:
 # ═══════════════════════════════════════════
 
 class TestInitiativeCRUD:
+    def test_updates_display_name_and_links_github_without_changing_id(
+        self, client, session_base
+    ):
+        init_name = _create_initiative(client, "Nome antigo", "INT-EDITABLE")
+
+        response = client.post(
+            f"/initiative/{init_name}/settings",
+            data={
+                "display_name": "Novo nome da iniciativa",
+                "repository_url": "https://github.com/acme/product-app/",
+                "implementation_mode": "existing",
+            },
+            follow_redirects=False,
+        )
+
+        assert response.status_code == 303
+        assert response.headers["location"].startswith(f"/initiative/{init_name}")
+        assert (session_base / "workspace" / "initiatives" / init_name).is_dir()
+        page = client.get(f"/initiative/{init_name}")
+        assert "Novo nome da iniciativa" in page.text
+        assert "https://github.com/acme/product-app" in page.text
+        assert "Editar iniciativa" in page.text
+        assert 'value="existing" selected' in page.text
+
+    def test_downloads_uploaded_context_document(self, client):
+        init_name = _create_initiative(client, "Download context", "INT-DOWNLOAD")
+        client.post(
+            f"/initiative/{init_name}/upload",
+            files={"docs": ("pesquisa.md", b"# Pesquisa\nConteudo", "text/markdown")},
+        )
+
+        page = client.get(f"/initiative/{init_name}")
+        assert f"/initiative/{init_name}/context/pesquisa.md/download" in page.text
+        download = client.get(
+            f"/initiative/{init_name}/context/pesquisa.md/download"
+        )
+        assert download.status_code == 200
+        assert download.content == b"# Pesquisa\nConteudo"
+        assert "pesquisa.md" in download.headers["content-disposition"]
+
     def test_create_initiative(self, client, session_base):
         init_name = _create_initiative(client)
         dir_path = session_base / "workspace" / "initiatives" / init_name
@@ -2906,7 +3011,7 @@ class TestCursorConnection:
         overview = client.get(f"/initiative/{initiative_id}")
         assert "Continuar em ferramenta externa" in overview.text
         assert "VS Code ou outra" in overview.text
-        assert 'href="/config#providers"' in overview.text
+        assert 'href="/config#external-tools"' in overview.text
         assert "https://cursor.com/link/prompt?" in overview.text
         assert initiative_id in overview.text
 

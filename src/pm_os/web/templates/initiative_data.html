@@ -90,12 +90,38 @@
                 </article>
                 <form method="POST" action="/initiative/{{ initiative.name }}/data/spreadsheets" enctype="multipart/form-data" style="display:none" id="spreadsheet-form"><input id="spreadsheet-input" type="file" name="spreadsheet" accept=".csv,.tsv" onchange="this.form.submit()"></form>
                 {% for sheet in spreadsheets %}<article class="data-source-row"><span class="data-connector-icon sheet">▦</span><div><strong>{{ sheet.name }}</strong><small>{{ sheet.rows }} linhas · {{ sheet.columns }} colunas</small></div><span class="data-source-state healthy">{{ "data.ready"|t }}</span></article>{% endfor %}
-                <article class="data-source-row">
+                <article class="data-source-row" id="automations">
                     <span class="data-connector-icon automation">⚡</span>
                     <div><strong>{{ "data.automations"|t }}</strong><small>{{ "data.automations_help"|t }}</small></div>
-                    <a href="/initiative/{{ initiative.name }}/specification#cursor-ai">{{ "data.connect"|t }}</a>
+                    <a href="#connect-automation">{{ "data.register"|t }}</a>
                 </article>
                 {% for automation in automations %}<article class="data-source-row"><span class="data-connector-icon automation">⚡</span><div><strong>{{ automation.name }}</strong><small>{{ automation.tool }}{% if automation.description %} · {{ automation.description }}{% endif %}</small></div><span class="data-source-state healthy">{{ "data.synced"|t }}</span></article>{% endfor %}
+                <details class="data-automation-connect" id="connect-automation">
+                    <summary>{{ "data.register_automation"|t }}</summary>
+                    <div class="data-automation-body">
+                        <p>{{ "data.register_automation_desc"|t }}</p>
+                        <form method="POST" action="/initiative/{{ initiative.name }}/data/automations" class="form data-automation-form">
+                            <label>{{ "data.automation_name"|t }}<input type="text" name="name" required placeholder="{{ 'data.automation_name_placeholder'|t }}"></label>
+                            <label>{{ "data.automation_tool"|t }}
+                                <select name="tool" required>
+                                    <option value="">{{ "data.automation_tool_placeholder"|t }}</option>
+                                    <option value="Cursor">Cursor</option>
+                                    <option value="VS Code">VS Code</option>
+                                    <option value="GitHub Actions">GitHub Actions</option>
+                                    <option value="n8n">n8n</option>
+                                    <option value="Make">Make</option>
+                                    <option value="Outro agente MCP">{{ "data.automation_other"|t }}</option>
+                                </select>
+                            </label>
+                            <label class="data-automation-full">{{ "data.automation_description"|t }}<textarea name="description" rows="2" placeholder="{{ 'data.automation_description_placeholder'|t }}"></textarea></label>
+                            <div class="data-automation-actions data-automation-full">
+                                <a href="/config#external-tools">{{ "data.configure_tool"|t }}</a>
+                                <button type="submit" class="btn btn-primary btn-sm">{{ "data.save_automation"|t }}</button>
+                            </div>
+                        </form>
+                        <small class="data-automation-note">{{ "data.automation_scope_note"|t }}</small>
+                    </div>
+                </details>
                 {% if context_files %}
                 <article class="data-source-row">
                     <span class="data-connector-icon files">≡</span>

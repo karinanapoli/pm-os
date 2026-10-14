@@ -47,6 +47,10 @@ def test_rejects_context_access_for_private_initiative(tmp_path):
 
 def test_returns_context_and_structured_specification(tmp_path):
     path = _initiative(tmp_path)
+    (path / "metadata.yaml").write_text(
+        "name: Onboarding\nrepository_url: https://github.com/acme/onboarding\n",
+        encoding="utf-8",
+    )
     _share(path)
 
     result = CursorMCPService(tmp_path).get_initiative_context("INT-001")
@@ -54,6 +58,7 @@ def test_returns_context_and_structured_specification(tmp_path):
     assert "Users abandon onboarding." in result["context"]
     assert result["specification"]["version"] == 1
     assert result["specification"]["sections"]["requirements"] == "Show progress."
+    assert result["repository_url"] == "https://github.com/acme/onboarding"
 
 
 def test_cursor_can_submit_proposals_for_human_review(tmp_path):
@@ -93,6 +98,30 @@ def test_cursor_can_submit_referenced_technical_discovery(tmp_path):
     assert proposal["kind"] == "technical_discovery"
     assert "store.py:42" in proposal["content"]
     assert proposal["status"] == "pending"
+
+
+def test_agent_returns_backlog_refinements_without_changing_artifacts(tmp_path):
+    path = _initiative(tmp_path)
+    _share(path)
+    backlog = path / "artifacts" / "backlog.md"
+    backlog.write_text("# Backlog original", encoding="utf-8")
+
+    receipt = CursorMCPService(tmp_path).propose_backlog_refinements(
+        "INT-001",
+        refinements=[{
+            "backlog_item": "História: mostrar progresso",
+            "suggestion": "Adicionar tarefa para persistência do progresso.",
+            "rationale": "O estado atual vive apenas em memória.",
+            "code_references": ["src/progress/store.py:18"],
+        }],
+    )
+
+    assert receipt["status"] == "pending_human_review"
+    assert receipt["artifact_changed"] is False
+    assert backlog.read_text(encoding="utf-8") == "# Backlog original"
+    stored = AIContributionService().load(path)["backlog_refinements"][0]
+    assert stored["status"] == "pending"
+    assert stored["code_references"] == ["src/progress/store.py:18"]
 
 
 def test_prd_is_available_only_after_sharing(tmp_path):

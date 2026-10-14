@@ -44,11 +44,13 @@ class CursorMCPService:
     def get_initiative_context(self, initiative_name: str) -> dict:
         initiative = self._shared_initiative(initiative_name, load_content=True)
         specification = self.specifications.load(initiative.path)
+        metadata = self._metadata(initiative.path)
         return {
             "initiative_id": initiative.name,
             "title": self._display_name(initiative.path, initiative.name),
             "context": self.context_builder.build(initiative),
             "specification": specification,
+            "repository_url": str(metadata.get("repository_url") or ""),
         }
 
     def get_specification(self, initiative_name: str) -> dict:
@@ -116,6 +118,17 @@ class CursorMCPService:
         initiative = self._shared_initiative(initiative_name, load_content=False)
         return self.contributions.proposal_status(initiative.path, proposal_ids)
 
+    def propose_backlog_refinements(self, initiative_name: str, *, refinements: list[dict]) -> dict:
+        initiative = self._shared_initiative(initiative_name, load_content=False)
+        accepted = self.contributions.receive_backlog_refinements(
+            initiative.path, refinements, source="external_agent"
+        )
+        return {
+            "refinement_ids": [item["id"] for item in accepted],
+            "status": "pending_human_review",
+            "artifact_changed": False,
+        }
+
     def register_automation(self, initiative_name: str, *, name: str, tool: str, description: str = "") -> dict:
         """Register an automation created by Cursor, VS Code, or another MCP client."""
         initiative = self._shared_initiative(initiative_name, load_content=False)
@@ -135,13 +148,17 @@ class CursorMCPService:
 
     @staticmethod
     def _display_name(initiative_path: Path, fallback: str) -> str:
+        return str(CursorMCPService._metadata(initiative_path).get("name") or fallback)
+
+    @staticmethod
+    def _metadata(initiative_path: Path) -> dict:
         metadata_path = initiative_path / "metadata.yaml"
         if not metadata_path.is_file():
-            return fallback
+            return {}
         try:
             import yaml
 
             metadata = yaml.safe_load(metadata_path.read_text(encoding="utf-8")) or {}
-            return str(metadata.get("name") or fallback)
+            return metadata
         except (OSError, yaml.YAMLError):
-            return fallback
+            return {}
