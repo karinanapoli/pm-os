@@ -267,6 +267,28 @@ class TestInitiativeMap:
 
 
 class TestGuidedSpecification:
+    def test_experienced_pm_generates_specification_from_current_prd(
+        self, client, session_base
+    ):
+        init_id = _create_initiative(client, "Current PRD", "INT-CURRENT-PRD")
+        artifacts = session_base / "workspace" / "initiatives" / init_id / "artifacts"
+        artifacts.mkdir(parents=True, exist_ok=True)
+        (artifacts / "prd.md").write_text(
+            "# PRD Checkout\n\n## Problema\nAbandono alto.\n\n## Requisitos\n- Reduzir etapas",
+            encoding="utf-8",
+        )
+
+        response = client.post(
+            f"/initiative/{init_id}/specification/prepare",
+            data={"generation_source": "prd", "ai_provider": "demo"},
+            follow_redirects=False,
+        )
+
+        assert response.status_code == 303
+        assert "notice=spec.prepared" in response.headers["location"]
+        specification = json.loads((artifacts / "specification.json").read_text(encoding="utf-8"))
+        assert specification["source_ids"] == ["CURRENT-PRD"]
+
     def test_prepares_specification_from_an_uploaded_existing_prd(
         self, client, session_base
     ):
@@ -933,7 +955,7 @@ class TestRouteAccessibility:
         assert b"Test Initiative" in resp.content
         assert "VS Code ou outra" in resp.text
         assert f'/initiative/{init_name}/specification#cursor-ai' in resp.text
-        assert 'href="/config#providers"' in resp.text
+        assert 'href="/config#external-tools"' in resp.text
 
     def test_initiative_data_prototype_uses_real_sources_without_leaking_tokens(
         self, client
@@ -2906,7 +2928,7 @@ class TestCursorConnection:
         overview = client.get(f"/initiative/{initiative_id}")
         assert "Continuar em ferramenta externa" in overview.text
         assert "VS Code ou outra" in overview.text
-        assert 'href="/config#providers"' in overview.text
+        assert 'href="/config#external-tools"' in overview.text
         assert "https://cursor.com/link/prompt?" in overview.text
         assert initiative_id in overview.text
 

@@ -68,7 +68,7 @@
                 <span>{{ ("cursor.pending_overview" if cursor_pending_count|default(0) else "external_tools.continue_desc")|t }}</span>
                 <div class="external-tool-actions">
                     <a href="{{ cursor_prompt_url }}" target="_blank" rel="noopener noreferrer">Cursor</a>
-                    <a href="/config#providers">{{ "external_tools.other"|t }}</a>
+                    <a href="/config#external-tools">{{ "external_tools.other"|t }}</a>
                 </div>
             </div>
             {% else %}
@@ -78,7 +78,7 @@
                 <span>{{ "external_tools.overview_desc"|t }}</span>
                 <div class="external-tool-actions">
                     <a href="/initiative/{{ initiative.name }}/specification#cursor-ai">Cursor</a>
-                    <a href="/config#providers">{{ "external_tools.other"|t }}</a>
+                    <a href="/config#external-tools">{{ "external_tools.other"|t }}</a>
                 </div>
             </div>
             {% endif %}

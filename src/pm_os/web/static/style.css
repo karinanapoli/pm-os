@@ -3529,3 +3529,10 @@ body {
 .spec-source-choice small, .spec-prd-upload small { color: var(--text-muted); font-weight: 400; }
 .spec-prd-upload { display: grid; gap: 5px; padding: 10px; border: 1px dashed var(--border); border-radius: var(--radius-sm); }
 .spec-prd-upload[hidden] { display: none; }
+
+@media (max-width: 720px) {
+    .spec-flow { display: flex; overflow-x: auto; gap: 8px; padding-bottom: 6px; }
+    .spec-flow li { min-width: max-content; }
+    .spec-prepare > div:first-child { align-items: flex-start; }
+    .spec-source-choice label { min-height: 64px; }
+}
