@@ -1069,6 +1069,44 @@ class TestRouteAccessibility:
 # ═══════════════════════════════════════════
 
 class TestInitiativeCRUD:
+    def test_updates_display_name_and_links_github_without_changing_id(
+        self, client, session_base
+    ):
+        init_name = _create_initiative(client, "Nome antigo", "INT-EDITABLE")
+
+        response = client.post(
+            f"/initiative/{init_name}/settings",
+            data={
+                "display_name": "Novo nome da iniciativa",
+                "repository_url": "https://github.com/acme/product-app/",
+            },
+            follow_redirects=False,
+        )
+
+        assert response.status_code == 303
+        assert response.headers["location"].startswith(f"/initiative/{init_name}")
+        assert (session_base / "workspace" / "initiatives" / init_name).is_dir()
+        page = client.get(f"/initiative/{init_name}")
+        assert "Novo nome da iniciativa" in page.text
+        assert "https://github.com/acme/product-app" in page.text
+        assert "Editar iniciativa" in page.text
+
+    def test_downloads_uploaded_context_document(self, client):
+        init_name = _create_initiative(client, "Download context", "INT-DOWNLOAD")
+        client.post(
+            f"/initiative/{init_name}/upload",
+            files={"docs": ("pesquisa.md", b"# Pesquisa\nConteudo", "text/markdown")},
+        )
+
+        page = client.get(f"/initiative/{init_name}")
+        assert f"/initiative/{init_name}/context/pesquisa.md/download" in page.text
+        download = client.get(
+            f"/initiative/{init_name}/context/pesquisa.md/download"
+        )
+        assert download.status_code == 200
+        assert download.content == b"# Pesquisa\nConteudo"
+        assert "pesquisa.md" in download.headers["content-disposition"]
+
     def test_create_initiative(self, client, session_base):
         init_name = _create_initiative(client)
         dir_path = session_base / "workspace" / "initiatives" / init_name

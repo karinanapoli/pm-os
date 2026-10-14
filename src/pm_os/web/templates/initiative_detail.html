@@ -3,6 +3,7 @@
 
 {% block topbar_actions %}
 <div style="display: flex; gap: 8px;">
+    <button type="button" class="btn btn-secondary btn-sm" onclick="PMOS.openModal('initiative-settings')">✎ {{ "initiative.settings.edit"|t }}</button>
     <a href="/initiative/{{ initiative.name }}/chat" class="btn btn-secondary btn-sm">{{ "chat.tab"|t }} <span class="spec-beta">Beta</span></a>
     <a href="/generate?initiative={{ initiative.name }}" class="btn btn-ai btn-sm">◇ {{ "nav.generate_prd"|t }}</a>
     {% if prd_exists %}
@@ -66,6 +67,7 @@
                 <span class="initiative-goal-icon" aria-hidden="true">⌁</span>
                 <strong>{{ "external_tools.continue"|t }}{% if cursor_pending_count|default(0) %} · {{ cursor_pending_count }}{% endif %}</strong>
                 <span>{{ ("cursor.pending_overview" if cursor_pending_count|default(0) else "external_tools.continue_desc")|t }}</span>
+                {% if metadata.repository_url %}<small>GitHub · {{ metadata.repository_url }}</small>{% endif %}
                 <div class="external-tool-actions">
                     <a href="{{ cursor_prompt_url }}" target="_blank" rel="noopener noreferrer">Cursor</a>
                     <a href="/config#external-tools">{{ "external_tools.other"|t }}</a>
@@ -76,6 +78,7 @@
                 <span class="initiative-goal-icon" aria-hidden="true">⌁</span>
                 <strong>{{ "external_tools.title"|t }}</strong>
                 <span>{{ "external_tools.overview_desc"|t }}</span>
+                {% if metadata.repository_url %}<small>GitHub · {{ metadata.repository_url }}</small>{% endif %}
                 <div class="external-tool-actions">
                     <a href="/initiative/{{ initiative.name }}/specification#cursor-ai">Cursor</a>
                     <a href="/config#external-tools">{{ "external_tools.other"|t }}</a>
@@ -156,6 +159,7 @@
                 </span>
                 <div style="display: flex; align-items: center; gap: 12px;">
                     <span class="doc-size">{{ doc.size }}</span>
+                    <a href="/initiative/{{ initiative.name }}/context/{{ doc.name|urlencode }}/download" class="btn btn-ghost btn-sm">⬇ {{ "initiative.detail.download"|t }}</a>
                     <form method="POST" action="/initiative/{{ initiative.name }}/delete-doc" style="display:inline;" data-loading="deleting" id="deleteDocForm-{{ loop.index0 }}">
                         <input type="hidden" name="filename" value="{{ doc.name }}">
                         <button type="button" class="doc-delete" aria-label="{{ 'archive.delete_confirm'|t }}: {{ doc.name }}" onclick="PMOS.openModal('delete-doc')"><span aria-hidden="true">✕</span></button>
@@ -184,6 +188,30 @@
                 <button type="submit" class="btn btn-secondary btn-sm">{{ "initiative.detail.upload_cta"|t }}</button>
             </form>
         </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modal-initiative-settings" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="initiative-settings-title" tabindex="-1">
+        <div class="modal-title" id="initiative-settings-title">{{ "initiative.settings.title"|t }}</div>
+        <div class="modal-desc">{{ "initiative.settings.desc"|t }}</div>
+        <form method="POST" action="/initiative/{{ initiative.name }}/settings" class="form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <div class="form-group">
+                <label for="initiative-display-name">{{ "initiative.settings.name"|t }}</label>
+                <input id="initiative-display-name" name="display_name" value="{{ initiative_display_name }}" maxlength="120" required data-modal-initial-focus>
+                <div class="form-hint">{{ "initiative.settings.name_help"|t }}</div>
+            </div>
+            <div class="form-group">
+                <label for="initiative-repository-url">{{ "initiative.settings.repository"|t }} <span class="optional">{{ "signals.optional"|t }}</span></label>
+                <input id="initiative-repository-url" name="repository_url" type="url" value="{{ metadata.repository_url or '' }}" placeholder="https://github.com/organizacao/repositorio">
+                <div class="form-hint">{{ "initiative.settings.repository_help"|t }}</div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-ghost btn-sm" onclick="PMOS.closeModal('initiative-settings')">{{ "archive.modal_cancel"|t }}</button>
+                <button type="submit" class="btn btn-primary btn-sm">{{ "initiative.settings.save"|t }}</button>
+            </div>
+        </form>
     </div>
 </div>
 

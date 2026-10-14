@@ -139,17 +139,23 @@ def _is_local_request(request: Request) -> bool:
     return host in {"127.0.0.1", "::1", "localhost", "testclient"}
 
 
-def _cursor_prompt_url(initiative_name: str = "") -> str:
+def _cursor_prompt_url(initiative_name: str = "", repository_url: str = "") -> str:
     initiative_instruction = (
         f"trabalhar na iniciativa {initiative_name}"
         if initiative_name
         else "listar as iniciativas disponíveis e me perguntar qual delas quero trabalhar"
+    )
+    repository_instruction = (
+        f" O repositório de implementação vinculado é {repository_url}. Abra-o usando a autenticação já configurada na ferramenta, crie uma branch e apresente o diff antes de propor um PR."
+        if repository_url else
+        " Se o trabalho exigir alterar código, peça ao usuário para vincular ou abrir o repositório antes de editar arquivos."
     )
     prompt = (
         f"Use o MCP do PM Studio para {initiative_instruction}. "
         "Consulte o contexto e a especificação antes de analisar o código deste projeto. "
         "Identifique descobertas técnicas, riscos e lacunas. Não altere a especificação diretamente: "
         "envie descobertas e propostas ao PM Studio para revisão humana."
+        f"{repository_instruction}"
     )
     return "https://cursor.com/link/prompt?" + urllib.parse.urlencode({"text": prompt})
 
@@ -1434,9 +1440,50 @@ async def initiative_detail(
             linked_signals=_signal_repo(request).list(initiative_name),
             security_assessment=security_assessment_service.load(selected.path),
             cursor_shared=ai_contributions.get("initiative_access") == "shared",
-            cursor_prompt_url=_cursor_prompt_url(initiative_name),
+            cursor_prompt_url=_cursor_prompt_url(initiative_name, str(metadata.get("repository_url") or "")),
             cursor_pending_count=len(pending_cursor_proposals),
         ),
+    )
+
+
+@app.post("/initiative/{initiative_name}/settings")
+async def update_initiative_settings(
+    request: Request,
+    initiative_name: str,
+    display_name: str = Form(...),
+    repository_url: str = Form(""),
+):
+    selected = _get_initiative_by_name(initiative_name, request)
+    if not selected:
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    clean_name = display_name.strip()
+    if not clean_name or len(clean_name) > 120:
+        return RedirectResponse(
+            f"/initiative/{initiative_name}?notice=initiative.settings_invalid&notice_kind=error",
+            status_code=303,
+        )
+    clean_repository = repository_url.strip()
+    if clean_repository:
+        parsed = urllib.parse.urlsplit(clean_repository)
+        if parsed.scheme != "https" or parsed.hostname not in {"github.com", "www.github.com"}:
+            return RedirectResponse(
+                f"/initiative/{initiative_name}?notice=initiative.repository_invalid&notice_kind=error",
+                status_code=303,
+            )
+        clean_repository = f"https://github.com/{parsed.path.strip('/')}"
+    metadata_path = selected.path / "metadata.yaml"
+    try:
+        metadata = yaml.safe_load(metadata_path.read_text(encoding="utf-8")) or {}
+    except (OSError, yaml.YAMLError):
+        metadata = {}
+    metadata["name"] = clean_name
+    metadata["repository_url"] = clean_repository
+    metadata_path.write_text(
+        yaml.safe_dump(metadata, allow_unicode=True, sort_keys=False), encoding="utf-8"
+    )
+    create_change_tracker().update_manifest(str(selected.path))
+    return RedirectResponse(
+        f"/initiative/{initiative_name}?notice=initiative.settings_saved", status_code=303
     )
 
 
@@ -1453,6 +1500,7 @@ async def specification_page(
     specification = product_specification_service.load(selected.path)
     artifacts = specification.get("artifacts") or {}
     ai_contributions = ai_contribution_service.load(selected.path)
+    metadata = yaml.safe_load((selected.path / "metadata.yaml").read_text(encoding="utf-8")) or {}
     cursor_installer = CursorInstallerService()
     return templates.TemplateResponse(
         request,
@@ -1478,7 +1526,7 @@ async def specification_page(
             ai_contributions=ai_contributions,
             cursor_installation=cursor_installer.status(),
             cursor_local_install_available=_is_local_request(request),
-            cursor_prompt_url=_cursor_prompt_url(initiative_name),
+            cursor_prompt_url=_cursor_prompt_url(initiative_name, str(metadata.get("repository_url") or "")),
             pending_ai_proposals=ai_contribution_service.pending(ai_contributions),
             available_sources=selected.sources,
             available_ai_providers=_available_ai_providers(),
@@ -2603,6 +2651,26 @@ async def upload_context_doc(
         "initiative.detail.upload_failed",
         "error",
     )
+
+
+@app.get("/initiative/{initiative_name}/context/{filename}/download")
+async def download_context_document(
+    request: Request, initiative_name: str, filename: str
+):
+    selected = _get_initiative_by_name(initiative_name, request)
+    if not selected:
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    safe_name = _safe_filename(filename)
+    context_dir = (selected.path / "context").resolve()
+    document_path = (context_dir / safe_name).resolve() if safe_name else context_dir
+    if (
+        not safe_name
+        or document_path.parent != context_dir
+        or not document_path.is_file()
+        or document_path.suffix.lower() not in ALLOWED_EXTENSIONS
+    ):
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    return FileResponse(str(document_path), filename=safe_name)
 
 
 @app.post("/initiative/{initiative_name}/delete-doc", response_class=HTMLResponse)
