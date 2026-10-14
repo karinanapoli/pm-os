@@ -136,6 +136,21 @@ def _is_local_request(request: Request) -> bool:
     return host in {"127.0.0.1", "::1", "localhost", "testclient"}
 
 
+def _cursor_prompt_url(initiative_name: str = "") -> str:
+    initiative_instruction = (
+        f"trabalhar na iniciativa {initiative_name}"
+        if initiative_name
+        else "listar as iniciativas disponíveis e me perguntar qual delas quero trabalhar"
+    )
+    prompt = (
+        f"Use o MCP do PM Studio para {initiative_instruction}. "
+        "Consulte o contexto e a especificação antes de analisar o código deste projeto. "
+        "Identifique descobertas técnicas, riscos e lacunas. Não altere a especificação diretamente: "
+        "envie descobertas e propostas ao PM Studio para revisão humana."
+    )
+    return "https://cursor.com/link/prompt?" + urllib.parse.urlencode({"text": prompt})
+
+
 def _validation_report_for_display(content: str, lang: str) -> str:
     """Collapse the repeated rationale produced by legacy fallback reports."""
     legacy_rationales = (
@@ -681,6 +696,14 @@ def _ctx(request: Request, **extra: object) -> dict:
         public_connection(server)
         for server in (cfg.get("mcp_servers") or [])
     ]
+    cfg["custom_providers"] = [
+        {
+            **provider,
+            "api_key": "",
+            "has_api_key": bool(provider.get("api_key")),
+        }
+        for provider in (cfg.get("custom_providers") or [])
+    ]
     lang = cfg.get("lang", "en")
     try:
         user_email = request.session.get("user_email", "")
@@ -706,6 +729,9 @@ def _ctx(request: Request, **extra: object) -> dict:
         "user_squads": user_squads_list,
         "is_installation_admin": is_installation_admin(config_manager.get_all(), user_email),
         "stdio_mcp_enabled": stdio_mcp_enabled(),
+        "cursor_installation": CursorInstallerService().status(),
+        "cursor_local_install_available": _is_local_request(request),
+        "cursor_prompt_url": _cursor_prompt_url(),
         "csrf_token": "",
     }
     try:
@@ -1380,6 +1406,8 @@ async def initiative_detail(
 
     is_quickstart = request.query_params.get("quickstart") == "1"
     specification = product_specification_service.load(selected.path)
+    ai_contributions = ai_contribution_service.load(selected.path)
+    pending_cursor_proposals = ai_contribution_service.pending(ai_contributions)
 
     return templates.TemplateResponse(
         request,
@@ -1402,6 +1430,9 @@ async def initiative_detail(
             specification_completion=product_specification_service.completion(specification),
             linked_signals=_signal_repo(request).list(initiative_name),
             security_assessment=security_assessment_service.load(selected.path),
+            cursor_shared=ai_contributions.get("initiative_access") == "shared",
+            cursor_prompt_url=_cursor_prompt_url(initiative_name),
+            cursor_pending_count=len(pending_cursor_proposals),
         ),
     )
 
@@ -1444,6 +1475,7 @@ async def specification_page(
             ai_contributions=ai_contributions,
             cursor_installation=cursor_installer.status(),
             cursor_local_install_available=_is_local_request(request),
+            cursor_prompt_url=_cursor_prompt_url(initiative_name),
             pending_ai_proposals=ai_contribution_service.pending(ai_contributions),
             available_sources=selected.sources,
             available_ai_providers=_available_ai_providers(),
@@ -1451,6 +1483,47 @@ async def specification_page(
             notice=notice,
             notice_kind=notice_kind,
             security_assessment=security_assessment_service.load(selected.path),
+        ),
+    )
+
+
+@app.get("/initiative/{initiative_name}/data", response_class=HTMLResponse)
+async def initiative_data_page(request: Request, initiative_name: str):
+    """Prototype a decision-oriented data hub using sources already in PM Studio."""
+    selected = _get_initiative_by_name(initiative_name, request)
+    if not selected:
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+
+    linked_signals = _signal_repo(request).list(initiative_name)
+    context_dir = selected.path / "context"
+    context_files = [
+        path for path in context_dir.iterdir()
+        if path.is_file() and not path.name.startswith(".")
+    ] if context_dir.exists() else []
+    mcp_sources = [
+        public_connection(server)
+        for server in _get_mcp_servers()
+        if server.get("enabled", True)
+    ]
+    connected_mcp_count = sum(
+        1 for server in mcp_sources
+        if (server.get("status") or {}).get("state") == "connected"
+    )
+    source_count = len(mcp_sources) + (1 if context_files else 0) + (1 if linked_signals else 0)
+    strong_signal_count = sum(1 for signal in linked_signals if signal.strength == "strong")
+
+    return templates.TemplateResponse(
+        request,
+        "initiative_data.html",
+        _ctx(
+            request,
+            initiative=selected,
+            linked_signals=linked_signals,
+            context_files=context_files,
+            mcp_sources=mcp_sources,
+            connected_mcp_count=connected_mcp_count,
+            source_count=source_count,
+            strong_signal_count=strong_signal_count,
         ),
     )
 
@@ -1530,6 +1603,19 @@ async def simulate_cursor_response(request: Request, initiative_name: str):
         url=f"/initiative/{initiative_name}/specification?notice=cursor.proposals_received#cursor-proposals",
         status_code=303,
     )
+
+
+@app.get("/initiative/{initiative_name}/cursor/status", response_class=JSONResponse)
+async def cursor_contribution_status(request: Request, initiative_name: str):
+    selected = _get_initiative_by_name(initiative_name, request)
+    if not selected:
+        return JSONResponse({"error": "not_found"}, status_code=404)
+    state = ai_contribution_service.load(selected.path)
+    return JSONResponse({
+        "shared": state.get("initiative_access") == "shared",
+        "pending_count": len(ai_contribution_service.pending(state)),
+        "review_url": f"/initiative/{initiative_name}/specification#cursor-proposals",
+    })
 
 
 @app.post("/initiative/{initiative_name}/cursor/proposals/{proposal_id}")
@@ -2502,6 +2588,9 @@ async def prd_version_view(request: Request, initiative_name: str, version: str)
             prd_content=content,
             validation_score="-",
             version_label=version,
+            cursor_shared=False,
+            cursor_prompt_url=_cursor_prompt_url(initiative_name),
+            cursor_pending_count=0,
         ),
     )
 
@@ -2792,8 +2881,42 @@ async def validate_prd(request: Request, initiative_name: str):
 
     form = await request.form()
     uploaded_file = form.get("prd_file")
+    requested_source = str(form.get("validation_source") or "generated")
+    has_upload = bool(uploaded_file and getattr(uploaded_file, "filename", ""))
+    validation_path = prd_path
+    temporary_validation_path: Optional[Path] = None
+    validated_document_name = "prd.md"
 
-    if uploaded_file and uploaded_file.filename and uploaded_file.filename != "":
+    if requested_source == "upload" or has_upload:
+        if not has_upload:
+            return templates.TemplateResponse(
+                request,
+                "validate.html",
+                _ctx(
+                    request,
+                    initiative=selected,
+                    report=None,
+                    error=_t("validate.upload_required", _get_lang()),
+                    validation_history=read_validation_history(selected.path / "artifacts"),
+                    prd_content=prd_path.read_text(encoding="utf-8") if prd_path.exists() else "",
+                ),
+                status_code=422,
+            )
+        validated_document_name = safe_upload_filename(uploaded_file.filename)
+        if not validated_document_name or Path(validated_document_name).suffix.lower() not in {".md", ".txt"}:
+            return templates.TemplateResponse(
+                request,
+                "validate.html",
+                _ctx(
+                    request,
+                    initiative=selected,
+                    report=None,
+                    error=_t("validate.upload_invalid_type", _get_lang()),
+                    validation_history=read_validation_history(selected.path / "artifacts"),
+                    prd_content=prd_path.read_text(encoding="utf-8") if prd_path.exists() else "",
+                ),
+                status_code=422,
+            )
         content_bytes = await uploaded_file.read(MAX_UPLOAD_FILE_BYTES + 1)
         if len(content_bytes) > MAX_UPLOAD_FILE_BYTES:
             return templates.TemplateResponse(
@@ -2809,10 +2932,28 @@ async def validate_prd(request: Request, initiative_name: str):
                 ),
                 status_code=413,
             )
+        try:
+            uploaded_content = content_bytes.decode("utf-8")
+        except UnicodeDecodeError:
+            return templates.TemplateResponse(
+                request,
+                "validate.html",
+                _ctx(
+                    request,
+                    initiative=selected,
+                    report=None,
+                    error=_t("validate.upload_invalid_encoding", _get_lang()),
+                    validation_history=read_validation_history(selected.path / "artifacts"),
+                    prd_content=prd_path.read_text(encoding="utf-8") if prd_path.exists() else "",
+                ),
+                status_code=422,
+            )
         prd_path.parent.mkdir(parents=True, exist_ok=True)
-        prd_path.write_bytes(content_bytes)
+        temporary_validation_path = prd_path.parent / ".validation-upload.md"
+        temporary_validation_path.write_text(uploaded_content, encoding="utf-8")
+        validation_path = temporary_validation_path
 
-    if not prd_path.exists():
+    if not validation_path.exists():
         return templates.TemplateResponse(
             request,
             "validate.html",
@@ -2822,7 +2963,7 @@ async def validate_prd(request: Request, initiative_name: str):
         )
 
     try:
-        result = _build_prd_validation_service(_get_lang()).validate(prd_path)
+        result = _build_prd_validation_service(_get_lang()).validate(validation_path)
 
         if not result.report.is_valid:
             return templates.TemplateResponse(
@@ -2830,7 +2971,8 @@ async def validate_prd(request: Request, initiative_name: str):
                 "validate.html",
                 _ctx(request, initiative=selected, report=None, error=result.report.summary,
                      validation_history=result.history,
-                     prd_content=result.prd_content),
+                     prd_content=result.prd_content,
+                     validated_document_name=validated_document_name),
                 status_code=502,
             )
 
@@ -2840,7 +2982,8 @@ async def validate_prd(request: Request, initiative_name: str):
             _ctx(request, initiative=selected, report=result.report, error=None,
                  previous_score=result.previous_score,
                  validation_history=result.history,
-                 prd_content=result.prd_content),
+                 prd_content=result.prd_content,
+                 validated_document_name=validated_document_name),
         )
 
     except OllamaConnectionError:
@@ -2849,8 +2992,12 @@ async def validate_prd(request: Request, initiative_name: str):
             "validate.html",
             _ctx(request, initiative=selected, report=None, error=_t("error.ollama", _get_lang()),
                  validation_history=read_validation_history(selected.path / "artifacts"),
-                 prd_content=prd_path.read_text(encoding="utf-8")),
+                 prd_content=validation_path.read_text(encoding="utf-8"),
+                 validated_document_name=validated_document_name),
         )
+    finally:
+        if temporary_validation_path:
+            temporary_validation_path.unlink(missing_ok=True)
 
 
 @app.post("/validate/{initiative_name}/revalidate")
@@ -2879,6 +3026,28 @@ async def config_page(request: Request, notice: str = ""):
         request,
         "config.html",
         _ctx(request, saved=False, notice=notice),
+    )
+
+
+@app.post("/config/cursor/connect")
+async def connect_cursor_from_config(request: Request):
+    _require_installation_admin(request)
+    if not _is_local_request(request):
+        return RedirectResponse(
+            url="/config?notice=cursor.local_only#providers",
+            status_code=303,
+        )
+    try:
+        CursorInstallerService().install()
+    except CursorInstallerError:
+        _logger.exception("Cursor MCP installation failed")
+        return RedirectResponse(
+            url="/config?notice=cursor.install_error#providers",
+            status_code=303,
+        )
+    return RedirectResponse(
+        url="/config?notice=cursor.notice_connected#providers",
+        status_code=303,
     )
 
 
@@ -2962,10 +3131,9 @@ async def save_config(
         updates["smtp_password"] = smtp_password
     config_manager.set_all(updates)
     _logger.info("Config updated by %s", request.client.host if request.client else "unknown")
-    return templates.TemplateResponse(
-        request,
-        "config.html",
-        _ctx(request, saved=False, notice="config.saved"),
+    return RedirectResponse(
+        url="/config?notice=config.saved#providers",
+        status_code=303,
     )
 
 

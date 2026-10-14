@@ -61,6 +61,19 @@
                 <strong>{{ "initiative.goals.specification"|t }}</strong>
                 <span>{{ "initiative.goals.specification_desc"|t }}</span>
             </a>
+            {% if cursor_shared|default(false) %}
+            <a href="{{ cursor_prompt_url }}" target="_blank" rel="noopener noreferrer" class="initiative-goal cursor-goal">
+                <span class="initiative-goal-icon" aria-hidden="true">⌁</span>
+                <strong>{{ "cursor.continue"|t }}{% if cursor_pending_count|default(0) %} · {{ cursor_pending_count }}{% endif %}</strong>
+                <span>{{ ("cursor.pending_overview" if cursor_pending_count|default(0) else "cursor.continue_desc")|t }}</span>
+            </a>
+            {% else %}
+            <a href="/initiative/{{ initiative.name }}/specification#cursor-ai" class="initiative-goal cursor-goal">
+                <span class="initiative-goal-icon" aria-hidden="true">⌁</span>
+                <strong>{{ "cursor.title"|t }}</strong>
+                <span>{{ "cursor.discover_desc"|t }}</span>
+            </a>
+            {% endif %}
         </div>
     </div>
 </section>
@@ -316,6 +329,12 @@
     </div>
 </div>
 
+{% if cursor_shared|default(false) %}
+<div class="cursor-live-notice" id="cursor-live-notice" role="status" aria-live="polite" hidden>
+    <span>{{ "cursor.live_proposals"|t }}</span>
+    <a href="/initiative/{{ initiative.name }}/specification#cursor-proposals">{{ "cursor.review"|t }}</a>
+</div>
+{% endif %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     var deleteForms = document.querySelectorAll('[id^="deleteDocForm-"]');
@@ -331,6 +350,20 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
     });
+    {% if cursor_shared|default(false) %}
+    window.setInterval(function() {
+        fetch('/initiative/{{ initiative.name }}/cursor/status')
+            .then(function(response) { return response.ok ? response.json() : null; })
+            .then(function(status) {
+                if (status && status.pending_count > {{ cursor_pending_count|default(0) }}) {
+                    var notice = document.getElementById('cursor-live-notice');
+                    notice.hidden = false;
+                    notice.querySelector('a').href = status.review_url;
+                }
+            })
+            .catch(function() {});
+    }, 10000);
+    {% endif %}
 });
 </script>
 

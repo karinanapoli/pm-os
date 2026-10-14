@@ -37,6 +37,31 @@ def test_public_connection_never_exposes_secret():
     assert public["auth"]["has_secret"] is True
 
 
+def test_public_connection_redacts_credentials_from_url_and_arguments():
+    connection = build_connection(
+        name="Private",
+        url="https://person:password@mcp.example/mcp?api_token=visible-token&region=br",
+        connection_type="stdio",
+        command="npx",
+        args=["package", "--api-token", "argument-token", "SECRET=inline-token"],
+    )
+
+    public = public_connection(connection)
+
+    rendered = repr(public)
+    assert "password" not in rendered
+    assert "visible-token" not in rendered
+    assert "argument-token" not in rendered
+    assert "inline-token" not in rendered
+    assert "region=br" in public["url"]
+    assert public["args"] == [
+        "package",
+        "--api-token",
+        "[protegido]",
+        "SECRET=[protegido]",
+    ]
+
+
 def test_rejects_header_injection():
     with pytest.raises(ValueError, match="header"):
         build_connection(

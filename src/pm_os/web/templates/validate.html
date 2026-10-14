@@ -6,22 +6,50 @@
 {% endblock %}
 
 {% block content %}
-{# ── PRD Upload ── #}
-<div class="card">
-    <div class="card-body">
-        <p style="margin-bottom: 16px; color: var(--text-secondary); font-size: 14px;">
-            {{ "validate.desc"|t }} <strong>{{ initiative.name }}</strong>,
-            {{ "validate.checking"|t }}
-        </p>
-        <form method="POST" action="/validate/{{ initiative.name }}" enctype="multipart/form-data" class="form" data-loading="processing">
-            <div class="form-group" style="margin-bottom: 12px;">
-                <label for="prd_file">📄 {{ "validate.upload_prd"|t }}</label>
-                <input type="file" name="prd_file" id="prd_file" accept=".md" style="padding: 8px;">
-                <div class="form-hint">{{ "validate.upload_hint"|t }}</div>
-            </div>
-            <button type="submit" class="btn btn-ai">{{ "validate.cta"|t }}</button>
+<section class="validation-hero" id="validation-start">
+    <p class="eyebrow">{{ initiative.name }}</p>
+    <h2>{{ "validate.choose_title"|t }}</h2>
+    <p>{{ "validate.choose_desc"|t }}</p>
+</section>
+
+<div class="validation-choice-grid">
+    <article class="card validation-choice primary">
+        <div class="validation-choice-icon">✓</div>
+        <div>
+            <span class="validation-choice-kicker">{{ "validate.recommended"|t }}</span>
+            <h3>{{ "validate.generated_title"|t }}</h3>
+            <p>{{ "validate.generated_desc"|t }}</p>
+        </div>
+        {% if prd_content %}
+        <form method="POST" action="/validate/{{ initiative.name }}" data-loading="processing">
+            <input type="hidden" name="validation_source" value="generated">
+            <button type="submit" class="btn btn-ai btn-block">{{ "validate.generated_cta"|t }}</button>
         </form>
-    </div>
+        {% else %}
+        <a href="/generate?initiative={{ initiative.name }}" class="btn btn-primary btn-block">{{ "validate.generate_first"|t }}</a>
+        {% endif %}
+    </article>
+
+    <article class="card validation-choice" id="validate-upload">
+        <div class="validation-choice-icon secondary">↑</div>
+        <div>
+            <span class="validation-choice-kicker">{{ "validate.alternative"|t }}</span>
+            <h3>{{ "validate.upload_title"|t }}</h3>
+            <p>{{ "validate.upload_desc"|t }}</p>
+        </div>
+        <form method="POST" action="/validate/{{ initiative.name }}" enctype="multipart/form-data" class="form" data-loading="processing">
+            <input type="hidden" name="validation_source" value="upload">
+            <label for="prd_file" class="validation-upload-zone">
+                <span>＋</span>
+                <strong>{{ "validate.select_file"|t }}</strong>
+                <small id="validation-file-name">{{ "validate.file_types"|t }}</small>
+                <input type="file" name="prd_file" id="prd_file" accept=".md,.txt,text/markdown,text/plain" required
+                       onchange="PMOS.validateUploadFiles(this); document.getElementById('validation-file-name').textContent = this.files.length ? this.files[0].name : '{{ 'validate.file_types'|t }}'">
+            </label>
+            <p class="validation-privacy-note">🔒 {{ "validate.upload_safe"|t }}</p>
+            <button type="submit" class="btn btn-secondary btn-block">{{ "validate.upload_cta"|t }}</button>
+        </form>
+    </article>
 </div>
 
 {% if error %}
@@ -30,11 +58,11 @@
 </div>
 {% endif %}
 
-{# ── Current PRD ── #}
+{# ── Document preview ── #}
 {% if prd_content %}
 <div class="card" style="margin-top: 16px;">
     <div class="card-header">
-        <h3>📄 PRD {{ "initiative.detail.current"|t }}</h3>
+        <h3>📄 {% if validated_document_name and validated_document_name != "prd.md" %}{{ "validate.analyzed_document"|t }}: {{ validated_document_name }}{% else %}PRD {{ "initiative.detail.current"|t }}{% endif %}</h3>
         <div style="display: flex; gap: 8px;">
             <a href="/generate?initiative={{ initiative.name }}" class="btn btn-ghost btn-sm">{{ "initiative.detail.regenerate"|t }}</a>
         </div>
@@ -186,10 +214,11 @@
             <a href="/initiative/{{ initiative.name }}" class="btn btn-secondary btn-sm">{{ "initiative.detail.back"|t }}</a>
             <a href="/initiative/{{ initiative.name }}" class="btn btn-ghost btn-sm">{{ "validate.view_prd"|t }}</a>
             <a href="/generate?initiative={{ initiative.name }}" class="btn btn-ai btn-sm">{{ "validate.regenerate"|t }}</a>
-            <form method="POST" action="/validate/{{ initiative.name }}" enctype="multipart/form-data" style="display:inline;" data-loading="processing">
-                <input type="file" name="prd_file" accept=".md" style="display:none;" id="revalidate-prd-file" onchange="this.form.requestSubmit()">
-                <button type="button" class="btn btn-primary btn-sm" onclick="document.getElementById('revalidate-prd-file').click();">{{ "validate.revalidate"|t }}</button>
+            <form method="POST" action="/validate/{{ initiative.name }}" style="display:inline;" data-loading="processing">
+                <input type="hidden" name="validation_source" value="generated">
+                <button type="submit" class="btn btn-primary btn-sm">{{ "validate.revalidate"|t }}</button>
             </form>
+            <a href="#validate-upload" class="btn btn-secondary btn-sm">{{ "validate.validate_another"|t }}</a>
         </div>
     </div>
 </div>

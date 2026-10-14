@@ -900,6 +900,35 @@ class TestRouteAccessibility:
         assert resp.status_code == 200
         assert b"Test Initiative" in resp.content
 
+    def test_initiative_data_prototype_uses_real_sources_without_leaking_tokens(
+        self, client
+    ):
+        from pm_os.web.app import config_manager
+        from pm_os.web.mcp_connections import build_connection
+
+        init_name = _create_initiative(client)
+        connection = build_connection(
+            name="Metrics MCP",
+            url="https://metrics.example/mcp?api_token=private-token",
+            auth_type="bearer",
+            auth_secret="header-token",
+        )
+        connection["status"] = {"state": "connected", "message": ""}
+        config_manager.set("mcp_servers", [connection])
+
+        response = client.get(f"/initiative/{init_name}/data")
+
+        assert response.status_code == 200
+        assert "Dados e insights" in response.text
+        assert "Metrics MCP" in response.text
+        assert "Planilhas" in response.text
+        assert "Automações" in response.text
+        assert "private-token" not in response.text
+        assert "header-token" not in response.text
+        assert f'/initiative/{init_name}/data' in response.text
+        assert f'/initiative/{init_name}#context' not in response.text
+        assert ">Evidências<" not in response.text
+
     def test_validate_page_not_found(self, client):
         resp = client.get("/validate/nonexistent")
         assert resp.status_code == 404
@@ -908,6 +937,62 @@ class TestRouteAccessibility:
         init_name = _create_initiative(client)
         resp = client.get(f"/validate/{init_name}")
         assert resp.status_code == 200
+        assert "O que você quer validar?" in resp.text
+        assert "Validar o PRD gerado" in resp.text
+        assert "Enviar documento para validação" in resp.text
+        assert 'name="validation_source" value="upload"' in resp.text
+
+    def test_uploaded_validation_document_does_not_replace_official_prd(
+        self, client, session_base, monkeypatch
+    ):
+        from types import SimpleNamespace
+        import pm_os.web.app as web_app
+
+        init_name = _create_initiative(client, "Validation UX", "INT-VALIDATION-UX")
+        artifacts = session_base / "workspace" / "initiatives" / init_name / "artifacts"
+        artifacts.mkdir(parents=True, exist_ok=True)
+        official_prd = artifacts / "prd.md"
+        official_prd.write_text("# PRD oficial\n\nConteúdo aprovado.", encoding="utf-8")
+        captured = {}
+
+        class FakeValidationService:
+            def validate(self, path):
+                captured["path"] = path
+                captured["content"] = path.read_text(encoding="utf-8")
+                return SimpleNamespace(
+                    report=SimpleNamespace(is_valid=False, summary="Relatório simulado"),
+                    history=[],
+                    prd_content=captured["content"],
+                )
+
+        monkeypatch.setattr(
+            web_app,
+            "_build_prd_validation_service",
+            lambda lang: FakeValidationService(),
+        )
+
+        response = client.post(
+            f"/validate/{init_name}",
+            data={"validation_source": "upload"},
+            files={"prd_file": ("alternativa.txt", b"# PRD alternativo\n\nTeste.", "text/plain")},
+        )
+
+        assert response.status_code == 502
+        assert captured["content"] == "# PRD alternativo\n\nTeste."
+        assert official_prd.read_text(encoding="utf-8") == "# PRD oficial\n\nConteúdo aprovado."
+        assert not (artifacts / ".validation-upload.md").exists()
+
+    def test_validation_rejects_unsupported_document_type(self, client):
+        init_name = _create_initiative(client, "Validation type", "INT-VALIDATION-TYPE")
+
+        response = client.post(
+            f"/validate/{init_name}",
+            data={"validation_source": "upload"},
+            files={"prd_file": ("prd.exe", b"not a document", "application/octet-stream")},
+        )
+
+        assert response.status_code == 422
+        assert "Markdown (.md) ou texto (.txt)" in response.text
 
     def test_product_docs_page(self, client):
         resp = client.get("/product-docs")
@@ -1701,6 +1786,64 @@ class TestConfiguration:
         cfg = json.loads(config_file.read_text())
         assert cfg["model"] == "gemma4:e2b"
         assert cfg["lang"] == "en"
+
+    def test_save_config_redirects_to_models_without_resubmitting(self, client):
+        response = client.post("/config", data={
+            "model": "llama3.2:1b",
+            "ollama_url": "http://localhost:11434",
+            "lang": "pt-BR",
+        }, follow_redirects=False)
+
+        assert response.status_code == 303
+        assert response.headers["location"] == "/config?notice=config.saved#providers"
+
+    def test_models_tab_offers_cursor_connection_and_generic_continuation(
+        self, client, session_base, monkeypatch
+    ):
+        cursor_config = session_base / ".cursor" / "mcp.json"
+        monkeypatch.setenv("PM_OS_CURSOR_CONFIG_PATH", str(cursor_config))
+
+        before = client.get("/config#providers")
+        assert "Usar a IA pelo Cursor" in before.text
+        assert 'action="/config/cursor/connect"' in before.text
+
+        connected = client.post("/config/cursor/connect", follow_redirects=False)
+        assert connected.status_code == 303
+        assert connected.headers["location"].endswith("#providers")
+
+        after = client.get("/config#providers")
+        assert "Continuar no Cursor" in after.text
+        assert "https://cursor.com/link/prompt?" in after.text
+        assert "listar+as+iniciativas" in after.text
+
+    def test_config_context_never_sends_provider_or_mcp_tokens(
+        self, client
+    ):
+        from pm_os.web.app import config_manager
+        from pm_os.web.mcp_connections import build_connection
+
+        connection = build_connection(
+            name="Protected MCP",
+            url="https://mcp.example/mcp?api_token=query-secret&region=br",
+            auth_type="bearer",
+            auth_secret="header-secret",
+        )
+        config_manager.set_all({
+            "custom_providers": [{
+                "name": "Private AI",
+                "model": "private-model",
+                "base_url": "https://ai.example/v1",
+                "api_key": "provider-secret",
+            }],
+            "mcp_servers": [connection],
+        })
+
+        response = client.get("/config#mcp")
+        assert response.status_code == 200
+        assert "provider-secret" not in response.text
+        assert "query-secret" not in response.text
+        assert "header-secret" not in response.text
+        assert "%5Bprotegido%5D" in response.text
 
     def test_add_mcp_server(self, client, session_base):
         resp = client.post("/config/mcp/add", data={
@@ -2687,6 +2830,100 @@ class TestSecurityAIAssessment:
 
 
 class TestCursorConnection:
+    def test_synthetic_pm_completes_the_full_cursor_round_trip(
+        self, client, session_base, monkeypatch
+    ):
+        """PM connects, shares, receives a Cursor proposal, and approves it."""
+        from pm_os.web.cursor_mcp_service import CursorMCPService
+        from pm_os.web.product_specification_service import ProductSpecificationService
+
+        initiative_id = _create_initiative(
+            client,
+            "Checkout assistido",
+            "INT-SYNTHETIC-CURSOR",
+        )
+        saved = client.post(
+            f"/initiative/{initiative_id}/specification",
+            data={
+                "problem": "Clientes abandonam o checkout ao escolher o fornecedor.",
+                "outcome": "Aumentar a conclusão do checkout.",
+                "requirements": "Exibir fornecedores elegíveis e o prazo estimado.",
+            },
+            follow_redirects=False,
+        )
+        assert saved.status_code == 303
+
+        cursor_config = session_base / ".cursor" / "mcp.json"
+        monkeypatch.setenv("PM_OS_CURSOR_CONFIG_PATH", str(cursor_config))
+        connected = client.post(
+            f"/initiative/{initiative_id}/cursor/connect",
+            follow_redirects=False,
+        )
+        assert "cursor.notice_connected" in connected.headers["location"]
+        connected_page = client.get(f"/initiative/{initiative_id}/specification")
+        assert "recarregue a janela ou reinicie o aplicativo" in connected_page.text
+
+        shared = client.post(
+            f"/initiative/{initiative_id}/cursor/share",
+            follow_redirects=False,
+        )
+        assert "cursor.notice_shared" in shared.headers["location"]
+        overview = client.get(f"/initiative/{initiative_id}")
+        assert "Continuar no Cursor" in overview.text
+        assert "https://cursor.com/link/prompt?" in overview.text
+        assert initiative_id in overview.text
+
+        cursor = CursorMCPService(session_base / "workspace")
+        assert initiative_id in [item["id"] for item in cursor.list_initiatives()]
+        context = cursor.get_initiative_context(initiative_id)
+        assert "fornecedores elegíveis" in context["specification"]["sections"]["requirements"]
+
+        receipt = cursor.propose_changes(
+            initiative_id,
+            specification_version=context["specification"]["version"],
+            proposals=[{
+                "field": "acceptance_criteria",
+                "kind": "acceptance_criterion",
+                "content": "Dado um CEP válido, mostrar apenas fornecedores que atendem a região.",
+                "reason": "Transforma o requisito em comportamento verificável.",
+            }, {
+                "field": "requirements",
+                "kind": "open_question",
+                "content": "Bloquear fornecedores com prazo superior a dois dias.",
+                "reason": "Hipótese técnica que precisa de validação de produto.",
+            }],
+        )
+        approved_id, rejected_id = receipt["proposal_ids"]
+
+        status = client.get(f"/initiative/{initiative_id}/cursor/status")
+        assert status.status_code == 200
+        assert status.json()["shared"] is True
+        assert status.json()["pending_count"] == 2
+
+        review = client.get(f"/initiative/{initiative_id}/specification")
+        assert "Dado um CEP válido" in review.text
+        assert "Aprovar" in review.text
+        assert "Continuar no Cursor" in review.text
+        approved = client.post(
+            f"/initiative/{initiative_id}/cursor/proposals/{approved_id}",
+            data={"decision": "approve"},
+            follow_redirects=False,
+        )
+        assert "cursor.proposal_approved" in approved.headers["location"]
+        rejected = client.post(
+            f"/initiative/{initiative_id}/cursor/proposals/{rejected_id}",
+            data={"decision": "reject"},
+            follow_redirects=False,
+        )
+        assert "cursor.proposal_rejected" in rejected.headers["location"]
+
+        initiative_path = session_base / "workspace" / "initiatives" / initiative_id
+        specification = ProductSpecificationService().load(initiative_path)
+        assert "Dado um CEP válido" in specification["sections"]["acceptance_criteria"]
+        assert "Bloquear fornecedores" not in specification["sections"]["requirements"]
+        statuses = cursor.get_proposal_status(initiative_id, [approved_id, rejected_id])
+        assert [item["status"] for item in statuses] == ["approved", "rejected"]
+
     def test_connect_button_installs_local_mcp_without_manual_copy(
         self, client, session_base, monkeypatch
     ):

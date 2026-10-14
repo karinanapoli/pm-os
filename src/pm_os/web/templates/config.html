@@ -282,6 +282,41 @@
             </div>
         </form>
 
+        <section class="config-cursor-card" aria-labelledby="config-cursor-title">
+            <div>
+                <span class="config-cursor-eyebrow">Cursor</span>
+                <h4 id="config-cursor-title">{{ "cursor.config_title"|t }}</h4>
+                <p>{{ "cursor.config_desc"|t }}</p>
+                {% if cursor_installation.state == "installed" %}
+                <p class="cursor-status connected">✓ {{ "cursor.connected"|t }}</p>
+                <p class="form-hint">{{ "cursor.restart_help"|t }}</p>
+                {% elif cursor_installation.state == "outdated" %}
+                <p class="form-hint">{{ "cursor.outdated_help"|t }}</p>
+                {% elif cursor_installation.state == "invalid" %}
+                <p class="form-hint">{{ "cursor.invalid_help"|t }}</p>
+                {% else %}
+                <p class="form-hint">{{ "cursor.config_connect_help"|t }}</p>
+                {% endif %}
+            </div>
+            <div class="config-cursor-actions">
+                {% if cursor_installation.state != "installed" %}
+                    {% if cursor_local_install_available %}
+                    <form method="POST" action="/config/cursor/connect" data-loading="saving">
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            {{ ("cursor.repair" if cursor_installation.state == "outdated" else "cursor.connect")|t }}
+                        </button>
+                    </form>
+                    {% else %}
+                    <span class="form-hint">{{ "cursor.local_only"|t }}</span>
+                    {% endif %}
+                {% else %}
+                <a class="btn btn-ai btn-sm" href="{{ cursor_prompt_url }}" target="_blank" rel="noopener noreferrer">
+                    {{ "cursor.continue"|t }}
+                </a>
+                {% endif %}
+            </div>
+        </section>
+
         {# ─── Custom Providers (inside Providers tab, separate form) ─── #}
         <div class="card-body" style="border-top:1px solid var(--border);">
             <h4 style="margin-bottom: 16px;">{{ "config.provider_custom"|t }}</h4>

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+import urllib.parse
 from copy import deepcopy
 from typing import Any, Optional
 
@@ -26,6 +27,10 @@ PRESETS = {
     },
 }
 ENV_NAME_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+SENSITIVE_NAME_RE = re.compile(
+    r"(?:api[-_]?key|access[-_]?token|auth|authorization|bearer|client[-_]?secret|password|secret|token)",
+    re.IGNORECASE,
+)
 
 
 def connection_id(url: str) -> str:
@@ -56,6 +61,57 @@ def parse_stdio_env(value: str) -> dict[str, str]:
         if not ENV_NAME_RE.fullmatch(key):
             raise ValueError(f"Nome de variável de ambiente inválido: {key}")
         result[key] = item_value
+    return result
+
+
+def _redact_url(value: str) -> str:
+    """Keep a useful endpoint visible without sending embedded credentials to HTML."""
+    try:
+        parsed = urllib.parse.urlsplit(value)
+    except ValueError:
+        return "[credencial protegida]"
+    try:
+        hostname = parsed.hostname or ""
+        if parsed.port:
+            hostname = f"{hostname}:{parsed.port}"
+    except ValueError:
+        return "[credencial protegida]"
+    if parsed.username or parsed.password:
+        hostname = f"[credencial protegida]@{hostname}"
+    query = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
+    safe_query = [
+        (key, "[protegido]" if SENSITIVE_NAME_RE.search(key) else item_value)
+        for key, item_value in query
+    ]
+    return urllib.parse.urlunsplit((
+        parsed.scheme,
+        hostname,
+        parsed.path,
+        urllib.parse.urlencode(safe_query),
+        "[protegido]" if SENSITIVE_NAME_RE.search(parsed.fragment) else parsed.fragment,
+    ))
+
+
+def _redact_args(values: list[Any]) -> list[str]:
+    result: list[str] = []
+    redact_next = False
+    for raw_value in values:
+        value = str(raw_value)
+        if redact_next:
+            result.append("[protegido]")
+            redact_next = False
+            continue
+        if "=" in value:
+            key, _ = value.split("=", 1)
+            if SENSITIVE_NAME_RE.search(key):
+                result.append(f"{key}=[protegido]")
+                continue
+        if re.match(r"^(?:authorization\s*:|bearer\s+)", value, re.IGNORECASE):
+            result.append("[protegido]")
+            continue
+        result.append(value)
+        if value.startswith("-") and SENSITIVE_NAME_RE.search(value):
+            redact_next = True
     return result
 
 
@@ -195,6 +251,8 @@ def public_connection(connection: dict[str, Any]) -> dict[str, Any]:
     auth["refresh_token"] = ""
     auth["client_secret"] = ""
     item["auth"] = auth
+    item["url"] = _redact_url(str(item.get("url") or ""))
+    item["args"] = _redact_args(list(item.get("args") or []))
     item["env_keys"] = sorted((item.get("env") or {}).keys())
     item["env"] = {}
     return item
