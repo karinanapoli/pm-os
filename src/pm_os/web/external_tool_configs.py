@@ -42,8 +42,11 @@ def external_tool_configs(installer: CursorInstallerService | None = None) -> li
         },
     ]
     workspace = str(entry["env"]["PM_OS_WORKSPACE_DIR"])
+    python_executable = str(entry["command"])
     for config in configs:
-        config["masked_snippet"] = config["snippet"].replace(
-            workspace, "<LOCAL_WORKSPACE_PATH>"
+        config["masked_snippet"] = (
+            config["snippet"]
+            .replace(workspace, "<LOCAL_WORKSPACE_PATH>")
+            .replace(python_executable, "<LOCAL_PYTHON_EXECUTABLE>")
         )
     return configs
