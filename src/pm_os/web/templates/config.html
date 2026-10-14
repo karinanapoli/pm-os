@@ -284,9 +284,9 @@
 
         <section class="config-cursor-card" aria-labelledby="config-cursor-title">
             <div>
-                <span class="config-cursor-eyebrow">Cursor</span>
-                <h4 id="config-cursor-title">{{ "cursor.config_title"|t }}</h4>
-                <p>{{ "cursor.config_desc"|t }}</p>
+                <span class="config-cursor-eyebrow">{{ "external_tools.eyebrow"|t }}</span>
+                <h4 id="config-cursor-title">{{ "external_tools.title"|t }}</h4>
+                <p>{{ "external_tools.desc"|t }}</p>
                 {% if cursor_installation.state == "installed" %}
                 <p class="cursor-status connected">✓ {{ "cursor.connected"|t }}</p>
                 <p class="form-hint">{{ "cursor.restart_help"|t }}</p>

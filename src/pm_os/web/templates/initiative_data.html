@@ -2,6 +2,7 @@
 {% block page_title %}{{ "data.title"|t }} · {{ initiative.name }}{% endblock %}
 
 {% block content %}
+{% if notice %}<div class="alert alert-{{ notice_kind or 'success' }}" role="status">{{ notice|t }}</div>{% endif %}
 {% set active_tab = "data" %}{% include "_initiative_tabs.html" %}
 
 <section class="data-hero">
@@ -11,7 +12,7 @@
         <p>{{ "data.desc"|t }}</p>
     </div>
     <div class="data-hero-actions">
-        <a href="/config#mcp" class="btn btn-secondary btn-sm">{{ "data.connect_source"|t }}</a>
+        <a href="#sources" class="btn btn-secondary btn-sm">{{ "data.connect_source"|t }}</a>
         <a href="/signals#new-signal" class="btn btn-primary btn-sm">{{ "data.add_evidence"|t }}</a>
     </div>
 </section>
@@ -68,22 +69,33 @@
                 {% endfor %}
             </div>
         </section>
+        <section class="card data-section" id="decisions">
+            <div class="card-header data-section-header"><div><h3>{{ "data.decisions_title"|t }}</h3><p>{{ "data.decisions_desc"|t }}</p></div><a href="/initiative/{{ initiative.name }}/specification#decisions" class="btn btn-ghost btn-sm">{{ "data.add_decision"|t }}</a></div>
+            <div class="data-insight-list">
+                {% for decision in decisions %}
+                <article class="data-insight"><div class="data-insight-topline"><span class="data-source-icon">◆</span><span class="decision-status decision-status-{{ decision.status }}">{{ ("decisions.status." ~ decision.status)|t }}</span></div><h4>{{ decision.title }}</h4><p>{{ decision.rationale }}</p>{% if decision.revisit_if %}<footer><span>{{ "decisions.revisit_if"|t }}: {{ decision.revisit_if }}</span></footer>{% endif %}</article>
+                {% else %}<div class="data-empty-action"><strong>{{ "decisions.empty_title"|t }}</strong><span>{{ "decisions.empty_desc"|t }}</span></div>{% endfor %}
+            </div>
+        </section>
     </main>
 
     <aside class="data-sidebar">
-        <section class="card data-section">
+        <section class="card data-section" id="sources">
             <div class="card-header"><div><h3>{{ "data.source_health"|t }}</h3><p>{{ "data.source_health_desc"|t }}</p></div></div>
             <div class="data-source-list">
                 <article class="data-source-row">
                     <span class="data-connector-icon sheet">▦</span>
-                    <div><strong>{{ "data.spreadsheets"|t }}</strong><small>{{ "data.not_connected"|t }}</small></div>
-                    <a href="/config#mcp">{{ "data.connect"|t }}</a>
+                    <div><strong>{{ "data.spreadsheets"|t }}</strong><small>{% if spreadsheets %}{{ spreadsheets|length }} {{ "data.items"|t }}{% else %}{{ "data.not_connected"|t }}{% endif %}</small></div>
+                    <button type="button" class="link-button" onclick="document.getElementById('spreadsheet-input').click()">{{ "data.connect"|t }}</button>
                 </article>
+                <form method="POST" action="/initiative/{{ initiative.name }}/data/spreadsheets" enctype="multipart/form-data" style="display:none" id="spreadsheet-form"><input id="spreadsheet-input" type="file" name="spreadsheet" accept=".csv,.tsv" onchange="this.form.submit()"></form>
+                {% for sheet in spreadsheets %}<article class="data-source-row"><span class="data-connector-icon sheet">▦</span><div><strong>{{ sheet.name }}</strong><small>{{ sheet.rows }} linhas · {{ sheet.columns }} colunas</small></div><span class="data-source-state healthy">{{ "data.ready"|t }}</span></article>{% endfor %}
                 <article class="data-source-row">
                     <span class="data-connector-icon automation">⚡</span>
-                    <div><strong>{{ "data.automations"|t }}</strong><small>{{ "data.prototype"|t }}</small></div>
-                    <span class="data-source-state waiting">{{ "data.soon"|t }}</span>
+                    <div><strong>{{ "data.automations"|t }}</strong><small>{{ "data.automations_help"|t }}</small></div>
+                    <a href="/initiative/{{ initiative.name }}/specification#cursor-ai">{{ "data.connect"|t }}</a>
                 </article>
+                {% for automation in automations %}<article class="data-source-row"><span class="data-connector-icon automation">⚡</span><div><strong>{{ automation.name }}</strong><small>{{ automation.tool }}{% if automation.description %} · {{ automation.description }}{% endif %}</small></div><span class="data-source-state healthy">{{ "data.synced"|t }}</span></article>{% endfor %}
                 {% if context_files %}
                 <article class="data-source-row">
                     <span class="data-connector-icon files">≡</span>

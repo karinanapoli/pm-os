@@ -70,11 +70,8 @@ document.addEventListener('DOMContentLoaded', function() {
         <span>{{ "dashboard.capabilities.show"|t }}</span>
     </summary>
     <div class="capability-grid">
-        <a href="/signals" class="capability-card">
-            <span class="capability-icon">◌</span><div><strong>{{ "nav.signals"|t }}</strong><p>{{ "dashboard.capabilities.signals"|t }}</p></div>
-        </a>
-        <a href="/decisions" class="capability-card">
-            <span class="capability-icon">◆</span><div><strong>{{ "nav.decisions"|t }}</strong><p>{{ "dashboard.capabilities.decisions"|t }}</p></div>
+        <a href="/initiative/{{ initiatives[0].name }}/data" class="capability-card">
+            <span class="capability-icon">◌</span><div><strong>{{ "data.title"|t }}</strong><p>{{ "data.desc"|t }}</p></div>
         </a>
         <a href="/initiative/{{ initiatives[0].name }}/map" class="capability-card">
             <span class="capability-icon">◈</span><div><strong>{{ "map.tab"|t }}</strong><p>{{ "dashboard.capabilities.map"|t }}</p></div>
