@@ -723,6 +723,9 @@ Emissão automática de pedidos de compra.
         )
         assert "notice=backlog.export_prepared" in prepared.headers["location"]
         assert prepared.headers["location"].endswith("#export-preview")
+        preview_page = client.get(prepared.headers["location"])
+        assert preview_page.status_code == 200
+        assert f"{len(item_ids)} itens · github" in preview_page.text
         preview_path = path.parent / "backlog-export-preview.json"
         preview = json.loads(preview_path.read_text(encoding="utf-8"))
 
@@ -733,6 +736,7 @@ Emissão automática de pedidos de compra.
         )
         assert "notice=backlog.export_confirmed" in confirmed.headers["location"]
         assert confirmed.headers["location"].endswith("#export-result")
+        assert client.get(confirmed.headers["location"]).status_code == 200
         download = client.get(f"/initiative/{init_id}/backlog/export/download")
         assert download.status_code == 200
         assert json.loads(download.content)["status"] == "confirmed"

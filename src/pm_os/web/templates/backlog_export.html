@@ -36,7 +36,7 @@
 </section>
 {% if preview %}
 <section class="card" id="export-preview" tabindex="-1" style="margin-top:16px;scroll-margin-top:24px;">
-    <div class="card-header"><div><h3>{{ "backlog.export_preview"|t }}</h3><p class="spec-caption">{{ preview.items|length }} {{ "backlog.export_items"|t }} · {{ preview.target }}</p></div></div>
+    <div class="card-header"><div><h3>{{ "backlog.export_preview"|t }}</h3><p class="spec-caption">{{ preview["items"]|length }} {{ "backlog.export_items"|t }} · {{ preview.target }}</p></div></div>
     <div class="card-body">
         <pre style="max-height:480px;overflow:auto;white-space:pre-wrap;">{{ preview|tojson(indent=2) }}</pre>
         {% if preview.status == "prepared" %}
@@ -74,7 +74,7 @@
         {% set latest = write_receipt.executions[-1] %}
         <h4>{{ "backlog.mcp_write_result"|t }}</h4>
         <ul class="source-list">
-            {% for item in latest.items %}<li><strong>{{ item.title }}</strong> — {{ ("backlog.mcp_status_" ~ item.status)|t }}</li>{% endfor %}
+            {% for item in latest["items"] %}<li><strong>{{ item.title }}</strong> — {{ ("backlog.mcp_status_" ~ item.status)|t }}</li>{% endfor %}
         </ul>
         {% endif %}
     </div>
