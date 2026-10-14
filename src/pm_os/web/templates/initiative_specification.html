@@ -23,7 +23,7 @@
     <li class="{{ 'done' if specification.artifacts else '' }}">{{ "spec.step_deliverables"|t }}</li>
 </ol>
 
-<section class="spec-prepare">
+<section class="spec-prepare" id="spec-prepare">
     <div>
         <span class="spec-prepare-icon">{{ icon("sparkles", 20) }}</span>
         <div>
@@ -341,10 +341,14 @@
                 <p class="spec-caption">{{ specification.approved_by }} · {{ specification.approved_at[:10] }}</p>
                 {% else %}
                 <p class="spec-caption">{{ "spec.approval_desc"|t }}</p>
+                {% set spec_has_content = specification.sections.values()|select|list %}
+                {% set approval_blocked = not specification.version %}
                 <form method="POST" action="/initiative/{{ initiative.name }}/specification/approve">
-                    <button class="btn btn-primary btn-sm" {% if not specification.version %}disabled aria-describedby="spec-approval-hint"{% endif %}>{{ "spec.approve"|t }}</button>
+                    <button class="btn btn-primary btn-sm" {% if approval_blocked %}disabled aria-describedby="spec-approval-hint"{% endif %}>{{ "spec.approve"|t }}</button>
                 </form>
-                {% if not specification.version %}<p class="spec-approval-hint" id="spec-approval-hint">{{ "spec.approve_needs_draft"|t }}</p>{% endif %}
+                {% if not specification.version %}<p class="spec-approval-hint" id="spec-approval-hint">{{ "spec.approve_needs_draft"|t }}</p>
+                {% elif not spec_has_content %}<p class="spec-approval-hint"><a href="#spec-prepare">{{ "spec.approve_suggest_autofill"|t }}</a></p>
+                {% elif not specification.sections.requirements %}<p class="spec-approval-hint">{{ "spec.approve_without_requirements"|t }}</p>{% endif %}
                 {% endif %}
             </div>
         </section>

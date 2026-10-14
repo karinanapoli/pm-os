@@ -6,7 +6,7 @@
 {% include "_initiative_tabs.html" %}
 
 <section class="page-header">
-    <div><p class="eyebrow">{{ initiative.name }}</p><h2>{{ "chat.title"|t }}</h2><p>{{ "chat.desc"|t }}</p></div>
+    <div><h2>{{ "chat.title"|t }}</h2><p>{{ "chat.desc"|t }}</p></div>
     {% if messages %}
     <form method="POST" action="/initiative/{{ initiative.name }}/chat/clear" onsubmit="return confirm('{{ 'chat.clear_confirm'|t }}')">
         <button class="btn btn-ghost btn-sm">{{ "chat.clear"|t }}</button>
@@ -24,7 +24,7 @@
             <article style="max-width:86%;padding:14px 16px;border-radius:14px;align-self:{{ 'flex-end' if message.role == 'user' else 'flex-start' }};background:{{ 'var(--primary)' if message.role == 'user' else 'var(--surface-2)' }};color:{{ 'white' if message.role == 'user' else 'var(--text)' }};">
                 <div class="markdown-body">{{ message.content|markdown }}</div>
                 {% if message.role == 'assistant' and message.sources %}
-                <div class="form-hint" style="margin-top:10px;">{{ "chat.sources"|t }}: {{ message.sources|join(', ') }}</div>
+                <div class="form-hint" style="margin-top:10px;">{{ "chat.sources"|t }}: {{ message.sources|map("initiative_label")|join(', ') }}</div>
                 {% endif %}
                 {% if message.role == 'assistant' and message.mcp_used %}
                 <div class="form-hint" style="margin-top:6px;">{{ "chat.mcp_used"|t }}: {{ message.mcp_used|join(', ') }}</div>

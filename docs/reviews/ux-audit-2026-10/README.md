@@ -269,3 +269,27 @@ Todas as correções foram verificadas no app rodando (capturas `*-after.png` em
 | — | Hierarquia invertida na lateral da Especificação | ✅ Corrigido | Títulos de cards laterais em `--fs-md`; hero da Especificação reorganizado em linhas |
 | — | Abas cortadas no mobile | ✅ Corrigido | Fade lateral indicando rolagem em abas da iniciativa, stepper e Configurações |
 | — | Estilos inline | ◐ Parcial | Extraídos os que causavam bugs (topbar, sidebar, seletor de workspace, abas de Configurações); o restante fica para uma limpeza dedicada |
+
+---
+
+## 10. Jornadas ponta a ponta (rodada 2)
+
+A primeira rodada avaliou telas estáticas. Nesta, as cinco personas percorreram suas jornadas no navegador (Playwright, workspace isolado, provedor **Demo**, que é o padrão de uma instalação nova).
+
+| Persona | Jornada | Antes | Depois |
+|---------|---------|-------|--------|
+| Lucas (APM, mobile) | Quickstart → iniciativa | Exemplo com **nota 0.0/10** (“não foi possível interpretar a resposta da IA”) | Nota 7.5/10 demonstrativa, sinalizada como tal |
+| Marina (PM pleno) | Iniciativa → docs → PRD → spec → backlog | **Travava**: “Não foi possível conectar ao Ollama” depois do clique; Dashboard insistia em “Gerar PRD”; spec vazia podia ser aprovada | Aviso antes do clique, botão desabilitado com caminho alternativo; Dashboard recomenda conectar provedor; aprovação nunca é bloqueada: especificação vazia sugere gerar rascunho a partir de dados, documentos ou PRD; backlog gerado e aprovado |
+| Helena (Head) | Decisões + roadmap | OK | OK, com nome da iniciativa no lugar do código |
+| Ana (Ops) | Planilha, automação, sinal, filtro | OK | OK |
+| Diego (Tech Lead) | Assistente + consulta | Respondia **qualquer pergunta com um PRD de exemplo** | Demo mostra os trechos das fontes mais próximos da pergunta, com citação `[SRC-…]`, renderizados em Markdown |
+
+**Causas-raiz corrigidas**
+- O cliente Demo procurava “Avalie a qualidade”, mas o validador pede “Avalie o PRD abaixo”: a validação recebia um PRD em vez de JSON.
+- A geração e o quickstart gravavam relatórios de validação ilegíveis (0.0/10); agora só relatórios válidos são persistidos, como já fazia a validação manual.
+- O cliente Demo não tinha resposta para perguntas e devolvia o PRD padrão.
+- Estimativa de tamanho/tokens em “Gerar PRD” era 0 porque a listagem não carrega o conteúdo; agora usa o tamanho do arquivo.
+
+**Acabamento incluído:** códigos `INT-…` trocados por nomes (Gerar PRD, consulta, decisões, sinais, chat), sem rótulo duplicado acima dos títulos; títulos de Markdown embutido começam em h2 (uma só h1 por página); lista de documentos legível no celular; ícone duplicado do Quickstart removido.
+
+Testes: `tests/test_web_e2e.py::TestDemoModeJourneys`, `test_generation_does_not_persist_unreadable_validation_report` e novos casos em `tests/test_ai_client.py`.

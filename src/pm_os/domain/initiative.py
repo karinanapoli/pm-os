@@ -32,6 +32,11 @@ class Initiative:
         return sum(len(document) for document in self.documents)
 
     @property
+    def has_uploaded_sources(self) -> bool:
+        """True when the PM added files beyond the initial context note."""
+        return any(source.name != "context.md" for source in self.sources)
+
+    @property
     def estimated_tokens(self) -> int:
         return max(1, (self.context_char_count + 3) // 4) if self.context_char_count else 0
 

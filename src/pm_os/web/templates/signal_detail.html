@@ -48,7 +48,7 @@
                     <label class="checkbox-label">
                         <input type="checkbox" name="initiative_ids" value="{{ initiative.name }}"
                                {% if initiative.name in signal.initiative_ids %}checked{% endif %}>
-                        <span>{{ initiative.name }}</span>
+                        <span>{{ initiative|display_name }}</span>
                     </label>
                     {% endfor %}
                 </div>

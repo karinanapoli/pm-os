@@ -1,15 +1,44 @@
+import re
+import unicodedata
+
+_SOURCE_BLOCK_RE = re.compile(
+    r'<<<SOURCE id="([^"]+)" name="([^"]*)"[^>]*>>>\n(.*?)\n<<<END SOURCE id="\1">>>',
+    re.DOTALL,
+)
+_STOPWORDS = {
+    "qual", "quais", "como", "onde", "quando", "quem", "porque", "para", "sobre", "hoje",
+    "esta", "este", "isso", "essa", "esse", "mais", "menos", "maior", "maiores", "entre",
+    "what", "which", "when", "where", "about", "with", "from", "that", "this", "today",
+    "does", "have", "there", "their",
+}
+
+
+def _normalize(text: str) -> str:
+    text = unicodedata.normalize("NFKD", text.lower())
+    return "".join(char for char in text if not unicodedata.combining(char))
+
+
+def _keywords(question: str) -> set[str]:
+    words = re.findall(r"[a-z0-9]+", _normalize(question))
+    return {word[:6] for word in words if len(word) >= 4 and word not in _STOPWORDS}
+
+
 class FakeAIClient:
     """
     Fake AI client used to validate the workflow without calling a real LLM.
     """
 
     def generate(self, prompt: str) -> str:
-        if "Avalie a qualidade" in prompt or "Evaluate the quality" in prompt:
+        if '"overall_score"' in prompt or "Avalie a qualidade" in prompt or "Evaluate the quality" in prompt:
             return """```json
-{"overall_score": 7.5, "sections": [
+{"overall_score": 7.5, "summary": "Avaliação demonstrativa: o modo Demo confere a estrutura, mas não analisa o conteúdo.", "sections": [
   {"name": "Demo", "score": 7.5, "issues": [], "suggestions": ["Conecte um provedor de IA para uma avaliação contextual."], "rationale": "Resultado demonstrativo.", "action_items": []}
 ]}
 ```"""
+        if ("\nPergunta: " in prompt and "Documentos:" in prompt) or (
+            "\nQuestion: " in prompt and "Documents:" in prompt
+        ):
+            return self._answer_from_sources(prompt)
         if "Gerador de Backlog" in prompt or "Backlog Generator" in prompt:
             return """## Iniciativa: Demonstração de backlog
 
@@ -200,3 +229,42 @@ Informações de produto ficam dispersas e difíceis de reutilizar.
 
 _Tamanho do prompt demonstrado: {len(prompt)} caracteres._
 """
+
+    @staticmethod
+    def _answer_from_sources(prompt: str) -> str:
+        """Return the source excerpts closest to the question, citing their IDs."""
+        portuguese = "\nPergunta: " in prompt
+        marker = "\nPergunta: " if portuguese else "\nQuestion: "
+        question = prompt.rsplit(marker, 1)[-1].strip()
+        keywords = _keywords(question)
+        matches = []
+        for source_id, name, content in _SOURCE_BLOCK_RE.findall(prompt):
+            for line in content.splitlines():
+                text = line.strip().lstrip("#-*>0123456789. ").replace("**", "").strip()
+                if len(text) < 12:
+                    continue
+                normalized = _normalize(text)
+                score = sum(1 for keyword in keywords if keyword in normalized)
+                if score:
+                    matches.append((score, len(matches), text[:280], source_id, name))
+        matches.sort(key=lambda item: (-item[0], item[1]))
+        top = matches[:4]
+        if portuguese:
+            intro = (
+                "**Modo Demo — trechos encontrados nas fontes**\n\n"
+                "O modo Demo não interpreta nem resume documentos: ele mostra os trechos "
+                "que mais se aproximam da sua pergunta. Para uma resposta analisada, "
+                "conecte um provedor de IA em Configurações."
+            )
+            empty = "Não encontrei trechos relacionados a essa pergunta nas fontes selecionadas."
+        else:
+            intro = (
+                "**Demo mode — excerpts found in your sources**\n\n"
+                "Demo mode does not interpret or summarize documents: it shows the excerpts "
+                "closest to your question. Connect an AI provider in Settings for an analyzed answer."
+            )
+            empty = "I could not find excerpts related to this question in the selected sources."
+        if not top:
+            return f"{intro}\n\n{empty}"
+        lines = [f"- {text} [{source_id}] _({name})_" for _, _, text, source_id, name in top]
+        return intro + "\n\n" + "\n".join(lines)
