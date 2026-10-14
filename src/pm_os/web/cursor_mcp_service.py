@@ -118,6 +118,17 @@ class CursorMCPService:
         initiative = self._shared_initiative(initiative_name, load_content=False)
         return self.contributions.proposal_status(initiative.path, proposal_ids)
 
+    def propose_backlog_refinements(self, initiative_name: str, *, refinements: list[dict]) -> dict:
+        initiative = self._shared_initiative(initiative_name, load_content=False)
+        accepted = self.contributions.receive_backlog_refinements(
+            initiative.path, refinements, source="external_agent"
+        )
+        return {
+            "refinement_ids": [item["id"] for item in accepted],
+            "status": "pending_human_review",
+            "artifact_changed": False,
+        }
+
     def register_automation(self, initiative_name: str, *, name: str, tool: str, description: str = "") -> dict:
         """Register an automation created by Cursor, VS Code, or another MCP client."""
         initiative = self._shared_initiative(initiative_name, load_content=False)

@@ -17,6 +17,7 @@ def test_server_registers_cursor_tools(monkeypatch, tmp_path):
         "propose_changes",
         "get_proposal_status",
         "register_automation",
+        "propose_backlog_refinements",
     }
 
 

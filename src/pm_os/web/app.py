@@ -139,23 +139,26 @@ def _is_local_request(request: Request) -> bool:
     return host in {"127.0.0.1", "::1", "localhost", "testclient"}
 
 
-def _cursor_prompt_url(initiative_name: str = "", repository_url: str = "") -> str:
+def _cursor_prompt_url(
+    initiative_name: str = "", repository_url: str = "", implementation_mode: str = "new"
+) -> str:
     initiative_instruction = (
         f"trabalhar na iniciativa {initiative_name}"
         if initiative_name
         else "listar as iniciativas disponíveis e me perguntar qual delas quero trabalhar"
     )
     repository_instruction = (
-        f" O repositório de implementação vinculado é {repository_url}. Abra-o usando a autenticação já configurada na ferramenta, crie uma branch e apresente o diff antes de propor um PR."
-        if repository_url else
-        " Se o trabalho exigir alterar código, peça ao usuário para vincular ou abrir o repositório antes de editar arquivos."
+        f"Este é um produto existente. Analise o repositório {repository_url} usando a autenticação já configurada na ferramenta."
+        if implementation_mode == "existing" and repository_url
+        else "Este é um produto novo. Não procure nem analise um repositório; trabalhe somente com o PRD, a especificação e o contexto do PM Studio."
     )
     prompt = (
-        f"Use o MCP do PM Studio para {initiative_instruction}. "
-        "Consulte o contexto e a especificação antes de analisar o código deste projeto. "
-        "Identifique descobertas técnicas, riscos e lacunas. Não altere a especificação diretamente: "
-        "envie descobertas e propostas ao PM Studio para revisão humana."
-        f"{repository_instruction}"
+        f"Atue como Product Manager Técnico e use o MCP do PM Studio para {initiative_instruction}. "
+        "Leia o objetivo, o PRD, a especificação e o backlog sem alterar esses documentos. "
+        f"{repository_instruction} "
+        "Identifique dependências, restrições, riscos e lacunas técnicas com referências verificáveis. "
+        "Não mude o objetivo original nem aplique alterações diretamente. Para cada ajuste recomendado, informe o item do backlog afetado, a sugestão, a justificativa e as referências de código. "
+        "Devolva tudo ao PM Studio usando propose_backlog_refinements para revisão humana."
     )
     return "https://cursor.com/link/prompt?" + urllib.parse.urlencode({"text": prompt})
 
@@ -1440,7 +1443,7 @@ async def initiative_detail(
             linked_signals=_signal_repo(request).list(initiative_name),
             security_assessment=security_assessment_service.load(selected.path),
             cursor_shared=ai_contributions.get("initiative_access") == "shared",
-            cursor_prompt_url=_cursor_prompt_url(initiative_name, str(metadata.get("repository_url") or "")),
+            cursor_prompt_url=_cursor_prompt_url(initiative_name, str(metadata.get("repository_url") or ""), str(metadata.get("implementation_mode") or "new")),
             cursor_pending_count=len(pending_cursor_proposals),
         ),
     )
@@ -1452,6 +1455,7 @@ async def update_initiative_settings(
     initiative_name: str,
     display_name: str = Form(...),
     repository_url: str = Form(""),
+    implementation_mode: str = Form("new"),
 ):
     selected = _get_initiative_by_name(initiative_name, request)
     if not selected:
@@ -1462,6 +1466,7 @@ async def update_initiative_settings(
             f"/initiative/{initiative_name}?notice=initiative.settings_invalid&notice_kind=error",
             status_code=303,
         )
+    implementation_mode = implementation_mode if implementation_mode in {"new", "existing"} else "new"
     clean_repository = repository_url.strip()
     if clean_repository:
         parsed = urllib.parse.urlsplit(clean_repository)
@@ -1476,8 +1481,14 @@ async def update_initiative_settings(
         metadata = yaml.safe_load(metadata_path.read_text(encoding="utf-8")) or {}
     except (OSError, yaml.YAMLError):
         metadata = {}
+    if implementation_mode == "existing" and not clean_repository:
+        return RedirectResponse(
+            f"/initiative/{initiative_name}?notice=initiative.repository_required&notice_kind=error",
+            status_code=303,
+        )
     metadata["name"] = clean_name
     metadata["repository_url"] = clean_repository
+    metadata["implementation_mode"] = implementation_mode
     metadata_path.write_text(
         yaml.safe_dump(metadata, allow_unicode=True, sort_keys=False), encoding="utf-8"
     )
@@ -1526,7 +1537,7 @@ async def specification_page(
             ai_contributions=ai_contributions,
             cursor_installation=cursor_installer.status(),
             cursor_local_install_available=_is_local_request(request),
-            cursor_prompt_url=_cursor_prompt_url(initiative_name, str(metadata.get("repository_url") or "")),
+            cursor_prompt_url=_cursor_prompt_url(initiative_name, str(metadata.get("repository_url") or ""), str(metadata.get("implementation_mode") or "new")),
             pending_ai_proposals=ai_contribution_service.pending(ai_contributions),
             available_sources=selected.sources,
             available_ai_providers=_available_ai_providers(),
@@ -2335,6 +2346,7 @@ async def review_backlog(
     specification = product_specification_service.load(selected.path)
     backlog_content = product_specification_service.load_backlog(selected.path)
     backlog_artifact = (specification.get("artifacts") or {}).get("backlog", {})
+    ai_contributions = ai_contribution_service.load(selected.path)
     specification_ready, specification_reason = product_specification_service.backlog_source_availability(
         selected.path, "specification"
     )
@@ -2358,9 +2370,38 @@ async def review_backlog(
             selected_source=(source if source in {"prd", "specification", "upload"} else backlog_artifact.get("source", "")),
             available_ai_providers=_available_ai_providers(),
             active_ai_provider=config_manager.get("ai_provider", "ollama"),
+            backlog_refinements=ai_contributions.get("backlog_refinements") or [],
             notice=notice,
             notice_kind=notice_kind,
         ),
+    )
+
+
+@app.post("/initiative/{initiative_name}/backlog/refinements/{refinement_id}")
+async def review_backlog_refinement(
+    request: Request,
+    initiative_name: str,
+    refinement_id: str,
+    decision: str = Form(...),
+):
+    selected = _get_initiative_by_name(initiative_name, request)
+    if not selected:
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    try:
+        ai_contribution_service.decide_backlog_refinement(
+            selected.path,
+            refinement_id,
+            decision=decision,
+            actor=_get_session_user_email(request),
+        )
+    except ValueError:
+        return RedirectResponse(
+            f"/initiative/{initiative_name}/backlog?notice=backlog.refinement_error&notice_kind=error#technical-refinements",
+            status_code=303,
+        )
+    return RedirectResponse(
+        f"/initiative/{initiative_name}/backlog?notice=backlog.refinement_reviewed#technical-refinements",
+        status_code=303,
     )
 
 

@@ -26,6 +26,23 @@ from fastapi.testclient import TestClient
 os.environ["PM_OS_ENV"] = "test"
 
 
+def test_technical_pm_prompt_distinguishes_existing_and_new_products():
+    from urllib.parse import parse_qs, urlsplit
+    from pm_os.web.app import _cursor_prompt_url
+
+    existing = parse_qs(urlsplit(_cursor_prompt_url(
+        "INT-001", "https://github.com/acme/app", "existing"
+    )).query)["text"][0]
+    new = parse_qs(urlsplit(_cursor_prompt_url("INT-002", "", "new")).query)["text"][0]
+
+    assert "Product Manager Técnico" in existing
+    assert "propose_backlog_refinements" in existing
+    assert "https://github.com/acme/app" in existing
+    assert "sem alterar esses documentos" in existing
+    assert "produto novo" in new
+    assert "Não procure nem analise um repositório" in new
+
+
 # ─── Session-scoped: one workspace + config for all tests ───
 
 @pytest.fixture(scope="session")
@@ -1079,6 +1096,7 @@ class TestInitiativeCRUD:
             data={
                 "display_name": "Novo nome da iniciativa",
                 "repository_url": "https://github.com/acme/product-app/",
+                "implementation_mode": "existing",
             },
             follow_redirects=False,
         )
@@ -1090,6 +1108,7 @@ class TestInitiativeCRUD:
         assert "Novo nome da iniciativa" in page.text
         assert "https://github.com/acme/product-app" in page.text
         assert "Editar iniciativa" in page.text
+        assert 'value="existing" selected' in page.text
 
     def test_downloads_uploaded_context_document(self, client):
         init_name = _create_initiative(client, "Download context", "INT-DOWNLOAD")

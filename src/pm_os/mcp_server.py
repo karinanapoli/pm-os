@@ -81,6 +81,14 @@ def register_automation(
     )
 
 
+@mcp.tool()
+def propose_backlog_refinements(initiative_name: str, refinements: list[dict]) -> dict:
+    """Return code-backed backlog suggestions for human review without changing PRD or backlog."""
+    return service.propose_backlog_refinements(
+        initiative_name, refinements=refinements
+    )
+
+
 def main() -> None:
     mcp.run()
 

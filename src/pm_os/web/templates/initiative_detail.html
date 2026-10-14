@@ -203,6 +203,14 @@
                 <div class="form-hint">{{ "initiative.settings.name_help"|t }}</div>
             </div>
             <div class="form-group">
+                <label for="initiative-implementation-mode">{{ "initiative.settings.implementation_mode"|t }}</label>
+                <select id="initiative-implementation-mode" name="implementation_mode">
+                    <option value="new" {% if metadata.implementation_mode != 'existing' %}selected{% endif %}>{{ "initiative.settings.mode_new"|t }}</option>
+                    <option value="existing" {% if metadata.implementation_mode == 'existing' %}selected{% endif %}>{{ "initiative.settings.mode_existing"|t }}</option>
+                </select>
+                <div class="form-hint">{{ "initiative.settings.mode_help"|t }}</div>
+            </div>
+            <div class="form-group">
                 <label for="initiative-repository-url">{{ "initiative.settings.repository"|t }} <span class="optional">{{ "signals.optional"|t }}</span></label>
                 <input id="initiative-repository-url" name="repository_url" type="url" value="{{ metadata.repository_url or '' }}" placeholder="https://github.com/organizacao/repositorio">
                 <div class="form-hint">{{ "initiative.settings.repository_help"|t }}</div>

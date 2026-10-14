@@ -26,6 +26,9 @@ class AIContributionService:
         state["proposals"] = [
             item for item in (stored.get("proposals") or []) if isinstance(item, dict)
         ]
+        state["backlog_refinements"] = [
+            item for item in (stored.get("backlog_refinements") or []) if isinstance(item, dict)
+        ]
         return state
 
     def connect(self, initiative_path: Path, *, actor: str = "") -> dict:
@@ -122,6 +125,51 @@ class AIContributionService:
             if proposal.get("id") in wanted
         ]
 
+    def receive_backlog_refinements(
+        self, initiative_path: Path, refinements: list[dict], *, source: str
+    ) -> list[dict]:
+        """Store code-backed backlog suggestions without editing product artifacts."""
+        state = self.load(initiative_path)
+        if state["initiative_access"] != "shared":
+            raise ValueError("The initiative is not available to external agents.")
+        accepted = []
+        for raw in refinements:
+            target = str(raw.get("backlog_item") or "").strip()
+            suggestion = str(raw.get("suggestion") or "").strip()
+            rationale = str(raw.get("rationale") or "").strip()
+            references = [str(value).strip() for value in (raw.get("code_references") or []) if str(value).strip()]
+            if not target or not suggestion or not rationale:
+                raise ValueError("Backlog item, suggestion and rationale are required.")
+            item = {
+                "id": f"REF-{uuid.uuid4().hex[:12].upper()}",
+                "backlog_item": target,
+                "suggestion": suggestion,
+                "rationale": rationale,
+                "code_references": references,
+                "status": "pending",
+                "source": source.strip() or "external_agent",
+                "created_at": self._now(),
+            }
+            state["backlog_refinements"].append(item)
+            accepted.append(deepcopy(item))
+        if accepted:
+            state["last_received_at"] = self._now()
+            self._persist(initiative_path, state)
+        return accepted
+
+    def decide_backlog_refinement(
+        self, initiative_path: Path, refinement_id: str, *, decision: str, actor: str = ""
+    ) -> dict:
+        if decision not in {"accepted", "dismissed"}:
+            raise ValueError("Invalid refinement decision.")
+        state = self.load(initiative_path)
+        for refinement in state["backlog_refinements"]:
+            if refinement.get("id") == refinement_id and refinement.get("status") == "pending":
+                refinement.update({"status": decision, "reviewed_by": actor, "reviewed_at": self._now()})
+                self._persist(initiative_path, state)
+                return deepcopy(refinement)
+        raise ValueError("Backlog refinement not found.")
+
     def decide(
         self,
         initiative_path: Path,
@@ -197,6 +245,7 @@ class AIContributionService:
             "shared_specification_version": 0,
             "last_received_at": "",
             "proposals": [],
+            "backlog_refinements": [],
         }
 
     @staticmethod

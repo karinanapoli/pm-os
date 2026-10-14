@@ -157,6 +157,31 @@
     </div>
 </section>
 {% endif %}
+
+{% if backlog_refinements %}
+<section class="card" id="technical-refinements" style="margin-top:16px;">
+    <div class="card-header">
+        <div><h3>{{ "backlog.refinements_title"|t }}</h3><p class="spec-caption">{{ "backlog.refinements_desc"|t }}</p></div>
+        <span class="spec-count">{{ backlog_refinements|selectattr('status', 'equalto', 'pending')|list|length }}</span>
+    </div>
+    <div class="card-body spec-decision-list">
+        {% for refinement in backlog_refinements %}
+        <article class="spec-decision">
+            <div class="decision-heading"><strong>{{ refinement.backlog_item }}</strong><span class="decision-status">{{ ("backlog.refinement_status_" ~ refinement.status)|t }}</span></div>
+            <p><strong>{{ "backlog.refinement_suggestion"|t }}:</strong> {{ refinement.suggestion }}</p>
+            <p class="spec-caption">{{ refinement.rationale }}</p>
+            {% if refinement.code_references %}<div class="decision-revisit"><strong>{{ "backlog.code_references"|t }}:</strong> {{ refinement.code_references|join(', ') }}</div>{% endif %}
+            {% if refinement.status == 'pending' %}
+            <div class="cursor-proposal-actions">
+                <form method="POST" action="/initiative/{{ initiative.name }}/backlog/refinements/{{ refinement.id }}"><input type="hidden" name="decision" value="accepted"><button class="btn btn-primary btn-sm">{{ "backlog.refinement_accept"|t }}</button></form>
+                <form method="POST" action="/initiative/{{ initiative.name }}/backlog/refinements/{{ refinement.id }}"><input type="hidden" name="decision" value="dismissed"><button class="btn btn-ghost btn-sm">{{ "backlog.refinement_dismiss"|t }}</button></form>
+            </div>
+            {% endif %}
+        </article>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
 <script>
 (() => {
     const form = document.getElementById('backlog-generate-form');

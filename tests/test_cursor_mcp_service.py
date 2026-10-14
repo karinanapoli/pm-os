@@ -100,6 +100,30 @@ def test_cursor_can_submit_referenced_technical_discovery(tmp_path):
     assert proposal["status"] == "pending"
 
 
+def test_agent_returns_backlog_refinements_without_changing_artifacts(tmp_path):
+    path = _initiative(tmp_path)
+    _share(path)
+    backlog = path / "artifacts" / "backlog.md"
+    backlog.write_text("# Backlog original", encoding="utf-8")
+
+    receipt = CursorMCPService(tmp_path).propose_backlog_refinements(
+        "INT-001",
+        refinements=[{
+            "backlog_item": "História: mostrar progresso",
+            "suggestion": "Adicionar tarefa para persistência do progresso.",
+            "rationale": "O estado atual vive apenas em memória.",
+            "code_references": ["src/progress/store.py:18"],
+        }],
+    )
+
+    assert receipt["status"] == "pending_human_review"
+    assert receipt["artifact_changed"] is False
+    assert backlog.read_text(encoding="utf-8") == "# Backlog original"
+    stored = AIContributionService().load(path)["backlog_refinements"][0]
+    assert stored["status"] == "pending"
+    assert stored["code_references"] == ["src/progress/store.py:18"]
+
+
 def test_prd_is_available_only_after_sharing(tmp_path):
     path = _initiative(tmp_path)
     (path / "artifacts" / "prd.md").write_text("# PRD", encoding="utf-8")
