@@ -32,6 +32,11 @@
         </div>
     </div>
     <form method="POST" action="/initiative/{{ initiative.name }}/specification/prepare" data-loading="processing">
+        <fieldset class="spec-source-choice">
+            <legend>{{ "spec.generation_source"|t }}</legend>
+            <label><input type="radio" name="generation_source" value="context" checked> {{ "spec.source_context"|t }}</label>
+            <label><input type="radio" name="generation_source" value="prd" {% if not prd_exists %}disabled{% endif %}> {{ "spec.source_prd"|t }}</label>
+        </fieldset>
         <label class="spec-provider">
             <span>{{ "spec.provider_label"|t }}</span>
             <select name="ai_provider">
@@ -54,7 +59,7 @@
             </div>
         </details>
         {% endif %}
-        <button type="submit" class="btn btn-ai" {% if not available_sources %}disabled{% endif %}>
+        <button type="submit" class="btn btn-ai" {% if not available_sources and not prd_exists %}disabled{% endif %}>
             {{ "spec.prepare_cta"|t }}
         </button>
     </form>

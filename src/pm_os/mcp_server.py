@@ -71,10 +71,19 @@ def get_proposal_status(initiative_name: str, proposal_ids: list[str]) -> list[d
     return service.get_proposal_status(initiative_name, proposal_ids)
 
 
+@mcp.tool()
+def register_automation(
+    initiative_name: str, name: str, tool: str, description: str = ""
+) -> dict:
+    """Register an external automation so it appears in the initiative Data tab."""
+    return service.register_automation(
+        initiative_name, name=name, tool=tool, description=description
+    )
+
+
 def main() -> None:
     mcp.run()
 
 
 if __name__ == "__main__":
     main()
-

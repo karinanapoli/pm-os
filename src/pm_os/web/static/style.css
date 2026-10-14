@@ -3513,3 +3513,8 @@ body {
         grid-template-columns: 1fr;
     }
 }
+.content-modal { width: min(860px, 92vw); max-height: 86vh; padding: 0; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.content-modal::backdrop { background: rgba(5, 8, 18, .72); }
+.content-modal .card-body { max-height: 70vh; overflow: auto; }
+.spec-source-choice { border: 0; padding: 0; margin: 0; display: flex; gap: 12px; align-items: center; font-size: 13px; }
+.spec-source-choice legend { color: var(--text-muted); margin-bottom: 6px; }

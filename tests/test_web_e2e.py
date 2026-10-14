@@ -1804,7 +1804,7 @@ class TestConfiguration:
         monkeypatch.setenv("PM_OS_CURSOR_CONFIG_PATH", str(cursor_config))
 
         before = client.get("/config#providers")
-        assert "Usar a IA pelo Cursor" in before.text
+        assert "Usar IA no Cursor, VS Code ou outro agente" in before.text
         assert 'action="/config/cursor/connect"' in before.text
 
         connected = client.post("/config/cursor/connect", follow_redirects=False)
@@ -2639,8 +2639,8 @@ class TestDashboardEmptyState:
         response = client.get("/")
 
         assert response.status_code == 200
-        assert 'href="/signals"' in response.text
-        assert 'href="/decisions"' in response.text
+        assert 'href="/signals"' not in response.text
+        assert 'href="/decisions"' not in response.text
         assert 'href="/config#plugins"' not in response.text
         assert "PM Studio v0.2.0" in response.text
 
