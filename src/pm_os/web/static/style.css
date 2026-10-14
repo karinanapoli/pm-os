@@ -713,6 +713,8 @@ a.model-badge:hover { color: var(--text); }
 .validation-hero { margin-bottom:18px; padding:24px 26px; border:1px solid rgba(124,92,231,.22); border-radius:var(--radius-md); background:linear-gradient(135deg,rgba(124,92,231,.11),rgba(0,204,255,.04)); }
 .validation-hero h2 { margin:2px 0 7px; font-size:25px; }
 .validation-hero>p:last-child { max-width:720px; margin:0; color:var(--text-secondary); }
+.validation-criteria { display:flex; flex-wrap:wrap; gap:8px; margin-top:18px; }
+.validation-criteria span { padding:6px 9px; border:1px solid rgba(99,216,239,.16); border-radius:999px; color:var(--text-secondary); background:rgba(0,204,255,.035); font-size:10px; font-weight:700; }
 .validation-choice-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; align-items:stretch; }
 .validation-choice { display:flex; flex-direction:column; gap:16px; padding:22px; }
 .validation-choice.primary { border-color:rgba(124,92,231,.4); box-shadow:inset 0 1px 0 rgba(255,255,255,.03); }
@@ -722,6 +724,11 @@ a.model-badge:hover { color: var(--text); }
 .validation-choice h3 { margin:0 0 7px; }
 .validation-choice p { margin:0; color:var(--text-secondary); font-size:13px; line-height:1.5; }
 .validation-choice>form,.validation-choice>a { margin-top:auto; }
+.validation-document-summary { display:grid; grid-template-columns:34px minmax(0,1fr) auto; align-items:center; gap:10px; padding:11px; border:1px solid var(--border); border-radius:var(--radius-sm); background:rgba(255,255,255,.025); }
+.validation-document-icon { display:grid; place-items:center; width:32px; height:32px; border-radius:8px; background:rgba(124,92,231,.12); }
+.validation-document-summary div { display:grid; gap:2px; min-width:0; }
+.validation-document-summary strong { overflow:hidden; text-overflow:ellipsis; font-size:12px; }
+.validation-document-summary small { color:var(--text-muted); font-size:10px; }
 .validation-upload-zone { display:grid; place-items:center; gap:4px; min-height:94px; padding:14px; border:1px dashed rgba(99,216,239,.4); border-radius:var(--radius-sm); text-align:center; cursor:pointer; background:rgba(0,204,255,.035); transition:.16s ease; }
 .validation-upload-zone:hover { border-color:#63d8ef; background:rgba(0,204,255,.07); }
 .validation-upload-zone>span { color:#63d8ef; font-size:23px; line-height:1; }

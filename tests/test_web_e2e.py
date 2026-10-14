@@ -1152,6 +1152,35 @@ class TestInitiativeCRUD:
         assert download.content == b"# Pesquisa\nConteudo"
         assert "pesquisa.md" in download.headers["content-disposition"]
 
+    def test_previews_uploaded_context_document_in_overview_modal(self, client, session_base):
+        init_name = _create_initiative(client, "Context preview", "INT-CONTEXT-PREVIEW")
+        context_dir = session_base / "workspace" / "initiatives" / init_name / "context"
+        context_dir.mkdir(parents=True, exist_ok=True)
+        (context_dir / "pesquisa.md").write_text(
+            "# Pesquisa\n\n<script>alert('x')</script>Insight importante.", encoding="utf-8"
+        )
+
+        page = client.get(f"/initiative/{init_name}")
+        assert 'id="context-document-modal"' in page.text
+        assert f"/initiative/{init_name}/context/pesquisa.md/preview" in page.text
+        preview = client.get(f"/initiative/{init_name}/context/pesquisa.md/preview")
+        assert preview.status_code == 200
+        assert "<h1>Pesquisa</h1>" in preview.text
+        assert "Insight importante" in preview.text
+        assert "<script>" not in preview.text
+
+    def test_validation_shows_current_document_preview_modal(self, client, session_base):
+        init_name = _create_initiative(client, "Validation preview", "INT-VALIDATION-PREVIEW")
+        artifacts = session_base / "workspace" / "initiatives" / init_name / "artifacts"
+        artifacts.mkdir(parents=True, exist_ok=True)
+        (artifacts / "prd.md").write_text("# PRD atual", encoding="utf-8")
+
+        page = client.get(f"/validate/{init_name}")
+        assert page.status_code == 200
+        assert 'id="validation-prd-modal"' in page.text
+        assert "Documento oficial desta iniciativa" in page.text
+        assert "Clareza" in page.text
+
     def test_create_initiative(self, client, session_base):
         init_name = _create_initiative(client)
         dir_path = session_base / "workspace" / "initiatives" / init_name

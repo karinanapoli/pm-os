@@ -164,6 +164,7 @@
                 </span>
                 <div style="display: flex; align-items: center; gap: 12px;">
                     <span class="doc-size">{{ doc.size }}</span>
+                    <button type="button" class="btn btn-ghost btn-sm context-document-open" data-document-name="{{ doc.name }}" data-document-url="/initiative/{{ initiative.name }}/context/{{ doc.name|urlencode }}/preview">{{ icon("eye") }} {{ "initiative.detail.preview"|t }}</button>
                     <a href="/initiative/{{ initiative.name }}/context/{{ doc.name|urlencode }}/download" class="btn btn-ghost btn-sm">{{ icon("download") }} {{ "initiative.detail.download"|t }}</a>
                     <form method="POST" action="/initiative/{{ initiative.name }}/delete-doc" style="display:inline;" data-loading="deleting" id="deleteDocForm-{{ loop.index0 }}">
                         <input type="hidden" name="filename" value="{{ doc.name }}">
@@ -195,6 +196,25 @@
         </div>
     </div>
 </div>
+
+<dialog id="context-document-modal" class="content-modal">
+    <div class="card-header"><div><span class="eyebrow">{{ "initiative.detail.context_document"|t }}</span><h3 id="context-document-title"></h3></div><button type="button" class="btn btn-ghost btn-sm" data-close-context-modal aria-label="{{ 'archive.modal_cancel'|t }}">✕</button></div>
+    <div class="card-body markdown-body" id="context-document-content"></div>
+</dialog>
+<script>
+document.querySelectorAll('.context-document-open').forEach(function (button) {
+    button.addEventListener('click', async function () {
+        const modal = document.getElementById('context-document-modal');
+        const content = document.getElementById('context-document-content');
+        document.getElementById('context-document-title').textContent = button.dataset.documentName;
+        content.textContent = '{{ "initiative.detail.preview_loading"|t }}';
+        modal.showModal();
+        const response = await fetch(button.dataset.documentUrl);
+        content.innerHTML = response.ok ? await response.text() : '<p>{{ "initiative.detail.preview_error"|t }}</p>';
+    });
+});
+document.querySelector('[data-close-context-modal]')?.addEventListener('click', function () { document.getElementById('context-document-modal').close(); });
+</script>
 
 <div class="modal-overlay" id="modal-initiative-settings" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="initiative-settings-title" tabindex="-1">

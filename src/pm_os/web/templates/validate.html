@@ -10,6 +10,11 @@
     <p class="eyebrow">{{ initiative.name }}</p>
     <h2>{{ "validate.choose_title"|t }}</h2>
     <p>{{ "validate.choose_desc"|t }}</p>
+    <div class="validation-criteria" aria-label="{{ 'validate.criteria_label'|t }}">
+        <span>✓ {{ "validate.criteria_clarity"|t }}</span>
+        <span>✓ {{ "validate.criteria_completeness"|t }}</span>
+        <span>✓ {{ "validate.criteria_consistency"|t }}</span>
+    </div>
 </section>
 
 <div class="validation-choice-grid">
@@ -21,6 +26,11 @@
             <p>{{ "validate.generated_desc"|t }}</p>
         </div>
         {% if prd_content %}
+        <div class="validation-document-summary">
+            <span class="validation-document-icon">{{ icon("file-text", 18) }}</span>
+            <div><strong>prd.md</strong><small>{{ "validate.official_document"|t }}</small></div>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('validation-prd-modal').showModal()">{{ "validate.preview_document"|t }}</button>
+        </div>
         <form method="POST" action="/validate/{{ initiative.name }}" data-loading="processing">
             <input type="hidden" name="validation_source" value="generated">
             <button type="submit" class="btn btn-ai btn-block">{{ "validate.generated_cta"|t }}</button>
@@ -51,6 +61,13 @@
         </form>
     </article>
 </div>
+
+{% if prd_content %}
+<dialog id="validation-prd-modal" class="content-modal">
+    <div class="card-header"><div><span class="eyebrow">{{ "validate.official_document"|t }}</span><h3>prd.md</h3></div><button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('validation-prd-modal').close()">✕</button></div>
+    <div class="card-body markdown-body">{{ prd_content|markdown }}</div>
+</dialog>
+{% endif %}
 
 {% if error %}
 <div class="alert alert-error" role="alert" style="margin-top: 16px;">

@@ -2837,6 +2837,37 @@ async def download_context_document(
     return FileResponse(str(document_path), filename=safe_name)
 
 
+@app.get("/initiative/{initiative_name}/context/{filename}/preview", response_class=HTMLResponse)
+async def preview_context_document(
+    request: Request, initiative_name: str, filename: str
+):
+    """Return a safe, readable preview for an initiative context document."""
+    selected = _get_initiative_by_name(initiative_name, request)
+    if not selected:
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    safe_name = _safe_filename(filename)
+    context_dir = (selected.path / "context").resolve()
+    document_path = (context_dir / safe_name).resolve() if safe_name else context_dir
+    if (
+        not safe_name
+        or document_path.parent != context_dir
+        or not document_path.is_file()
+        or document_path.suffix.lower() not in ALLOWED_EXTENSIONS
+    ):
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    try:
+        content = (
+            extract_pdf_text(document_path)
+            if document_path.suffix.lower() == ".pdf"
+            else document_path.read_text(encoding="utf-8")
+        )
+    except (OSError, UnicodeDecodeError, ValueError):
+        return HTMLResponse(
+            _t("initiative.detail.preview_error", _get_lang()), status_code=422
+        )
+    return HTMLResponse(render_safe_markdown(content))
+
+
 @app.post("/initiative/{initiative_name}/delete-doc", response_class=HTMLResponse)
 async def delete_context_doc(
     request: Request,
