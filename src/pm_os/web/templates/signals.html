@@ -23,7 +23,7 @@
     </div>
     <div class="signals-hero-stat">
         <strong>{{ signals|length }}</strong>
-        <span>{{ "signals.count"|t }}</span>
+        <span>{{ ("signals.count.one" if signals|length == 1 else "signals.count")|t }}</span>
     </div>
 </section>
 

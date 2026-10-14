@@ -70,3 +70,21 @@ Priorização por impacto nas jornadas × esforço estimado.
 ## 4. Como reproduzir
 
 O roteiro da bateria fica fora do repositório (scratchpad da sessão). Para transformá-lo em teste permanente, o caminho natural é um job opcional de Playwright no CI rodando as jornadas de Lucas, Marina e Diego.
+
+---
+
+## 5. Status das correções (mesma branch)
+
+Verificado no navegador (rodada de confirmação com Marina, Helena, Diego e Bia) e coberto por testes em `TestSyntheticBatteryFixes`, `test_dashboard_offers_one_click_local_ollama_and_switches_provider` e `tests/test_local_provider_detection.py`.
+
+| Item | Status | Como ficou |
+|------|--------|------------|
+| P1 Exportação 500 | ✅ | Prévia e confirmação renderizam; o teste e2e agora abre as páginas |
+| P2 + F2 PRD validado “some” | ✅ | Upload validado vira **candidato**, com relatório próprio, sem alterar a nota da iniciativa; botão **“Adotar como PRD da iniciativa”** versiona o atual e libera spec e backlog. Upload sem validação válida é descartado |
+| F3 Ollama local | ✅ | Se o Ollama responde em loopback, o Dashboard e Gerar PRD oferecem **“Usar Ollama · modelo”** em um clique (só admins; só URLs locais; cache de 30 s) |
+| P5 + F6 Nota de segurança | ✅ | “Parcial · 1/6 dimensões avaliadas” até todas as dimensões serem avaliadas; a faixa (Crítico…Verificado) só aparece com cobertura completa |
+| P7 + F7 Demo antes do clique | ✅ | Segurança: botão desabilitado com explicação. Especificação: aviso de que o rascunho Demo é ilustrativo, **sem bloquear** |
+| P6 + F10 Arquivar e restaurar | ✅ | POST → redirect → GET com confirmação (“Iniciativa arquivada…”, “Iniciativa restaurada…”) |
+| P8 + F11 Squad ativo | ✅ | Estilos inline removidos; texto branco sobre o item ativo |
+| “1 sinais” | ✅ | “1 sinal neste espaço” |
+| P3, P4, F1, F4, F5, F8, F9 | ⏭ | Próximo ciclo (esforço médio), conforme a sequência sugerida |

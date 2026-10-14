@@ -6,6 +6,8 @@
 {% endblock %}
 
 {% block content %}
+{% if notice %}<div class="alert alert-{{ notice_kind or 'success' }}" role="status" aria-live="polite">{{ notice|t }}</div>{% endif %}
+{% set has_official_prd = official_prd_exists if official_prd_exists is defined else (prd_content|length > 0) %}
 <section class="validation-hero" id="validation-start">
     <h2>{{ "validate.choose_title"|t }}</h2>
     <p>{{ "validate.choose_desc"|t }}</p>
@@ -24,11 +26,11 @@
             <h3>{{ "validate.generated_title"|t }}</h3>
             <p>{{ "validate.generated_desc"|t }}</p>
         </div>
-        {% if prd_content %}
+        {% if has_official_prd %}
         <div class="validation-document-summary">
             <span class="validation-document-icon">{{ icon("file-text", 18) }}</span>
             <div><strong>prd.md</strong><small>{{ "validate.official_document"|t }}</small></div>
-            <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('validation-prd-modal').showModal()">{{ "validate.preview_document"|t }}</button>
+            {% if not is_candidate %}<button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('validation-prd-modal').showModal()">{{ "validate.preview_document"|t }}</button>{% endif %}
         </div>
         <form method="POST" action="/validate/{{ initiative.name }}" data-loading="processing">
             <input type="hidden" name="validation_source" value="generated">
@@ -61,7 +63,7 @@
     </article>
 </div>
 
-{% if prd_content %}
+{% if has_official_prd and prd_content and not is_candidate %}
 <dialog id="validation-prd-modal" class="content-modal">
     <div class="card-header"><div><span class="eyebrow">{{ "validate.official_document"|t }}</span><h3>prd.md</h3></div><button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('validation-prd-modal').close()">✕</button></div>
     <div class="card-body markdown-body">{{ prd_content|markdown }}</div>
@@ -227,6 +229,12 @@
         </div>
 
         <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px;">
+            {% if is_candidate %}
+            <form method="POST" action="/validate/{{ initiative.name }}/adopt" style="display:inline;" data-loading="saving">
+                <button type="submit" class="btn btn-primary btn-sm">{{ "validate.adopt_cta"|t }}</button>
+            </form>
+            <a href="/initiative/{{ initiative.name }}" class="btn btn-secondary btn-sm">{{ "initiative.detail.back"|t }}</a>
+            {% else %}
             <a href="/initiative/{{ initiative.name }}" class="btn btn-secondary btn-sm">{{ "initiative.detail.back"|t }}</a>
             <a href="/initiative/{{ initiative.name }}" class="btn btn-ghost btn-sm">{{ "validate.view_prd"|t }}</a>
             <a href="/generate?initiative={{ initiative.name }}" class="btn btn-ai btn-sm">{{ "validate.regenerate"|t }}</a>
@@ -234,6 +242,7 @@
                 <input type="hidden" name="validation_source" value="generated">
                 <button type="submit" class="btn btn-primary btn-sm">{{ "validate.revalidate"|t }}</button>
             </form>
+            {% endif %}
             <a href="#validate-upload" class="btn btn-secondary btn-sm">{{ "validate.validate_another"|t }}</a>
         </div>
     </div>

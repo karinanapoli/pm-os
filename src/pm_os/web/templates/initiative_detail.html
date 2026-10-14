@@ -107,12 +107,16 @@
         <div class="stat-label">{{ "initiative.detail.validation_score"|t }}</div>
         <span class="stat-value">{{ validation_score }}</span>
     </div>
-    {% set security_started = security_assessment.answers.values()|rejectattr("status", "equalto", "not_assessed")|list %}
+    {% set security_started = security_assessment.assessed_count %}
     <a class="stat-card" href="/initiative/{{ initiative.name }}/security" style="text-decoration:none;">
         <div class="stat-label">{{ "security.score"|t }}</div>
         {% if security_started %}
         <span class="stat-value">{{ security_assessment.score }}/10</span>
+        {% if security_assessment.coverage_complete %}
         <span class="stat-hint">{{ ("security.band." ~ security_assessment.band)|t }}</span>
+        {% else %}
+        <span class="stat-hint">{{ "security.partial"|t }} · {{ security_assessment.assessed_count }}/{{ security_assessment.dimension_count }} {{ "security.dimensions_assessed"|t }}</span>
+        {% endif %}
         {% else %}
         <span class="stat-value stat-value-text is-pending">{{ "security.status.not_assessed"|t }}</span>
         <span class="stat-cta stat-cta-primary">{{ "security.assess_cta"|t }} →</span>

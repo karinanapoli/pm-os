@@ -45,17 +45,17 @@
             {% if user_squads %}
             <div class="sidebar-section">{{ "nav.squads"|t }}</div>
             <nav class="sidebar-nav">
-                <a href="/workspace/personal" class="nav-item {% if not current_squad %}active{% endif %}" style="{% if not current_squad %}color: var(--primary-light); font-weight: 600;{% endif %}">
+                <a href="/workspace/personal" class="nav-item {% if not current_squad %}active{% endif %}" {% if not current_squad %}aria-current="true"{% endif %}>
                     <span class="nav-icon" aria-hidden="true">{{ icon("user") }}</span>
                     <span>{{ "nav.personal"|t }}</span>
                     {% if not current_squad %}<span class="nav-active-badge">{{ "nav.active_badge"|t }}</span>{% endif %}
                 </a>
                 {% for sq in user_squads %}
-                <div style="display: flex; align-items: center; {% if current_squad == sq.name %}color: var(--primary-light); font-weight: 600;{% endif %}">
-                    <a href="/workspace/{{ sq.name }}" class="nav-item {% if current_squad == sq.name %}active{% endif %}" style="flex: 1; {% if current_squad == sq.name %}color: var(--primary-light); font-weight: 600;{% endif %}">
+                <div class="nav-squad-row">
+                    <a href="/workspace/{{ sq.name }}" class="nav-item {% if current_squad == sq.name %}active{% endif %}" {% if current_squad == sq.name %}aria-current="true"{% endif %}>
                         <span class="nav-icon" aria-hidden="true">{{ icon("users") }}</span>
                         <span>{{ sq.display_name }}</span>
-                        <span style="margin-left: auto; font-size: 11px; color: var(--text-muted);">{{ sq.member_count }}</span>
+                        <span class="nav-count" title="{{ 'squad.members'|t }}">{{ sq.member_count }}</span>
                         {% if current_squad == sq.name %}<span class="nav-active-badge">{{ "nav.active_badge"|t }}</span>{% endif %}
                     </a>
                     {% if sq.is_admin %}
@@ -269,7 +269,7 @@
             };
             document.querySelectorAll('input[type="file"]').forEach(function(input, index) {
                 var form = input.closest('form');
-                if ((form && form.style.display === 'none') || input.closest('.file-picker')) return;
+                if ((form && form.style.display === 'none') || input.closest('.file-picker') || input.closest('label')) return;
                 if (!input.id) input.id = 'file-picker-' + index;
                 var wrapper = document.createElement('div');
                 wrapper.className = 'file-picker';

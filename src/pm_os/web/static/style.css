@@ -3795,3 +3795,15 @@ select { color-scheme: dark; }
 .markdown-body ul,
 .markdown-body ol { margin: 0 0 10px; padding-left: 22px; }
 .markdown-body p { margin: 0 0 10px; }
+
+/* ── Squad list in the sidebar ── */
+.nav-squad-row { display: flex; align-items: center; }
+.nav-squad-row .nav-item { flex: 1; min-width: 0; }
+.nav-count { margin-left: auto; font-size: var(--fs-xs); color: var(--text-muted); }
+.nav-item.active .nav-count { color: rgba(255, 255, 255, 0.85); }
+.nav-item.active .nav-active-badge { background: rgba(255, 255, 255, 0.22); }
+
+.security-coverage { display: block; margin-top: 2px; color: var(--text-muted); font-size: var(--fs-xs); }
+.provider-demo-hint { color: var(--amber); }
+
+.inline-form { display: inline; margin: 0; }
