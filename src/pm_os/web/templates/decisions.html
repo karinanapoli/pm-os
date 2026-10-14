@@ -61,7 +61,7 @@
 </div>
 {% else %}
 <div class="empty-state">
-    <div class="empty-icon">◆</div>
+    <div class="empty-icon">{{ icon("scale", 32) }}</div>
     <h3>{{ "decisions.empty_title"|t }}</h3>
     <p>{{ "decisions.empty_desc"|t }}</p>
     {% if initiatives %}

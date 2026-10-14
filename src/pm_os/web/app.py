@@ -64,6 +64,7 @@ from pm_os.web.access_control import is_installation_admin, stdio_mcp_enabled
 from pm_os.web.login_security import LoginRateLimiter, resolve_client_ip
 from pm_os.web.squad_access import authorized_squad, normalize_squad_key
 from pm_os.web.markdown_renderer import render_safe_markdown
+from pm_os.web.icons import icon as _icon
 from pm_os.web.middleware import AuthMiddleware, CSRFMiddleware, NoCacheMiddleware
 from pm_os.web.product_docs_service import ProductDocsService
 from pm_os.web.prd_validation_service import PRDValidationService
@@ -163,7 +164,41 @@ def _cursor_prompt_url(
     return "https://cursor.com/link/prompt?" + urllib.parse.urlencode({"text": prompt})
 
 
+_REPORT_LABELS_PT = (
+    ("# PRD Validation Report", "# Relatório de Validação de PRD"),
+    ("**Overall Score:**", "**Nota Geral:**"),
+    ("## Summary", "## Resumo"),
+    ("## Section Breakdown", "## Detalhamento por Seção"),
+    ("**Why this score:**", "**Por que esta nota:**"),
+    ("**Issues:**", "**Problemas:**"),
+    ("**Action items:**", "**Ações necessárias:**"),
+    ("**Suggestions:**", "**Sugestões:**"),
+    ("**Score:**", "**Nota:**"),
+)
+_REPORT_SECTIONS_PT = {
+    "Metrics": "Métricas",
+    "Risks": "Riscos",
+    "Scope": "Escopo",
+    "Requirements": "Requisitos",
+}
+
+
+def _localize_report_labels(content: str, lang: str) -> str:
+    """Translate the structural labels of reports stored in another language."""
+    if lang != "pt-BR":
+        return content
+    for source, target in _REPORT_LABELS_PT:
+        content = content.replace(source, target)
+    for source, target in _REPORT_SECTIONS_PT.items():
+        content = re.sub(rf"^### {source}\s*$", f"### {target}", content, flags=re.MULTILINE)
+    return content
+
+
 def _validation_report_for_display(content: str, lang: str) -> str:
+    return _localize_report_labels(_collapse_legacy_rationale(content, lang), lang)
+
+
+def _collapse_legacy_rationale(content: str, lang: str) -> str:
     """Collapse the repeated rationale produced by legacy fallback reports."""
     legacy_rationales = (
         "**Por que esta nota:** Avaliação estrutural de recuperação; revise o conteúdo e valide novamente.",
@@ -682,11 +717,64 @@ def _t_filter(ctx, key: str) -> str:
 templates.env.filters["t"] = _t_filter
 
 
+@pass_context
+def _tn_filter(ctx, count: object, key: str) -> str:
+    """Render ``"<count> <label>"`` using ``<key>.one`` when count is 1."""
+    lang = ctx.get("lang", "en")
+    try:
+        number = int(count)
+    except (TypeError, ValueError):
+        number = 0
+    singular_key = f"{key}.one"
+    label = _t(singular_key, lang) if number == 1 else singular_key
+    if label == singular_key:
+        label = _t(key, lang)
+    return f"{number} {label}"
+
+
+templates.env.filters["tn"] = _tn_filter
+
+
+def _display_name_filter(initiative: object) -> str:
+    """Human name from metadata.yaml, falling back to the initiative slug."""
+    fallback = str(getattr(initiative, "name", initiative) or "")
+    path = getattr(initiative, "path", None)
+    if path is None:
+        return fallback
+    try:
+        metadata = yaml.safe_load((Path(path) / "metadata.yaml").read_text(encoding="utf-8")) or {}
+    except (OSError, yaml.YAMLError):
+        return fallback
+    name = metadata.get("name") if isinstance(metadata, dict) else None
+    return str(name).strip() if name and str(name).strip() else fallback
+
+
+templates.env.filters["display_name"] = _display_name_filter
+
+
 def _markdown_filter(text: str) -> str:
     return render_safe_markdown(text)
 
 
 templates.env.filters["markdown"] = _markdown_filter
+templates.env.globals["icon"] = _icon
+
+
+def _model_label(cfg: dict) -> str:
+    """Human-readable name of the provider/model actually used for AI features."""
+    provider = cfg.get("ai_provider") or "demo"
+    if provider == "demo":
+        return "Demo"
+    if provider == "openai":
+        return f"OpenAI · {cfg.get('openai_model') or 'gpt-4o-mini'}"
+    if provider == "anthropic":
+        return f"Anthropic · {cfg.get('anthropic_model') or 'claude-3-haiku'}"
+    if provider == "gateway":
+        return f"Gateway · {cfg.get('gateway_provider') or '—'} · {cfg.get('gateway_identifier') or '—'}"
+    for custom in cfg.get("custom_providers") or []:
+        if custom.get("name") == provider:
+            return f"{custom.get('name')} · {custom.get('model')}"
+    return f"Ollama · {cfg.get('model')}"
 
 
 def _ctx(request: Request, **extra: object) -> dict:
@@ -735,6 +823,8 @@ def _ctx(request: Request, **extra: object) -> dict:
     base = {
         "request": request,
         "config": cfg,
+        "model_label": _model_label(cfg),
+        "is_demo_provider": (cfg.get("ai_provider") or "demo") == "demo",
         "lang": lang,
         "user_email": user_email,
         "current_squad": current_squad,
@@ -1399,7 +1489,12 @@ async def initiative_detail(
     artifacts_dir = selected.path / "artifacts"
     if artifacts_dir.exists():
         for f in sorted(artifacts_dir.iterdir(), reverse=True):
-            if f.is_file() and f.name.startswith("prd-") and f.name.endswith(".md") and f.name != "prd.md":
+            if (
+                f.is_file()
+                and f.name.startswith("prd-")
+                and f.name.endswith(".md")
+                and not f.name.startswith("prd-validation")
+            ):
                 ts = f.stem.replace("prd-", "")
                 prd_versions.append({"timestamp": ts, "filename": f.name, "size": f.stat().st_size})
 

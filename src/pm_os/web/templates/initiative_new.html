@@ -41,7 +41,7 @@
                         <label for="id" style="display: block; font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 5px;">{{ "initiative.new.id"|t }}</label>
                         <div style="display: flex; align-items: center; gap: 6px;">
                             <input type="text" name="id" id="id" placeholder='{{ "initiative.new.id_placeholder"|t }}' style="flex: 1; padding: 9px 12px; background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 14px; outline: none; box-sizing: border-box; font-family: 'JetBrains Mono', monospace; letter-spacing: 0.5px;">
-                            <span id="idStatus" style="font-size: 10px; color: var(--text-muted); white-space: nowrap;">auto</span>
+                            <span id="idStatus" style="font-size: 11px; color: var(--text-muted); white-space: nowrap;">auto</span>
                         </div>
                         <div class="form-hint" style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">{{ "initiative.new.id_hint"|t }}</div>
                     </div>
@@ -50,7 +50,7 @@
                     <label style="display: block; font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 6px;">{{ "initiative.new.status"|t }}</label>
                     <div style="display: flex; gap: 6px; flex-wrap: wrap;">
                         {% for val, label in [("discovery", "initiative.new.status_discovery"), ("planning", "initiative.new.status_planning"), ("development", "initiative.new.status_development"), ("completed", "initiative.new.status_completed")] %}
-                        <label class="status-chip" style="display: flex; align-items: center; gap: 5px; padding: 7px 13px; border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; font-size: 12.5px; color: var(--text-secondary); background: rgba(255,255,255,0.02);">
+                        <label class="status-chip" style="display: flex; align-items: center; gap: 5px; padding: 7px 13px; border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; font-size: 13px; color: var(--text-secondary); background: rgba(255,255,255,0.02);">
                             <input type="radio" name="status" value="{{ val }}" {% if val == 'discovery' %}checked{% endif %} style="accent-color: var(--primary); margin: 0;">
                             <span>{{ label|t }}</span>
                         </label>

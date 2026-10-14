@@ -28,9 +28,9 @@
             </dl>
             {% if source %}
             <a href="/signals/sources/{{ source.id }}" class="signal-source-link">
-                <span>📄</span>
+                <span>{{ icon("file") }}</span>
                 <span><strong>{{ source.filename }}</strong><small>{{ "signals.detail.open_source"|t }}</small></span>
-                <span>↗</span>
+                <span>{{ icon("external-link") }}</span>
             </a>
             {% endif %}
         </div>
@@ -63,7 +63,7 @@
 
 <div class="modal-overlay" id="modal-delete-signal">
     <div class="modal modal-sm" role="dialog" aria-modal="true" aria-labelledby="delete-signal-title">
-        <div class="modal-icon-box coral">✕</div>
+        <div class="modal-icon-box coral" aria-hidden="true">{{ icon("trash-2", 22) }}</div>
         <div class="modal-title" id="delete-signal-title">{{ "signals.delete_title"|t }}</div>
         <div class="modal-desc">{{ "signals.delete_desc"|t }}<br><span class="seal seal-permanent">{{ "signals.delete_warning"|t }}</span></div>
         <div class="modal-actions">

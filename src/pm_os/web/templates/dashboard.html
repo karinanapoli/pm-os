@@ -18,21 +18,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
 {# ── Workspace Selector ── #}
 <div class="card workspace-switcher" style="margin-bottom: 16px;">
-    <div class="card-body" style="padding: 12px 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-        <span style="font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.3px;">{{ "nav.workspace"|t }}:</span>
+    <div class="card-body workspace-switcher-body">
+        <span class="workspace-switcher-label">{{ "nav.workspace"|t }}:</span>
 
-        <a href="/workspace/personal" class="btn btn-sm {% if not current_squad %}btn-selected{% else %}btn-secondary{% endif %}">👤 {{ "squad.personal"|t }}</a>
+        <a href="/workspace/personal" class="btn btn-sm {% if not current_squad %}btn-selected{% else %}btn-secondary{% endif %}">{{ icon("user", 14) }} {{ "squad.personal"|t }}</a>
 
         {% for sq in user_squads %}
         <div style="display: flex; align-items: center; gap: 0;">
-            <a href="/workspace/{{ sq.name }}" class="btn btn-sm {% if current_squad == sq.name %}btn-selected{% else %}btn-secondary{% endif %}" style="border-radius: 6px 0 0 6px;">▸ {{ sq.display_name }} <span style="font-size: 10px; opacity: 0.6; margin-left: 4px;">{{ sq.member_count }}</span></a>
+            <a href="/workspace/{{ sq.name }}" class="btn btn-sm {% if current_squad == sq.name %}btn-selected{% else %}btn-secondary{% endif %}" style="border-radius: 6px 0 0 6px;">{{ icon("users", 14) }} {{ sq.display_name }} <span style="font-size: 11px; opacity: 0.6; margin-left: 4px;">{{ sq.member_count }}</span></a>
             {% if sq.is_admin %}
-            <a href="/squad/admin/{{ sq.name }}" class="btn btn-sm btn-secondary" style="border-left: 1px solid var(--border); border-radius: 0 6px 6px 0; padding: 6px 8px; font-size: 12px; line-height: 1;" title="{{ 'squad.admin'|t }}">⚙</a>
+            <a href="/squad/admin/{{ sq.name }}" class="btn btn-sm btn-secondary" style="border-left: 1px solid var(--border); border-radius: 0 6px 6px 0; padding: 6px 8px; font-size: 12px; line-height: 1;" title="{{ 'squad.admin'|t }}" aria-label="{{ 'squad.admin'|t }}">{{ icon("settings", 14) }}</a>
             {% endif %}
         </div>
         {% endfor %}
 
-        <a href="/squad" class="btn btn-sm btn-secondary">+ {{ "squad.create"|t }} / {{ "squad.join"|t }}</a>
+        <a href="/squad" class="btn btn-sm btn-secondary">{{ icon("plus", 14) }} {{ "nav.create_or_enter"|t }}</a>
     </div>
 </div>
 
@@ -71,14 +71,14 @@ document.addEventListener('DOMContentLoaded', function() {
     </summary>
     <div class="capability-grid">
         <a href="/initiative/{{ initiatives[0].name }}/data" class="capability-card">
-            <span class="capability-icon">◌</span><div><strong>{{ "data.title"|t }}</strong><p>{{ "data.desc"|t }}</p></div>
+            <span class="capability-icon">{{ icon("activity") }}</span><div><strong>{{ "data.title"|t }}</strong><p>{{ "data.desc"|t }}</p></div>
         </a>
         <a href="/initiative/{{ initiatives[0].name }}/map" class="capability-card">
-            <span class="capability-icon">◈</span><div><strong>{{ "map.tab"|t }}</strong><p>{{ "dashboard.capabilities.map"|t }}</p></div>
+            <span class="capability-icon">{{ icon("map") }}</span><div><strong>{{ "map.tab"|t }}</strong><p>{{ "dashboard.capabilities.map"|t }}</p></div>
         </a>
         {% if is_installation_admin %}
         <a href="/config#plugins" class="capability-card">
-            <span class="capability-icon">✦</span><div><strong>{{ "timeline.feat_mcp_generic"|t }}</strong><p>{{ "dashboard.capabilities.mcp"|t }}</p></div>
+            <span class="capability-icon">{{ icon("plug") }}</span><div><strong>{{ "timeline.feat_mcp_generic"|t }}</strong><p>{{ "dashboard.capabilities.mcp"|t }}</p></div>
         </a>
         {% endif %}
     </div>
@@ -116,7 +116,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <div class="card attn-card">
     <div class="card-header">
         <h3>{{ "dashboard.attention.title"|t }}</h3>
-        <span style="font-size:12.5px;color:var(--text-muted)">{{ attention_items|length }} {{ "dashboard.attention.count"|t }}</span>
+        <span style="font-size:13px;color:var(--text-muted)">{{ attention_items|length }} {{ "dashboard.attention.count"|t }}</span>
     </div>
     <div class="card-body">
         {% for item in attention_items %}
@@ -140,7 +140,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <div class="card">
     <div class="card-header">
         <h3>{{ "dashboard.initiatives"|t }}</h3>
-        <span style="font-size: 13px; color: var(--text-muted);">{{ total }} {{ "dashboard.total"|t }}</span>
+        <span class="card-meta">{{ total }} {{ "dashboard.total"|t }}</span>
     </div>
     <div class="card-body">
         <div class="init-grid">
@@ -148,12 +148,12 @@ document.addEventListener('DOMContentLoaded', function() {
             <a href="/initiative/{{ init.name }}" class="init-card">
                 <div class="init-card-name">{{ init.display_name or init.name }}</div>
                 <div class="init-card-meta">
-                    <span class="init-card-status {{ init.status }}">{{ init.status|t }}</span>
+                    <span class="init-card-status {{ init.status }}">{{ ("status." ~ (init.status or "unknown"))|t }}</span>
                     <span>{{ "dashboard.stats.score"|t }}: {{ init.score }}</span>
                 </div>
-                <div style="font-size: 13px; color: var(--text-muted); display: flex; gap: 16px;">
-                    <span title="{{ 'dashboard.has_prd_tooltip'|t if init.has_prd else 'dashboard.no_prd_tooltip'|t }}">📄 {{ "dashboard.has_prd"|t if init.has_prd else "dashboard.no_prd"|t }}</span>
-                    <span>📁 {{ init.doc_count }} {{ "dashboard.docs"|t }}</span>
+                <div class="init-card-facts">
+                    <span title="{{ 'dashboard.has_prd_tooltip'|t if init.has_prd else 'dashboard.no_prd_tooltip'|t }}">{{ icon("file-text", 14) }} {{ "dashboard.has_prd"|t if init.has_prd else "dashboard.no_prd"|t }}</span>
+                    <span>{{ icon("folder", 14) }} {{ init.doc_count|tn("dashboard.docs") }}</span>
                 </div>
             </a>
             {% endfor %}
@@ -165,21 +165,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
 {# ── Empty State (no initiatives) ── #}
 <div class="dashboard-empty-state">
-    <div style="width: 64px; height: 64px; border-radius: 16px; background: linear-gradient(135deg, var(--primary-glow), var(--ai-glow)); display: flex; align-items: center; justify-content: center; font-size: 28px; margin-bottom: 20px; opacity: 0.6;">◇</div>
+    <div style="width: 64px; height: 64px; border-radius: 16px; background: linear-gradient(135deg, var(--primary-glow), var(--ai-glow)); display: flex; align-items: center; justify-content: center; font-size: 28px; margin-bottom: 20px; opacity: 0.8;">{{ icon("file-text", 28) }}</div>
     <h2 style="font-size: 18px; font-weight: 700; color: var(--text-secondary); margin: 0 0 6px;">{{ "dashboard.empty.title"|t }}</h2>
     <p style="font-size: 14px; color: var(--text-muted); max-width: 420px; line-height: 1.6; margin: 0 0 32px;">{{ "dashboard.empty.desc_full"|t }}</p>
 
     <div style="display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;">
         <form method="POST" action="/quickstart" data-loading="processing" style="display:inline">
-            <button type="submit" class="btn btn-ai" style="padding: 10px 24px;">🚀 {{ "quickstart.cta"|t }}</button>
+            <button type="submit" class="btn btn-ai" style="padding: 10px 24px;">{{ icon("sparkles") }} {{ "quickstart.cta"|t }}</button>
         </form>
         <a href="/initiatives/new" class="btn btn-primary" style="padding: 10px 24px;">+ {{ "dashboard.empty.cta"|t }}</a>
     </div>
     <div style="font-size: 12px; color: var(--text-muted); margin-top: 20px; max-width: 400px; line-height: 1.5;">
-        💡 {{ "quickstart.example_hint"|t }}
+        {{ icon("lightbulb", 14) }} {{ "quickstart.example_hint"|t }}
     </div>
 
-    <a href="/onboarding/show" class="btn btn-ghost btn-sm" style="margin-top: 16px;">🎯 {{ "dashboard.empty.tour_cta"|t }}</a>
+    <a href="/onboarding/show" class="btn btn-ghost btn-sm" style="margin-top: 16px;">{{ icon("compass") }} {{ "dashboard.empty.tour_cta"|t }}</a>
 </div>
 {% endif %}
 

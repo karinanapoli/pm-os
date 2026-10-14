@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block page_title %}{{ "validate.title"|t }} — {{ initiative.name }}{% endblock %}
+{% block page_title %}{{ "validate.title"|t }} · {{ initiative|display_name }}{% endblock %}
 
 {% block topbar_actions %}
 <a href="/initiative/{{ initiative.name }}" class="btn btn-ghost btn-sm">{{ "validate.back"|t }}</a>
@@ -19,7 +19,7 @@
 
 <div class="validation-choice-grid">
     <article class="card validation-choice primary">
-        <div class="validation-choice-icon">✓</div>
+        <div class="validation-choice-icon">{{ icon("circle-check", 20) }}</div>
         <div>
             <span class="validation-choice-kicker">{{ "validate.recommended"|t }}</span>
             <h3>{{ "validate.generated_title"|t }}</h3>
@@ -27,7 +27,7 @@
         </div>
         {% if prd_content %}
         <div class="validation-document-summary">
-            <span class="validation-document-icon">📄</span>
+            <span class="validation-document-icon">{{ icon("file-text", 18) }}</span>
             <div><strong>prd.md</strong><small>{{ "validate.official_document"|t }}</small></div>
             <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('validation-prd-modal').showModal()">{{ "validate.preview_document"|t }}</button>
         </div>
@@ -41,7 +41,7 @@
     </article>
 
     <article class="card validation-choice" id="validate-upload">
-        <div class="validation-choice-icon secondary">↑</div>
+        <div class="validation-choice-icon secondary">{{ icon("upload", 20) }}</div>
         <div>
             <span class="validation-choice-kicker">{{ "validate.alternative"|t }}</span>
             <h3>{{ "validate.upload_title"|t }}</h3>
@@ -56,7 +56,7 @@
                 <input type="file" name="prd_file" id="prd_file" accept=".md,.txt,text/markdown,text/plain" required
                        onchange="PMOS.validateUploadFiles(this); document.getElementById('validation-file-name').textContent = this.files.length ? this.files[0].name : '{{ 'validate.file_types'|t }}'">
             </label>
-            <p class="validation-privacy-note">🔒 {{ "validate.upload_safe"|t }}</p>
+            <p class="validation-privacy-note">{{ icon("lock", 14) }} {{ "validate.upload_safe"|t }}</p>
             <button type="submit" class="btn btn-secondary btn-block">{{ "validate.upload_cta"|t }}</button>
         </form>
     </article>
@@ -79,7 +79,7 @@
 {% if prd_content %}
 <div class="card" style="margin-top: 16px;">
     <div class="card-header">
-        <h3>📄 {% if validated_document_name and validated_document_name != "prd.md" %}{{ "validate.analyzed_document"|t }}: {{ validated_document_name }}{% else %}PRD {{ "initiative.detail.current"|t }}{% endif %}</h3>
+        <h3>{{ icon("file-text") }} {% if validated_document_name and validated_document_name != "prd.md" %}{{ "validate.analyzed_document"|t }}: {{ validated_document_name }}{% else %}PRD {{ "initiative.detail.current"|t }}{% endif %}</h3>
         <div style="display: flex; gap: 8px;">
             <a href="/generate?initiative={{ initiative.name }}" class="btn btn-ghost btn-sm">{{ "initiative.detail.regenerate"|t }}</a>
         </div>

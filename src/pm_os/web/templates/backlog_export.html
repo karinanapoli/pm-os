@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block page_title %}{{ "backlog.export_title"|t }} · {{ initiative.name }}{% endblock %}
+{% block page_title %}{{ "backlog.export_title"|t }} · {{ initiative|display_name }}{% endblock %}
 {% block content %}
 {% if notice %}<div class="alert alert-{{ notice_kind or 'success' }}" role="status">{{ notice|t }}</div>{% endif %}
 <nav class="initiative-tabs" aria-label="{{ 'spec.navigation'|t }}">

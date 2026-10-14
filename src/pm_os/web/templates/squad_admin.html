@@ -29,7 +29,7 @@
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <span style="font-size: 13px; color: var(--text);">{{ member }}</span>
                     {% if squad.created_by == member %}
-                    <span style="font-size: 10px; background: rgba(124,92,231,0.15); color: var(--primary-light); padding: 2px 8px; border-radius: 8px;">admin</span>
+                    <span style="font-size: 11px; background: rgba(124,92,231,0.15); color: var(--primary-light); padding: 2px 8px; border-radius: 8px;">admin</span>
                     {% endif %}
                 </div>
                 {% if is_admin and member != squad.created_by %}

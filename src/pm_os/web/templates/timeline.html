@@ -10,7 +10,7 @@
 
 {% set phases = [
     {
-        "key": "phase1", "icon": "◈",
+        "key": "phase1", "icon": "file-text",
         "features": [
             {"feat": "prd", "status": "live"},
             {"feat": "validate", "status": "live"},
@@ -19,7 +19,7 @@
         ]
     },
     {
-        "key": "phase2", "icon": "◆",
+        "key": "phase2", "icon": "activity",
         "features": [
             {"feat": "signals", "status": "live"},
             {"feat": "decisions", "status": "live"},
@@ -30,7 +30,7 @@
         ]
     },
     {
-        "key": "phase3", "icon": "◇",
+        "key": "phase3", "icon": "plug",
         "features": [
             {"feat": "experiment_memory", "status": "coming_soon"},
             {"feat": "attention_radar", "status": "future"},
@@ -38,7 +38,7 @@
         ]
     },
     {
-        "key": "phase4", "icon": "✦",
+        "key": "phase4", "icon": "sparkles",
         "features": [
             {"feat": "ai_observability", "status": "future"},
             {"feat": "vector_store", "status": "future"},
@@ -50,7 +50,7 @@
 {% for phase in phases %}
 <div class="card timeline-phase">
     <div class="card-header">
-        <span class="phase-icon">{{ phase.icon }}</span>
+        <span class="phase-icon">{{ icon(phase.icon, 18) }}</span>
         <h3>{{ ("timeline." + phase.key)|t }}</h3>
     </div>
     <div class="card-body">
@@ -73,7 +73,7 @@
 {# ── Spoiler section ── #}
 <div class="card" style="border: 1px solid rgba(139,92,246,0.2); background: linear-gradient(135deg, rgba(139,92,246,0.04), rgba(20,184,166,0.04));">
     <div class="card-body" style="text-align: center; padding: 24px;">
-        <div style="font-size: 28px; margin-bottom: 8px;">🔮</div>
+        <div style="margin-bottom: 8px; color: var(--primary-light);">{{ icon("telescope", 28) }}</div>
         <strong style="color: var(--primary-light); font-size: 14px;">{{ "timeline.spoiler"|t }}</strong>
         <p style="color: var(--text-secondary); font-size: 14px; margin: 8px 0 0 0; max-width: 600px; margin-left: auto; margin-right: auto;">
             {{ "timeline.spoiler_text"|t }}

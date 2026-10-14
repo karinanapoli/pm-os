@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block page_title %}{{ "spec.title"|t }} · {{ initiative.name }}{% endblock %}
+{% block page_title %}{{ "spec.title"|t }} · {{ initiative|display_name }}{% endblock %}
 
 {% block topbar_actions %}
 <div class="spec-mode-switch" aria-label="{{ 'spec.mode_label'|t }}">
@@ -16,7 +16,7 @@
 {% set active_tab = "definition" %}{% include "_initiative_tabs.html" %}
 
 <ol class="spec-flow" aria-label="{{ 'spec.progress'|t }}">
-    <li class="done">{{ "spec.step_evidence"|t }}</li>
+    <li class="{{ 'done' if available_sources else '' }}">{{ "spec.step_evidence"|t }}</li>
     <li class="current">{{ "spec.step_specification"|t }}</li>
     <li class="{{ 'done' if specification.decisions else '' }}">{{ "spec.step_clarify"|t }}</li>
     <li class="{{ 'done' if specification.status == 'approved' else '' }}">{{ "spec.step_approve"|t }}</li>
@@ -25,7 +25,7 @@
 
 <section class="spec-prepare">
     <div>
-        <span class="spec-prepare-icon">✦</span>
+        <span class="spec-prepare-icon">{{ icon("sparkles", 20) }}</span>
         <div>
             <h3>{{ "spec.prepare_title"|t }}</h3>
             <p>{{ "spec.prepare_desc"|t }}</p>
@@ -52,7 +52,7 @@
         </label>
         {% if available_sources %}
         <details class="spec-source-picker">
-            <summary>{{ available_sources|length }} {{ "spec.available_sources"|t }}</summary>
+            <summary>{{ available_sources|length|tn("spec.available_sources") }}</summary>
             <div>
                 {% for source in available_sources %}
                 <label>
@@ -136,7 +136,6 @@
                     </div>
                 </details>
                 <div class="spec-actions">
-                    <a href="/generate?initiative={{ initiative.name }}" class="btn btn-secondary">{{ "spec.generate_prd_now"|t }}</a>
                     <button type="submit" class="btn btn-primary">{{ "spec.save_draft"|t }}</button>
                 </div>
             </div>
@@ -203,7 +202,7 @@
         <section class="card cursor-ai-card" id="cursor-ai">
             <div class="card-body">
                 <div class="cursor-ai-heading">
-                    <span class="spec-prepare-icon">⌁</span>
+                    <span class="spec-prepare-icon">{{ icon("plug", 20) }}</span>
                     <div>
                         <h3>{{ "external_tools.spec_title"|t }}</h3>
                         <p class="spec-caption">{{ "external_tools.spec_desc"|t }}</p>
@@ -343,8 +342,9 @@
                 {% else %}
                 <p class="spec-caption">{{ "spec.approval_desc"|t }}</p>
                 <form method="POST" action="/initiative/{{ initiative.name }}/specification/approve">
-                    <button class="btn btn-primary btn-sm" {% if not specification.version %}disabled{% endif %}>{{ "spec.approve"|t }}</button>
+                    <button class="btn btn-primary btn-sm" {% if not specification.version %}disabled aria-describedby="spec-approval-hint"{% endif %}>{{ "spec.approve"|t }}</button>
                 </form>
+                {% if not specification.version %}<p class="spec-approval-hint" id="spec-approval-hint">{{ "spec.approve_needs_draft"|t }}</p>{% endif %}
                 {% endif %}
             </div>
         </section>

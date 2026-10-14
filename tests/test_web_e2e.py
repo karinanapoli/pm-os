@@ -3279,3 +3279,102 @@ class TestSyntheticPartialSpecificationJourneys:
         assert "Explorar com IA" in initiative_page.text
         assert "Detalhar a iniciativa" in initiative_page.text
         assert f'/initiative/{initiative_id}/backlog?source=upload' in initiative_page.text
+
+
+class TestSyntheticUserUIFindings:
+    """Regressions for the synthetic-user UI audit (docs/reviews/ux-audit-2026-10)."""
+
+    def test_initiative_status_is_translated(self, client):
+        init_id = _create_initiative(client, "Status Label", "INT-STATUS-LABEL")
+
+        dashboard = client.get("/")
+        detail = client.get(f"/initiative/{init_id}")
+
+        assert ">Descoberta</span>" in dashboard.text
+        assert ">Descoberta</span>" in detail.text
+        assert ">discovery</span>" not in dashboard.text
+        assert ">discovery</span>" not in detail.text
+
+    def test_tab_titles_use_initiative_display_name(self, client):
+        init_id = _create_initiative(client, "Checkout Rapido", "INT-CHECKOUT-TITLE")
+
+        for path in ("specification", "data", "security", "deliverables", "map"):
+            page = client.get(f"/initiative/{init_id}/{path}")
+            title = re.search(r'<h1 class="page-title">(.*?)</h1>', page.text, re.S).group(1)
+            assert "Checkout Rapido" in title, path
+            assert init_id not in title, path
+
+    def test_sidebar_and_generate_show_demo_provider(self, client):
+        sidebar = client.get("/")
+        generate = client.get("/generate")
+
+        assert "model-dot demo" in sidebar.text
+        assert "Ollama · llama3.2:1b" not in sidebar.text
+        assert "Ollama · llama3.2:1b" not in generate.text
+
+    def test_validation_report_is_not_listed_as_prd_version(self, client, session_base):
+        init_id = _create_initiative(client, "Version List", "INT-VERSION-LIST")
+        artifacts = session_base / "workspace" / "initiatives" / init_id / "artifacts"
+        artifacts.mkdir(parents=True, exist_ok=True)
+        (artifacts / "prd.md").write_text("# PRD\n", encoding="utf-8")
+        (artifacts / "prd-validation.md").write_text("**Overall Score:** 7.0/10", encoding="utf-8")
+        (artifacts / "prd-validation-20260101_120000.md").write_text("old", encoding="utf-8")
+        (artifacts / "prd-20260101_120000.md").write_text("# Old PRD\n", encoding="utf-8")
+
+        page = client.get(f"/initiative/{init_id}")
+
+        assert "20260101_120000" in page.text
+        assert ">1 versão anterior<" in page.text
+        assert 'data-version-url="/initiative/INT-VERSION-LIST/prd/validation' not in page.text
+
+    def test_security_score_shows_not_assessed_state(self, client):
+        init_id = _create_initiative(client, "Security State", "INT-SECURITY-STATE")
+
+        page = client.get(f"/initiative/{init_id}")
+
+        assert "Não avaliado" in page.text
+        assert "Avaliar segurança" in page.text
+        assert "0.0/10" not in page.text
+
+    def test_counts_use_singular_labels(self, client):
+        init_id = _create_initiative(client, "Plural Labels", "INT-PLURAL-LABELS")
+
+        page = client.get(f"/initiative/{init_id}")
+
+        assert ">1 arquivo<" in page.text
+        assert "1 arquivos" not in page.text
+
+    def test_legacy_english_report_labels_are_localized(self, client, session_base):
+        init_id = _create_initiative(client, "Report Labels", "INT-REPORT-LABELS")
+        artifacts = session_base / "workspace" / "initiatives" / init_id / "artifacts"
+        artifacts.mkdir(parents=True, exist_ok=True)
+        (artifacts / "prd.md").write_text("# PRD\n", encoding="utf-8")
+        (artifacts / "prd-validation.md").write_text(
+            "# PRD Validation Report\n\n**Overall Score:** 7.0/10\n\n## Summary\n\nOk.\n\n"
+            "## Section Breakdown\n\n### Metrics\n**Score:** 7.0/10\n",
+            encoding="utf-8",
+        )
+
+        page = client.get(f"/initiative/{init_id}")
+
+        assert "Relatório de Validação de PRD" in page.text
+        assert "PRD Validation Report" not in page.text
+        assert "Métricas" in page.text
+
+    def test_navigation_uses_svg_icons_hidden_from_screen_readers(self, client):
+        page = client.get("/")
+
+        assert '<span class="nav-icon" aria-hidden="true"><svg class="icon icon-layout-dashboard"' in page.text
+        for glyph in ("◈", "◇", "◆", "▫", "📄"):
+            assert f'<span class="nav-icon">{glyph}</span>' not in page.text
+
+
+def test_icon_helper_marks_decorative_icons_and_labels_icon_only_controls():
+    from pm_os.web.icons import icon
+
+    decorative = str(icon("plug"))
+    labelled = str(icon("trash-2", label="Excluir"))
+
+    assert 'aria-hidden="true"' in decorative
+    assert 'role="img" aria-label="Excluir"' in labelled
+    assert str(icon("does-not-exist")) == ""

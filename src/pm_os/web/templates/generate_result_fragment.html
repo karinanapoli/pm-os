@@ -25,11 +25,11 @@
         </div>
         {% endif %}
         <div class="gen-result-box">
-            <span class="gen-result-icon">✅</span>
+            <span class="gen-result-icon">{{ icon("circle-check", 22) }}</span>
             <div>
                 <div style="font-weight:700;font-size:14px;margin-bottom:2px">{{ "generate.result_success"|t }}</div>
                 {% if result.score is defined %}
-                <div style="font-size:12.5px;color:var(--text-secondary)">{{ "generate.result_score"|t }}: <strong style="color:var(--success)">{{ "%.1f"|format(result.score|float) }}/10</strong></div>
+                <div style="font-size:13px;color:var(--text-secondary)">{{ "generate.result_score"|t }}: <strong style="color:var(--success)">{{ "%.1f"|format(result.score|float) }}/10</strong></div>
                 {% endif %}
             </div>
         </div>
@@ -138,7 +138,7 @@
         <div style="margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap;">
             <a href="/initiative/{{ result.initiative }}" class="btn btn-secondary btn-sm">{{ "generate.view_initiative"|t }}</a>
             <a href="/initiative/{{ result.initiative }}/backlog?source=prd" class="btn btn-primary btn-sm">{{ "backlog.from_prd"|t }}</a>
-            <a href="/initiative/{{ result.initiative }}/prd/download" class="btn btn-ghost btn-sm">⬇ {{ "generate.download_prd"|t }}</a>
+            <a href="/initiative/{{ result.initiative }}/prd/download" class="btn btn-ghost btn-sm">{{ icon("download") }} {{ "generate.download_prd"|t }}</a>
         </div>
     </div>
 </div>

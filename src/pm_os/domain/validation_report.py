@@ -29,6 +29,7 @@ class ValidationReport:
             issues_label = "**Problemas:**"
             action_label = "**Ações necessárias:**"
             suggestions_label = "**Sugestões:**"
+            section_score_label = "**Nota:**"
         else:
             title = "PRD Validation Report"
             score_label = "**Overall Score:**"
@@ -38,6 +39,7 @@ class ValidationReport:
             issues_label = "**Issues:**"
             action_label = "**Action items:**"
             suggestions_label = "**Suggestions:**"
+            section_score_label = "**Score:**"
 
         lines = [
             f"# {title}",
@@ -67,7 +69,7 @@ class ValidationReport:
 
         for section in self.sections:
             lines.append(f"### {section.name}")
-            lines.append(f"**Score:** {section.score:.1f}/10")
+            lines.append(f"{section_score_label} {section.score:.1f}/10")
             lines.append("")
 
             if section.rationale:

@@ -65,7 +65,7 @@
             <h3>{{ "signals.review.title"|t }}</h3>
             <p>{{ "signals.review.desc"|t }} <strong>{{ source_draft.filename }}</strong></p>
         </div>
-        <a href="/signals/sources/{{ source_draft.id }}" class="btn btn-ghost btn-sm">↗ {{ "signals.review.open_source"|t }}</a>
+        <a href="/signals/sources/{{ source_draft.id }}" class="btn btn-ghost btn-sm">{{ icon("external-link") }} {{ "signals.review.open_source"|t }}</a>
     </div>
     {% if not extraction_used_ai %}
     <div class="learning-callout signal-review-note">
@@ -165,7 +165,7 @@
         </div>
         {% else %}
         <div class="empty-state signal-empty">
-            <div class="empty-icon">◌</div>
+            <div class="empty-icon">{{ icon("activity", 32) }}</div>
             <h3>{{ "signals.empty_title"|t }}</h3>
             <p>{{ "signals.empty_desc"|t }}</p>
             <a href="#new-signal" class="btn btn-primary">{{ "signals.first"|t }}</a>

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block page_title %}{{ "security.title"|t }} · {{ initiative.name }}{% endblock %}
+{% block page_title %}{{ "security.title"|t }} · {{ initiative|display_name }}{% endblock %}
 {% block topbar_actions %}
 <a href="/initiative/{{ initiative.name }}" class="btn btn-ghost btn-sm">{{ "security.back"|t }}</a>
 {% endblock %}

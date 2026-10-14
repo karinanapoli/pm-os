@@ -2,14 +2,13 @@
 {% block page_title %}{{ initiative_display_name }}{% endblock %}
 
 {% block topbar_actions %}
-<div style="display: flex; gap: 8px;">
-    <button type="button" class="btn btn-secondary btn-sm" onclick="PMOS.openModal('initiative-settings')">✎ {{ "initiative.settings.edit"|t }}</button>
+<div class="topbar-actions">
+    <button type="button" class="btn btn-secondary btn-sm" onclick="PMOS.openModal('initiative-settings')">{{ icon("pencil") }} {{ "initiative.settings.edit"|t }}</button>
     <a href="/initiative/{{ initiative.name }}/chat" class="btn btn-secondary btn-sm">{{ "chat.tab"|t }} <span class="spec-beta">Beta</span></a>
-    <a href="/generate?initiative={{ initiative.name }}" class="btn btn-ai btn-sm">◇ {{ "nav.generate_prd"|t }}</a>
-    {% if prd_exists %}
-    <a href="/validate/{{ initiative.name }}" class="btn btn-secondary btn-sm">✓ {{ "validate.title"|t }}</a>
+    {% if not prd_exists %}
+    <a href="/generate?initiative={{ initiative.name }}" class="btn btn-ai btn-sm">{{ icon("file-text") }} {{ "nav.generate_prd"|t }}</a>
     {% endif %}
-    <button type="button" class="btn btn-amber btn-sm" onclick="PMOS.openModal('archive')">🗄 {{ "archive.button"|t }}</button>
+    <button type="button" class="btn btn-amber btn-sm" onclick="PMOS.openModal('archive')">{{ icon("archive") }} {{ "archive.button"|t }}</button>
 </div>
 {% endblock %}
 
@@ -19,7 +18,7 @@
 {% endif %}
 {% if is_quickstart %}
 <div style="background: linear-gradient(135deg, rgba(124,92,231,0.12), rgba(0,204,255,0.08)); border: 1px solid rgba(124,92,231,0.25); border-radius: var(--radius-lg); padding: 20px 24px; margin-bottom: 20px; display: flex; align-items: flex-start; gap: 14px;">
-    <div style="font-size: 22px; line-height: 1;">🚀</div>
+    <div class="callout-icon">{{ icon("sparkles", 20) }}</div>
     <div>
         <div style="font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 4px;">{{ "quickstart.success"|t }}</div>
         <div style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">
@@ -43,28 +42,28 @@
     <div class="card-body">
         <div class="initiative-goal-grid">
             <a href="/initiative/{{ initiative.name }}/backlog?source=upload" class="initiative-goal primary">
-                <span class="initiative-goal-icon" aria-hidden="true">▤</span>
+                <span class="initiative-goal-icon">{{ icon("list-todo") }}</span>
                 <strong>{{ "initiative.goals.backlog"|t }}</strong>
                 <span>{{ "initiative.goals.backlog_desc"|t }}</span>
             </a>
             <a href="/generate?initiative={{ initiative.name }}" class="initiative-goal">
-                <span class="initiative-goal-icon" aria-hidden="true">◇</span>
-                <strong>{{ "initiative.goals.prd"|t }}</strong>
-                <span>{{ "initiative.goals.prd_desc"|t }}</span>
+                <span class="initiative-goal-icon">{{ icon("file-text") }}</span>
+                <strong>{{ ("initiative.goals.prd_update" if prd_exists else "initiative.goals.prd")|t }}</strong>
+                <span>{{ ("initiative.goals.prd_update_desc" if prd_exists else "initiative.goals.prd_desc")|t }}</span>
             </a>
             <a href="/initiative/{{ initiative.name }}/chat" class="initiative-goal">
-                <span class="initiative-goal-icon" aria-hidden="true">✦</span>
+                <span class="initiative-goal-icon">{{ icon("sparkles") }}</span>
                 <strong>{{ "initiative.goals.explore"|t }}</strong>
                 <span>{{ "initiative.goals.explore_desc"|t }}</span>
             </a>
             <a href="/initiative/{{ initiative.name }}/specification" class="initiative-goal">
-                <span class="initiative-goal-icon" aria-hidden="true">◎</span>
+                <span class="initiative-goal-icon">{{ icon("target") }}</span>
                 <strong>{{ "initiative.goals.specification"|t }}</strong>
                 <span>{{ "initiative.goals.specification_desc"|t }}</span>
             </a>
             {% if cursor_shared|default(false) %}
             <div class="initiative-goal cursor-goal external-tool-goal">
-                <span class="initiative-goal-icon" aria-hidden="true">⌁</span>
+                <span class="initiative-goal-icon">{{ icon("plug") }}</span>
                 <strong>{{ "external_tools.continue"|t }}{% if cursor_pending_count|default(0) %} · {{ cursor_pending_count }}{% endif %}</strong>
                 <span>{{ ("cursor.pending_overview" if cursor_pending_count|default(0) else "external_tools.continue_desc")|t }}</span>
                 {% if metadata.repository_url %}<small>GitHub · {{ metadata.repository_url }}</small>{% endif %}
@@ -75,7 +74,7 @@
             </div>
             {% else %}
             <div class="initiative-goal cursor-goal external-tool-goal">
-                <span class="initiative-goal-icon" aria-hidden="true">⌁</span>
+                <span class="initiative-goal-icon">{{ icon("plug") }}</span>
                 <strong>{{ "external_tools.title"|t }}</strong>
                 <span>{{ "external_tools.overview_desc"|t }}</span>
                 {% if metadata.repository_url %}<small>GitHub · {{ metadata.repository_url }}</small>{% endif %}
@@ -93,7 +92,7 @@
     <div class="stat-card">
         <div class="stat-label">{{ "initiative.detail.status"|t }}</div>
         <span class="stat-value" style="font-size: 24px;">
-            <span class="badge badge-{{ metadata.status if metadata else 'unknown' }}" style="font-size:12px;padding:4px 12px;">{{ (metadata.status if metadata else 'unknown')|t }}</span>
+            <span class="badge badge-{{ metadata.status if metadata else 'unknown' }}" style="font-size:12px;padding:4px 12px;">{{ ("status." ~ ((metadata.status if metadata else '') or 'unknown'))|t }}</span>
         </span>
     </div>
     <div class="stat-card">
@@ -102,16 +101,22 @@
     </div>
     <div class="stat-card">
         <div class="stat-label">{{ "initiative.detail.prd"|t }}</div>
-        <span class="stat-value" style="font-size: 20px;">{{ '✅ ' ~ ("initiative.detail.generated"|t) if prd_exists else '⏳ ' ~ ("initiative.detail.not_yet"|t) }}</span>
+        <span class="stat-value stat-value-text {{ 'is-done' if prd_exists else 'is-pending' }}">{{ icon("circle-check" if prd_exists else "hourglass", 18) }} {{ "initiative.detail.generated"|t if prd_exists else "initiative.detail.not_yet"|t }}</span>
     </div>
     <div class="stat-card">
         <div class="stat-label">{{ "initiative.detail.validation_score"|t }}</div>
         <span class="stat-value">{{ validation_score }}</span>
     </div>
+    {% set security_started = security_assessment.answers.values()|rejectattr("status", "equalto", "not_assessed")|list %}
     <a class="stat-card" href="/initiative/{{ initiative.name }}/security" style="text-decoration:none;">
         <div class="stat-label">{{ "security.score"|t }}</div>
+        {% if security_started %}
         <span class="stat-value">{{ security_assessment.score }}/10</span>
         <span class="stat-hint">{{ ("security.band." ~ security_assessment.band)|t }}</span>
+        {% else %}
+        <span class="stat-value stat-value-text is-pending">{{ "security.status.not_assessed"|t }}</span>
+        <span class="stat-cta stat-cta-primary">{{ "security.assess_cta"|t }} →</span>
+        {% endif %}
     </a>
 </div>
 
@@ -146,7 +151,7 @@
 <div class="card" id="context">
     <div class="card-header">
         <h3>{{ "initiative.detail.context_docs"|t }}</h3>
-        <span style="font-size: 13px; color: var(--text-muted);">{{ docs|length }} {{ "initiative.detail.files"|t }}</span>
+        <span class="card-meta">{{ docs|length|tn("initiative.detail.files") }}</span>
     </div>
     <div class="card-body">
         {% if docs %}
@@ -154,16 +159,16 @@
             {% for doc in docs %}
             <div class="doc-item">
                 <span class="doc-name">
-                    <span>📄</span>
+                    {{ icon("file") }}
                     {{ doc.name }}
                 </span>
                 <div style="display: flex; align-items: center; gap: 12px;">
                     <span class="doc-size">{{ doc.size }}</span>
-                    <button type="button" class="btn btn-ghost btn-sm context-document-open" data-document-name="{{ doc.name }}" data-document-url="/initiative/{{ initiative.name }}/context/{{ doc.name|urlencode }}/preview">◉ {{ "initiative.detail.preview"|t }}</button>
-                    <a href="/initiative/{{ initiative.name }}/context/{{ doc.name|urlencode }}/download" class="btn btn-ghost btn-sm">⬇ {{ "initiative.detail.download"|t }}</a>
+                    <button type="button" class="btn btn-ghost btn-sm context-document-open" data-document-name="{{ doc.name }}" data-document-url="/initiative/{{ initiative.name }}/context/{{ doc.name|urlencode }}/preview">{{ icon("eye") }} {{ "initiative.detail.preview"|t }}</button>
+                    <a href="/initiative/{{ initiative.name }}/context/{{ doc.name|urlencode }}/download" class="btn btn-ghost btn-sm">{{ icon("download") }} {{ "initiative.detail.download"|t }}</a>
                     <form method="POST" action="/initiative/{{ initiative.name }}/delete-doc" style="display:inline;" data-loading="deleting" id="deleteDocForm-{{ loop.index0 }}">
                         <input type="hidden" name="filename" value="{{ doc.name }}">
-                        <button type="button" class="doc-delete" aria-label="{{ 'archive.delete_confirm'|t }}: {{ doc.name }}" onclick="PMOS.openModal('delete-doc')"><span aria-hidden="true">✕</span></button>
+                        <button type="button" class="doc-delete" aria-label="{{ 'archive.delete_confirm'|t }}: {{ doc.name }}" onclick="PMOS.openModal('delete-doc')">{{ icon("trash-2", 14) }}</button>
                     </form>
                 </div>
             </div>
@@ -253,7 +258,7 @@ document.querySelector('[data-close-context-modal]')?.addEventListener('click', 
             <a href="/initiative/{{ initiative.name }}" class="btn btn-ghost btn-sm">{{ "prd_versions.back"|t }}</a>
             {% else %}
             <a href="/validate/{{ initiative.name }}" class="btn btn-secondary btn-sm">{{ "validate.title"|t }}</a>
-            <a href="/generate" class="btn btn-ghost btn-sm">{{ "initiative.detail.regenerate"|t }}</a>
+            <a href="/generate?initiative={{ initiative.name }}" class="btn btn-ghost btn-sm">{{ "initiative.detail.regenerate"|t }}</a>
             {% endif %}
         </div>
     </div>
@@ -264,7 +269,7 @@ document.querySelector('[data-close-context-modal]')?.addEventListener('click', 
         </details>
         <div style="margin-top: 12px;">
             <a href="/initiative/{{ initiative.name }}/backlog?source=prd" class="btn btn-primary btn-sm">{{ "backlog.from_prd"|t }}</a>
-            <a href="/initiative/{{ initiative.name }}/prd/download" class="btn btn-ghost btn-sm">⬇ {{ "generate.download_prd"|t }}</a>
+            <a href="/initiative/{{ initiative.name }}/prd/download" class="btn btn-ghost btn-sm">{{ icon("download") }} {{ "generate.download_prd"|t }}</a>
         </div>
     </div>
 </div>
@@ -293,7 +298,7 @@ document.querySelector('[data-close-context-modal]')?.addEventListener('click', 
         </p>
         {% else %}
         <div style="display:flex;align-items:center;gap:12px;padding:8px 0;">
-            <span style="font-size:24px;">⚡</span>
+            <span class="callout-icon">{{ icon("circle-check", 20) }}</span>
             <div>
                 <div style="font-weight:600;font-size:14px;color:var(--text);">{{ "validate.not_yet_title"|t }}</div>
                 <div style="font-size:13px;color:var(--text-muted);margin-top:2px;">{{ "validate.not_yet_desc"|t }}</div>
@@ -309,7 +314,7 @@ document.querySelector('[data-close-context-modal]')?.addEventListener('click', 
 <div class="card">
     <div class="card-header">
         <h3>{{ "validate.history"|t }}</h3>
-        <span style="font-size: 13px; color: var(--text-muted);">{{ validation_history|length }} {{ "initiative.detail.validations"|t }}</span>
+        <span class="card-meta">{{ validation_history|length|tn("initiative.detail.validations") }}</span>
     </div>
     <div class="card-body">
         <div style="display: flex; gap: 12px; flex-wrap: wrap;">
@@ -337,14 +342,14 @@ document.querySelector('[data-close-context-modal]')?.addEventListener('click', 
 <div class="card">
     <div class="card-header">
         <h3>{{ "prd_versions.title"|t }}</h3>
-        <span style="font-size: 13px; color: var(--text-muted);">{{ prd_versions|length }} {{ "prd_versions.count"|t }}</span>
+        <span class="card-meta">{{ prd_versions|length|tn("prd_versions.count") }}</span>
     </div>
     <div class="card-body">
         <div class="doc-list">
             {% for ver in prd_versions %}
             <div class="doc-item">
                 <span class="doc-name">
-                    <span>📄</span>
+                    {{ icon("file-text") }}
                     {{ ver.timestamp }}
                 </span>
                 <div style="display: flex; align-items: center; gap: 12px;">
@@ -378,7 +383,7 @@ document.querySelector('[data-close-modal]')?.addEventListener('click', function
 
 <div class="modal-overlay" id="modal-archive" aria-hidden="true">
     <div class="modal modal-sm" role="dialog" aria-modal="true" aria-labelledby="archive-modal-title" aria-describedby="archive-modal-desc" tabindex="-1">
-        <div class="modal-icon-box amber" aria-hidden="true">🗄</div>
+        <div class="modal-icon-box amber" aria-hidden="true">{{ icon("archive", 22) }}</div>
         <div class="modal-title" id="archive-modal-title">{{ "archive.modal_title"|t }}</div>
         <div class="modal-desc" id="archive-modal-desc">
             {{ "archive.modal_desc"|t }}
@@ -395,7 +400,7 @@ document.querySelector('[data-close-modal]')?.addEventListener('click', function
 
 <div class="modal-overlay" id="modal-delete-doc" aria-hidden="true">
     <div class="modal modal-sm" role="dialog" aria-modal="true" aria-labelledby="delete-modal-title" aria-describedby="delete-modal-desc" tabindex="-1">
-        <div class="modal-icon-box coral" aria-hidden="true">✕</div>
+        <div class="modal-icon-box coral" aria-hidden="true">{{ icon("trash-2", 22) }}</div>
         <div class="modal-title" id="delete-modal-title">{{ "archive.delete_title"|t }}</div>
         <div class="modal-desc" id="delete-modal-desc">
             {{ "archive.delete_desc"|t }}
