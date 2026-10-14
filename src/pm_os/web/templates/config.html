@@ -548,11 +548,12 @@
         <section class="external-tools-other" id="external-tools-other" aria-labelledby="external-tools-other-title">
             <h4 id="external-tools-other-title">{{ "external_tools.other_title"|t }}</h4>
             <p class="form-hint">{{ "external_tools.other_desc"|t }}</p>
+            <div class="external-tools-warning" role="note"><strong>{{ "external_tools.privacy_title"|t }}</strong><span>{{ "external_tools.privacy_warning"|t }}</span></div>
             {% for tool in external_tools %}
             <details class="external-tool-config" {% if loop.first %}open{% endif %}>
                 <summary><strong>{{ tool.name }}</strong><span>{{ ("external_tools.where_" ~ tool.id)|t }}</span></summary>
                 <div class="external-tool-snippet">
-                    <pre id="snippet-{{ tool.id }}"><code>{{ tool.snippet }}</code></pre>
+                    <pre id="snippet-{{ tool.id }}"><code>{{ tool.masked_snippet }}</code></pre>
                     <button type="button" class="btn btn-secondary btn-xs" data-copy-target="snippet-{{ tool.id }}">{{ icon("files", 14) }} {{ "external_tools.copy"|t }}</button>
                 </div>
             </details>

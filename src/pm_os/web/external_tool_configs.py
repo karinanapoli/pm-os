@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import json
-import shlex
-
 from pm_os.web.cursor_installer_service import CursorInstallerService
 
 
@@ -16,12 +14,9 @@ def external_tool_configs(installer: CursorInstallerService | None = None) -> li
     """
     entry = (installer or CursorInstallerService()).desired_entry()
     name = CursorInstallerService.SERVER_NAME
-    generic = {"command": entry["command"], "args": entry["args"], "env": entry["env"]}
-    env_flags = " ".join(
-        f"--env {shlex.quote(f'{key}={value}')}" for key, value in entry["env"].items()
-    )
-    command = " ".join(shlex.quote(part) for part in [entry["command"], *entry["args"]])
-    return [
+    generic = {"command": entry["command"], "args": entry["args"]}
+    command = " ".join([entry["command"], *entry["args"]])
+    configs = [
         {
             "id": "vscode",
             "name": "VS Code",
@@ -32,7 +27,7 @@ def external_tool_configs(installer: CursorInstallerService | None = None) -> li
             "id": "claude-code",
             "name": "Claude Code",
             "location": "terminal",
-            "snippet": f"claude mcp add {name} {env_flags} -- {command}",
+            "snippet": f"claude mcp add {name} -- {command}",
         },
         {
             "id": "generic",
@@ -41,3 +36,6 @@ def external_tool_configs(installer: CursorInstallerService | None = None) -> li
             "snippet": json.dumps({"mcpServers": {name: generic}}, indent=2, ensure_ascii=False),
         },
     ]
+    for config in configs:
+        config["masked_snippet"] = config["snippet"]
+    return configs

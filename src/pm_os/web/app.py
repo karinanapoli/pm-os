@@ -310,6 +310,10 @@ app.mount("/static", StaticFiles(directory=str(HERE / "static")), name="static")
 templates = Jinja2Templates(directory=str(HERE / "templates"))
 
 config_manager = ConfigManager()
+config_manager.set(
+    "workspace_dir",
+    str(Path(os.getenv("PM_OS_WORKSPACE_DIR", "workspace")).expanduser().resolve()),
+)
 job_repository = JobRepository()
 generation_job_service = GenerationJobService(job_repository, _gen_executor)
 

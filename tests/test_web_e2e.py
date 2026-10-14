@@ -3122,10 +3122,11 @@ class TestCursorConnection:
         assert response.status_code == 303
         assert "cursor.notice_connected" in response.headers["location"]
         assert stored["mcpServers"]["existing"] == {"command": "keep-me"}
-        assert stored["mcpServers"]["pm-studio"]["args"] == [
-            "-m",
-            "pm_os.mcp_server",
-        ]
+        assert stored["mcpServers"]["pm-studio"] == {
+            "type": "stdio",
+            "command": "pm-studio-mcp",
+            "args": [],
+        }
         assert cursor_config.with_name("mcp.json.pm-studio.bak").exists()
 
     def test_invalid_cursor_config_returns_error_and_is_preserved(
@@ -3631,11 +3632,12 @@ def test_settings_explain_how_to_connect_vscode_and_other_agents(client):
     page = client.get("/config")
 
     assert 'id="external-tools-other"' in page.text
-    assert ".vscode/mcp.json" in page.text
+    assert "não salve no repositório" in page.text
+    assert "pm-studio-mcp" in page.text
+    assert "PM_OS_WORKSPACE_DIR" not in page.text
     assert "claude mcp add pm-studio" in page.text
     assert "mcpServers" in page.text
     assert "target.closest('.tab-panel')" in page.text
-
 
 def test_initiative_links_to_other_tool_setup(client):
     init_id = _create_initiative(client, "Other Tools", "INT-OTHER-TOOLS")
