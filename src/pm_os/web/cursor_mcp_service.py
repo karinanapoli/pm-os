@@ -10,13 +10,19 @@ from pm_os.repositories.initiative_repository import InitiativeRepository
 from pm_os.web.ai_contribution_service import AIContributionService
 from pm_os.web.product_specification_service import ProductSpecificationService
 from pm_os.web.initiative_data_service import InitiativeDataService
+from pm_os.web.config_manager import ConfigManager
 
 
 class CursorMCPService:
     """Expose explicitly shared initiatives to an external local agent."""
 
     def __init__(self, workspace_dir: Path | str | None = None):
-        configured = workspace_dir or os.getenv("PM_OS_WORKSPACE_DIR", "workspace")
+        configured = (
+            workspace_dir
+            or os.getenv("PM_OS_WORKSPACE_DIR")
+            or ConfigManager().get("workspace_dir")
+            or "workspace"
+        )
         self.workspace_dir = Path(configured).expanduser().resolve()
         self.repository = InitiativeRepository(
             initiatives_path=str(self.workspace_dir / "initiatives")

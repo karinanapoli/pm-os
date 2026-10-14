@@ -37,9 +37,8 @@ class CursorInstallerService:
     def desired_entry(self) -> dict:
         return {
             "type": "stdio",
-            "command": self.python_executable,
-            "args": ["-m", "pm_os.mcp_server"],
-            "env": {"PM_OS_WORKSPACE_DIR": str(self.workspace_dir)},
+            "command": "pm-studio-mcp",
+            "args": [],
         }
 
     def status(self) -> dict:

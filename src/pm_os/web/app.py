@@ -310,6 +310,10 @@ app.mount("/static", StaticFiles(directory=str(HERE / "static")), name="static")
 templates = Jinja2Templates(directory=str(HERE / "templates"))
 
 config_manager = ConfigManager()
+config_manager.set(
+    "workspace_dir",
+    str(Path(os.getenv("PM_OS_WORKSPACE_DIR", "workspace")).expanduser().resolve()),
+)
 job_repository = JobRepository()
 generation_job_service = GenerationJobService(job_repository, _gen_executor)
 
@@ -3445,20 +3449,6 @@ async def config_page(request: Request, notice: str = ""):
         "config.html",
         _ctx(request, saved=False, notice=notice, external_tools=external_tool_configs()),
     )
-
-
-@app.get("/config/external-tools/{tool_id}/snippet")
-async def external_tool_snippet(request: Request, tool_id: str):
-    """Reveal a machine-specific MCP snippet only after an explicit local action."""
-    _require_installation_admin(request)
-    if not _is_local_request(request):
-        raise HTTPException(status_code=403, detail=_t("cursor.local_only", _get_lang()))
-    tool = next(
-        (item for item in external_tool_configs() if item.get("id") == tool_id), None
-    )
-    if not tool:
-        raise HTTPException(status_code=404, detail=_t("error.not_found", _get_lang()))
-    return JSONResponse({"snippet": tool["snippet"]})
 
 
 @app.post("/config/provider/use-local-ollama")

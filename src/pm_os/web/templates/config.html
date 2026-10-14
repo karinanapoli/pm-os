@@ -554,10 +554,7 @@
                 <summary><strong>{{ tool.name }}</strong><span>{{ ("external_tools.where_" ~ tool.id)|t }}</span></summary>
                 <div class="external-tool-snippet">
                     <pre id="snippet-{{ tool.id }}"><code>{{ tool.masked_snippet }}</code></pre>
-                    <div class="external-tool-actions">
-                        <button type="button" class="btn btn-ghost btn-xs" data-reveal-config="{{ tool.id }}">{{ "external_tools.reveal"|t }}</button>
-                        <button type="button" class="btn btn-secondary btn-xs" data-copy-config="{{ tool.id }}">{{ icon("files", 14) }} {{ "external_tools.copy"|t }}</button>
-                    </div>
+                    <button type="button" class="btn btn-secondary btn-xs" data-copy-target="snippet-{{ tool.id }}">{{ icon("files", 14) }} {{ "external_tools.copy"|t }}</button>
                 </div>
             </details>
             {% endfor %}
@@ -671,34 +668,13 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    async function loadExternalToolSnippet(toolId) {
-        var response = await fetch('/config/external-tools/' + encodeURIComponent(toolId) + '/snippet');
-        if (!response.ok) throw new Error('snippet unavailable');
-        return (await response.json()).snippet;
-    }
-    document.querySelectorAll('[data-reveal-config]').forEach(function(button) {
-        button.addEventListener('click', async function() {
-            var source = document.querySelector('#snippet-' + CSS.escape(button.dataset.revealConfig) + ' code');
-            if (!source) return;
-            try {
-                source.textContent = await loadExternalToolSnippet(button.dataset.revealConfig);
-                button.hidden = true;
-                PMOS.toast({{ "external_tools.revealed"|t|tojson }});
-            } catch (error) {
-                PMOS.toast({{ "external_tools.reveal_error"|t|tojson }});
-            }
-        });
-    });
-    document.querySelectorAll('[data-copy-config]').forEach(function(button) {
-        button.addEventListener('click', async function() {
-            if (!navigator.clipboard) return;
-            try {
-                var snippet = await loadExternalToolSnippet(button.dataset.copyConfig);
-                await navigator.clipboard.writeText(snippet);
+    document.querySelectorAll('[data-copy-target]').forEach(function(button) {
+        button.addEventListener('click', function() {
+            var source = document.getElementById(button.dataset.copyTarget);
+            if (!source || !navigator.clipboard) return;
+            navigator.clipboard.writeText(source.textContent).then(function() {
                 PMOS.toast({{ "external_tools.copied"|t|tojson }});
-            } catch (error) {
-                PMOS.toast({{ "external_tools.reveal_error"|t|tojson }});
-            }
+            });
         });
     });
 

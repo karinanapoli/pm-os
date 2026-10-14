@@ -109,13 +109,11 @@ def test_external_tool_configs_reuse_the_pm_studio_mcp_entry(tmp_path):
     vscode = json.loads(configs["vscode"]["snippet"])["servers"]["pm-studio"]
     assert vscode == installer.desired_entry()
     generic = json.loads(configs["generic"]["snippet"])["mcpServers"]["pm-studio"]
-    assert generic["args"] == ["-m", "pm_os.mcp_server"]
+    assert generic["args"] == []
     assert "type" not in generic
-    assert configs["claude-code"]["snippet"].startswith("claude mcp add pm-studio --env ")
-    assert f"'PM_OS_WORKSPACE_DIR={tmp_path / 'work space'}'" in configs["claude-code"]["snippet"]
-    assert configs["claude-code"]["snippet"].endswith("-- /usr/bin/python3 -m pm_os.mcp_server")
+    assert configs["claude-code"]["snippet"] == "claude mcp add pm-studio -- pm-studio-mcp"
     for config in configs.values():
         assert str(tmp_path) not in config["masked_snippet"]
         assert "/usr/bin/python3" not in config["masked_snippet"]
-        assert "<LOCAL_WORKSPACE_PATH>" in config["masked_snippet"]
-        assert "<LOCAL_PYTHON_EXECUTABLE>" in config["masked_snippet"]
+        assert "PM_OS_WORKSPACE_DIR" not in config["masked_snippet"]
+        assert "pm-studio-mcp" in config["masked_snippet"]

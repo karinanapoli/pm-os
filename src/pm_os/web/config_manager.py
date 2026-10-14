@@ -57,6 +57,7 @@ SCHEMA: dict[str, type] = {
     "smtp_password": str,
     "smtp_from_email": str,
     "smtp_from_name": str,
+    "workspace_dir": str,
 }
 
 DEFAULT_CONFIG: dict[str, Any] = {
@@ -92,6 +93,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "smtp_password": "",
     "smtp_from_email": "",
     "smtp_from_name": "PM Studio",
+    "workspace_dir": "",
 }
 
 

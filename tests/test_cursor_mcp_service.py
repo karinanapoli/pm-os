@@ -5,6 +5,7 @@ import pytest
 from pm_os.web.ai_contribution_service import AIContributionService
 from pm_os.web.cursor_mcp_service import CursorMCPService
 from pm_os.web.product_specification_service import ProductSpecificationService, SPECIFICATION_FIELDS
+from pm_os.web.config_manager import ConfigManager
 
 
 def _initiative(workspace: Path, name: str = "INT-001") -> Path:
@@ -25,6 +26,17 @@ def _share(path: Path) -> None:
     service = AIContributionService()
     service.connect(path, actor="pm@example.com")
     service.share(path, specification_version=1)
+
+
+def test_discovers_workspace_from_private_pm_studio_config(tmp_path, monkeypatch):
+    workspace = tmp_path / "private-workspace"
+    monkeypatch.setenv("PM_OS_CONFIG_DIR", str(tmp_path / ".pm_os"))
+    monkeypatch.delenv("PM_OS_WORKSPACE_DIR", raising=False)
+    ConfigManager().set("workspace_dir", str(workspace))
+
+    service = CursorMCPService()
+
+    assert service.workspace_dir == workspace.resolve()
 
 
 def test_lists_only_explicitly_shared_initiatives(tmp_path):
