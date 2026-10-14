@@ -31,7 +31,17 @@
             <p>{{ "spec.prepare_desc"|t }}</p>
         </div>
     </div>
-    <form method="POST" action="/initiative/{{ initiative.name }}/specification/prepare" data-loading="processing">
+    <form method="POST" action="/initiative/{{ initiative.name }}/specification/prepare" enctype="multipart/form-data" data-loading="processing" id="spec-prepare-form">
+        <fieldset class="spec-source-choice">
+            <legend>{{ "spec.generation_source"|t }}</legend>
+            <label><input type="radio" name="generation_source" value="context" checked> <span><strong>{{ "spec.source_context"|t }}</strong><small>{{ "spec.source_context_desc"|t }}</small></span></label>
+            <label><input type="radio" name="generation_source" value="prd" {% if not prd_exists %}disabled{% endif %}> <span><strong>{{ "spec.source_prd"|t }}</strong><small>{{ ("spec.source_prd_desc" if prd_exists else "spec.source_prd_unavailable")|t }}</small></span></label>
+            <label><input type="radio" name="generation_source" value="prd_upload"> <span><strong>{{ "spec.source_prd_upload"|t }}</strong><small>{{ "spec.source_prd_upload_desc"|t }}</small></span></label>
+        </fieldset>
+        <div class="spec-prd-upload" id="spec-prd-upload" hidden>
+            <input type="file" name="prd_file" accept=".md,.txt,.pdf,text/markdown,text/plain,application/pdf" onchange="PMOS.validateUploadFiles(this)">
+            <small>{{ "spec.source_prd_upload_help"|t }}</small>
+        </div>
         <label class="spec-provider">
             <span>{{ "spec.provider_label"|t }}</span>
             <select name="ai_provider">
@@ -54,11 +64,28 @@
             </div>
         </details>
         {% endif %}
-        <button type="submit" class="btn btn-ai" {% if not available_sources %}disabled{% endif %}>
-            {{ "spec.prepare_cta"|t }}
+        <button type="submit" class="btn btn-ai" id="spec-prepare-submit">
+            <span data-context-label>{{ "spec.prepare_cta"|t }}</span>
         </button>
     </form>
 </section>
+<script>
+(function () {
+    var form = document.getElementById('spec-prepare-form');
+    if (!form) return;
+    var upload = document.getElementById('spec-prd-upload');
+    var picker = form.querySelector('.spec-source-picker');
+    var buttonLabel = form.querySelector('[data-context-label]');
+    var labels = {context: {{ "spec.prepare_cta"|t|tojson }}, prd: {{ "spec.prepare_from_prd"|t|tojson }}, prd_upload: {{ "spec.prepare_from_uploaded_prd"|t|tojson }}};
+    form.querySelectorAll('input[name="generation_source"]').forEach(function (radio) {
+        radio.addEventListener('change', function () {
+            upload.hidden = radio.value !== 'prd_upload';
+            if (picker) picker.hidden = radio.value !== 'context';
+            buttonLabel.textContent = labels[radio.value];
+        });
+    });
+})();
+</script>
 
 <div class="spec-layout">
     <div>

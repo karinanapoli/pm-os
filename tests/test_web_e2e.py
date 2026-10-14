@@ -267,6 +267,38 @@ class TestInitiativeMap:
 
 
 class TestGuidedSpecification:
+    def test_prepares_specification_from_an_uploaded_existing_prd(
+        self, client, session_base
+    ):
+        init_id = _create_initiative(client, "Imported PRD", "INT-PRD-UPLOAD")
+
+        page = client.get(f"/initiative/{init_id}/specification")
+        assert "Enviar um PRD pronto" in page.text
+        assert 'value="prd_upload"' in page.text
+
+        response = client.post(
+            f"/initiative/{init_id}/specification/prepare",
+            data={"generation_source": "prd_upload", "ai_provider": "demo"},
+            files={
+                "prd_file": (
+                    "prd-checkout.md",
+                    "# PRD\nProblema: abandono no checkout.\nRequisito: reduzir etapas.",
+                    "text/markdown",
+                )
+            },
+            follow_redirects=False,
+        )
+
+        assert response.status_code == 303
+        assert "notice=spec.prepared" in response.headers["location"]
+        specification = json.loads(
+            (
+                session_base / "workspace" / "initiatives" / init_id
+                / "artifacts" / "specification.json"
+            ).read_text(encoding="utf-8")
+        )
+        assert specification["source_ids"] == ["UPLOADED-PRD"]
+
     def test_quick_prd_offers_direct_backlog_journey(self, client, session_base):
         init_id = _create_initiative(client, "Quick Backlog", "INT-QUICK-BACKLOG")
         artifacts = (
@@ -899,6 +931,9 @@ class TestRouteAccessibility:
         resp = client.get(f"/initiative/{init_name}")
         assert resp.status_code == 200
         assert b"Test Initiative" in resp.content
+        assert "VS Code ou outra" in resp.text
+        assert f'/initiative/{init_name}/specification#cursor-ai' in resp.text
+        assert 'href="/config#providers"' in resp.text
 
     def test_initiative_data_prototype_uses_real_sources_without_leaking_tokens(
         self, client
@@ -1804,7 +1839,7 @@ class TestConfiguration:
         monkeypatch.setenv("PM_OS_CURSOR_CONFIG_PATH", str(cursor_config))
 
         before = client.get("/config#providers")
-        assert "Usar a IA pelo Cursor" in before.text
+        assert "Usar IA no Cursor, VS Code ou outro agente" in before.text
         assert 'action="/config/cursor/connect"' in before.text
 
         connected = client.post("/config/cursor/connect", follow_redirects=False)
@@ -2639,8 +2674,8 @@ class TestDashboardEmptyState:
         response = client.get("/")
 
         assert response.status_code == 200
-        assert 'href="/signals"' in response.text
-        assert 'href="/decisions"' in response.text
+        assert 'href="/signals"' not in response.text
+        assert 'href="/decisions"' not in response.text
         assert 'href="/config#plugins"' not in response.text
         assert "PM Studio v0.2.0" in response.text
 
@@ -2869,7 +2904,9 @@ class TestCursorConnection:
         )
         assert "cursor.notice_shared" in shared.headers["location"]
         overview = client.get(f"/initiative/{initiative_id}")
-        assert "Continuar no Cursor" in overview.text
+        assert "Continuar em ferramenta externa" in overview.text
+        assert "VS Code ou outra" in overview.text
+        assert 'href="/config#providers"' in overview.text
         assert "https://cursor.com/link/prompt?" in overview.text
         assert initiative_id in overview.text
 

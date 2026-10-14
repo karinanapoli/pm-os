@@ -9,6 +9,7 @@ from pm_os.context_builder import ContextBuilder
 from pm_os.repositories.initiative_repository import InitiativeRepository
 from pm_os.web.ai_contribution_service import AIContributionService
 from pm_os.web.product_specification_service import ProductSpecificationService
+from pm_os.web.initiative_data_service import InitiativeDataService
 
 
 class CursorMCPService:
@@ -23,6 +24,7 @@ class CursorMCPService:
         self.context_builder = ContextBuilder()
         self.specifications = ProductSpecificationService()
         self.contributions = AIContributionService()
+        self.data = InitiativeDataService()
 
     def list_initiatives(self) -> list[dict]:
         result = []
@@ -113,6 +115,13 @@ class CursorMCPService:
     def get_proposal_status(self, initiative_name: str, proposal_ids: list[str]) -> list[dict]:
         initiative = self._shared_initiative(initiative_name, load_content=False)
         return self.contributions.proposal_status(initiative.path, proposal_ids)
+
+    def register_automation(self, initiative_name: str, *, name: str, tool: str, description: str = "") -> dict:
+        """Register an automation created by Cursor, VS Code, or another MCP client."""
+        initiative = self._shared_initiative(initiative_name, load_content=False)
+        return self.data.register_automation(
+            initiative.path, name=name, tool=tool, description=description
+        )
 
     def _shared_initiative(self, name: str, *, load_content: bool):
         initiative = self.repository.get(name, load_content=load_content)

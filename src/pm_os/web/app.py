@@ -2,6 +2,7 @@ import os
 import json
 import re
 import shutil
+import tempfile
 import urllib.parse
 import time
 import yaml
@@ -43,6 +44,7 @@ from pm_os.infrastructure.utils import (
     read_validation_history,
     read_validation_score_from_file,
     safe_upload_filename,
+    extract_pdf_text,
 )
 from pm_os.repositories.initiative_repository import InitiativeRepository
 from pm_os.repositories.job_repository import JobRepository
@@ -67,6 +69,7 @@ from pm_os.web.product_docs_service import ProductDocsService
 from pm_os.web.prd_validation_service import PRDValidationService
 from pm_os.web.generation_job_service import GenerationJobService
 from pm_os.web.initiative_chat_service import InitiativeChatService
+from pm_os.web.initiative_data_service import InitiativeDataService
 from pm_os.web.prd_generation_operation import (
     PRDGenerationOperation,
     PRDGenerationRequest,
@@ -1488,7 +1491,9 @@ async def specification_page(
 
 
 @app.get("/initiative/{initiative_name}/data", response_class=HTMLResponse)
-async def initiative_data_page(request: Request, initiative_name: str):
+async def initiative_data_page(
+    request: Request, initiative_name: str, notice: str = "", notice_kind: str = "success"
+):
     """Prototype a decision-oriented data hub using sources already in PM Studio."""
     selected = _get_initiative_by_name(initiative_name, request)
     if not selected:
@@ -1509,8 +1514,12 @@ async def initiative_data_page(request: Request, initiative_name: str):
         1 for server in mcp_sources
         if (server.get("status") or {}).get("state") == "connected"
     )
-    source_count = len(mcp_sources) + (1 if context_files else 0) + (1 if linked_signals else 0)
     strong_signal_count = sum(1 for signal in linked_signals if signal.strength == "strong")
+    specification = product_specification_service.load(selected.path)
+    data_service = InitiativeDataService()
+    spreadsheets = data_service.list_spreadsheets(selected.path)
+    automations = data_service.list_automations(selected.path)
+    source_count = len(mcp_sources) + len(spreadsheets) + len(automations) + (1 if context_files else 0) + (1 if linked_signals else 0)
 
     return templates.TemplateResponse(
         request,
@@ -1524,7 +1533,37 @@ async def initiative_data_page(request: Request, initiative_name: str):
             connected_mcp_count=connected_mcp_count,
             source_count=source_count,
             strong_signal_count=strong_signal_count,
+            decisions=specification.get("decisions") or [],
+            spreadsheets=spreadsheets,
+            automations=automations,
+            notice=notice,
+            notice_kind=notice_kind,
         ),
+    )
+
+
+@app.post("/initiative/{initiative_name}/data/spreadsheets")
+async def connect_initiative_spreadsheet(
+    request: Request, initiative_name: str, spreadsheet: UploadFile = File(...)
+):
+    selected = _get_initiative_by_name(initiative_name, request)
+    if not selected:
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    content = await spreadsheet.read(MAX_UPLOAD_FILE_BYTES + 1)
+    if len(content) > MAX_UPLOAD_FILE_BYTES:
+        notice = "data.spreadsheet_too_large"
+        kind = "error"
+    else:
+        try:
+            InitiativeDataService().add_spreadsheet(
+                selected.path, spreadsheet.filename or "planilha.csv", content
+            )
+            notice, kind = "data.spreadsheet_connected", "success"
+        except (UnicodeDecodeError, ValueError):
+            notice, kind = "data.spreadsheet_invalid", "error"
+    return RedirectResponse(
+        f"/initiative/{initiative_name}/data?notice={notice}&notice_kind={kind}#sources",
+        status_code=303,
     )
 
 
@@ -1912,16 +1951,45 @@ async def prepare_specification_from_context(
     initiative_name: str,
     selected_source_ids: list[str] = Form(default=[]),
     ai_provider: str = Form(""),
+    generation_source: str = Form("context"),
+    prd_file: Optional[UploadFile] = File(None),
 ):
     selected = _get_initiative_by_name(initiative_name, request)
     if not selected:
         return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
     selected_ids = set(selected_source_ids)
-    builder = ContextBuilder()
-    context = (
-        builder.build_selected(selected, selected_ids)
-        if selected_ids else builder.build(selected)
-    )
+    if generation_source == "prd_upload":
+        safe_name = safe_upload_filename(prd_file.filename if prd_file else "")
+        suffix = Path(safe_name).suffix.casefold() if safe_name else ""
+        if suffix not in {".md", ".txt", ".pdf"}:
+            return RedirectResponse(
+                url=f"/initiative/{initiative_name}/specification?notice=spec.prd_upload_type_error&notice_kind=error",
+                status_code=303,
+            )
+        raw_content = await prd_file.read(MAX_UPLOAD_FILE_BYTES + 1)
+        if len(raw_content) > MAX_UPLOAD_FILE_BYTES:
+            return RedirectResponse(
+                url=f"/initiative/{initiative_name}/specification?notice=spec.prd_upload_size_error&notice_kind=error",
+                status_code=303,
+            )
+        if suffix == ".pdf":
+            with tempfile.TemporaryDirectory() as temporary_dir:
+                temporary_path = Path(temporary_dir) / safe_name
+                temporary_path.write_bytes(raw_content)
+                context = extract_pdf_text(temporary_path)
+        else:
+            try:
+                context = raw_content.decode("utf-8-sig")
+            except UnicodeDecodeError:
+                context = ""
+        selected_ids = {"UPLOADED-PRD"}
+    elif generation_source == "prd":
+        prd_path = selected.path / "artifacts" / "prd.md"
+        context = prd_path.read_text(encoding="utf-8") if prd_path.is_file() else ""
+        selected_ids = {"CURRENT-PRD"}
+    else:
+        builder = ContextBuilder()
+        context = builder.build_selected(selected, selected_ids) if selected_ids else builder.build(selected)
     if not context.strip():
         return RedirectResponse(
             url=f"/initiative/{initiative_name}/specification?notice=spec.prepare_no_context&notice_kind=error",
@@ -2593,6 +2661,17 @@ async def prd_version_view(request: Request, initiative_name: str, version: str)
             cursor_pending_count=0,
         ),
     )
+
+
+@app.get("/initiative/{initiative_name}/prd/{version}/content", response_class=HTMLResponse)
+async def prd_version_content(request: Request, initiative_name: str, version: str):
+    selected = _get_initiative_by_name(initiative_name, request)
+    if not selected or not re.fullmatch(r"[0-9A-Za-z_-]+", version):
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    version_path = selected.path / "artifacts" / f"prd-{version}.md"
+    if not version_path.is_file():
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    return HTMLResponse(render_safe_markdown(version_path.read_text(encoding="utf-8")))
 
 
 # ─── New Initiative ───

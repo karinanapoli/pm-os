@@ -3513,3 +3513,19 @@ body {
         grid-template-columns: 1fr;
     }
 }
+.external-tool-goal { cursor: default; }
+.external-tool-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.external-tool-actions a { color: var(--primary-light); font-size: 12px; font-weight: 650; text-decoration: none; border: 1px solid var(--border); border-radius: 999px; padding: 4px 9px; }
+.external-tool-actions a:hover { border-color: var(--primary-light); background: rgba(124, 92, 255, .08); }
+.content-modal { width: min(860px, 92vw); max-height: 86vh; padding: 0; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.content-modal::backdrop { background: rgba(5, 8, 18, .72); }
+.content-modal .card-body { max-height: 70vh; overflow: auto; }
+.spec-source-choice { border: 0; padding: 0; margin: 0; display: grid; gap: 8px; font-size: 13px; }
+.spec-source-choice legend { color: var(--text-muted); margin-bottom: 6px; }
+.spec-source-choice label { display: flex; gap: 9px; align-items: flex-start; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 9px 11px; cursor: pointer; }
+.spec-source-choice label:has(input:checked) { border-color: var(--primary-light); background: rgba(124, 92, 255, .08); }
+.spec-source-choice label:has(input:disabled) { opacity: .55; cursor: not-allowed; }
+.spec-source-choice span { display: grid; gap: 2px; }
+.spec-source-choice small, .spec-prd-upload small { color: var(--text-muted); font-weight: 400; }
+.spec-prd-upload { display: grid; gap: 5px; padding: 10px; border: 1px dashed var(--border); border-radius: var(--radius-sm); }
+.spec-prd-upload[hidden] { display: none; }
