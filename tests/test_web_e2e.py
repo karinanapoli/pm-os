@@ -899,6 +899,9 @@ class TestRouteAccessibility:
         resp = client.get(f"/initiative/{init_name}")
         assert resp.status_code == 200
         assert b"Test Initiative" in resp.content
+        assert "VS Code ou outra" in resp.text
+        assert f'/initiative/{init_name}/specification#cursor-ai' in resp.text
+        assert 'href="/config#providers"' in resp.text
 
     def test_initiative_data_prototype_uses_real_sources_without_leaking_tokens(
         self, client
@@ -2869,7 +2872,9 @@ class TestCursorConnection:
         )
         assert "cursor.notice_shared" in shared.headers["location"]
         overview = client.get(f"/initiative/{initiative_id}")
-        assert "Continuar no Cursor" in overview.text
+        assert "Continuar em ferramenta externa" in overview.text
+        assert "VS Code ou outra" in overview.text
+        assert 'href="/config#providers"' in overview.text
         assert "https://cursor.com/link/prompt?" in overview.text
         assert initiative_id in overview.text
 

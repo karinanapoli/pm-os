@@ -3513,3 +3513,7 @@ body {
         grid-template-columns: 1fr;
     }
 }
+.external-tool-goal { cursor: default; }
+.external-tool-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.external-tool-actions a { color: var(--primary-light); font-size: 12px; font-weight: 650; text-decoration: none; border: 1px solid var(--border); border-radius: 999px; padding: 4px 9px; }
+.external-tool-actions a:hover { border-color: var(--primary-light); background: rgba(124, 92, 255, .08); }
