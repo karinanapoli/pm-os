@@ -4,6 +4,7 @@
 {% block content %}
 {% if notice %}<div class="alert alert-{{ notice_kind or 'success' }}" role="status">{{ notice|t }}</div>{% endif %}
 {% set active_tab = "data" %}{% include "_initiative_tabs.html" %}
+{% set pending_insights = insight_run.insights|selectattr("status", "equalto", "new")|list %}
 
 <section class="data-hero">
     <div>
@@ -13,163 +14,225 @@
     </div>
     <div class="data-hero-actions">
         <a href="#sources" class="btn btn-secondary btn-sm">{{ "data.connect_source"|t }}</a>
-        <a href="/signals#new-signal" class="btn btn-primary btn-sm">{{ "data.add_evidence"|t }}</a>
+        <form method="POST" action="/initiative/{{ initiative.name }}/data/insights/run" class="inline-form" data-loading="processing">
+            <button type="submit" class="btn btn-ai btn-sm">{{ icon("sparkles", 14) }} {{ "data.run_agents"|t }}</button>
+        </form>
     </div>
 </section>
 
 <div class="data-kpi-grid" aria-label="{{ 'data.summary'|t }}">
     <article><span>{{ "data.sources"|t }}</span><strong>{{ source_count }}</strong><small>{{ "data.sources_help"|t }}</small></article>
+    <article><span>{{ "data.agent_insights"|t }}</span><strong>{{ pending_insights|length }}</strong><small>{{ "data.agent_insights_help"|t }}</small></article>
     <article><span>{{ "data.insights"|t }}</span><strong>{{ linked_signals|length }}</strong><small>{{ "data.insights_help"|t }}</small></article>
-    <article><span>{{ "data.strong_signals"|t }}</span><strong>{{ strong_signal_count }}</strong><small>{{ "data.strong_help"|t }}</small></article>
     <article><span>{{ "data.connected_mcps"|t }}</span><strong>{{ connected_mcp_count }}/{{ mcp_sources|length }}</strong><small>{{ "data.mcp_help"|t }}</small></article>
 </div>
 
-<div class="data-layout">
-    <main class="data-main">
-        <section class="card data-section">
-            <div class="card-header data-section-header">
-                <div><h3>{{ "data.insight_feed"|t }}</h3><p>{{ "data.insight_feed_desc"|t }}</p></div>
-                {% if linked_signals %}
-                <div class="data-filter" role="group" aria-label="{{ 'data.filter'|t }}" data-insight-filter>
-                    <button type="button" class="active" aria-pressed="true" data-filter="all">{{ "data.filter_all"|t }}</button>
-                    <button type="button" aria-pressed="false" data-filter="metric">{{ "data.filter_metrics"|t }}</button>
-                    <button type="button" aria-pressed="false" data-filter="feedback">{{ "data.filter_feedback"|t }}</button>
-                </div>
-                {% endif %}
-            </div>
-            <div class="data-insight-list">
-                {% for signal in linked_signals %}
-                <article class="data-insight" data-kind="{{ 'metric' if signal.source_type == 'metric' else 'feedback' }}">
-                    <div class="data-insight-topline">
-                        <span class="data-source-icon">{{ icon("trending-up" if signal.source_type == "metric" else "message-square", 14) }}</span>
-                        <span class="data-source-label">{{ ("signals.source." ~ signal.source_type)|t }}</span>
-                        <span class="data-strength strength-{{ signal.strength }}">{{ ("signals.strength." ~ signal.strength)|t }}</span>
-                    </div>
-                    <h4>{{ signal.title }}</h4>
-                    <p>{{ signal.summary }}</p>
-                    <footer>
-                        {% if signal.theme %}<span>#{{ signal.theme }}</span>{% endif %}
-                        {% if signal.created_at %}<time>{{ signal.created_at[:10] }}</time>{% endif %}
-                        <a href="/signals/{{ signal.signal_id }}">{{ "data.open_signal"|t }}</a>
-                    </footer>
-                </article>
-                {% else %}
-                <div class="data-demo" role="note">
-                    <span class="data-demo-badge">{{ "data.demo"|t }}</span>
-                    <div class="data-demo-chart" aria-hidden="true"><i style="height:38%"></i><i style="height:53%"></i><i style="height:48%"></i><i style="height:72%"></i><i style="height:86%"></i></div>
-                    <div>
-                        <h4>{{ "data.demo_title"|t }}</h4>
-                        <p>{{ "data.demo_desc"|t }}</p>
-                        <small>{{ "data.demo_source"|t }}</small>
-                    </div>
-                </div>
-                <div class="data-empty-action">
-                    <strong>{{ "data.empty_title"|t }}</strong>
-                    <span>{{ "data.empty_desc"|t }}</span>
-                    <a href="/signals#new-signal" class="btn btn-ghost btn-sm">{{ "data.add_first"|t }}</a>
-                </div>
-                {% endfor %}
-            </div>
-        </section>
-        <section class="card data-section" id="decisions">
-            <div class="card-header data-section-header"><div><h3>{{ "data.decisions_title"|t }}</h3><p>{{ "data.decisions_desc"|t }}</p></div><a href="/initiative/{{ initiative.name }}/specification#decisions" class="btn btn-ghost btn-sm">{{ "data.add_decision"|t }}</a></div>
-            <div class="data-insight-list">
-                {% for decision in decisions %}
-                <article class="data-insight"><div class="data-insight-topline"><span class="data-source-icon">{{ icon("scale", 14) }}</span><span class="decision-status decision-status-{{ decision.status }}">{{ ("decisions.status." ~ decision.status)|t }}</span></div><h4>{{ decision.title }}</h4><p>{{ decision.rationale }}</p>{% if decision.revisit_if %}<footer><span>{{ "decisions.revisit_if"|t }}: {{ decision.revisit_if }}</span></footer>{% endif %}</article>
-                {% else %}<div class="data-empty-action"><strong>{{ "decisions.empty_title"|t }}</strong><span>{{ "decisions.empty_desc"|t }}</span></div>{% endfor %}
-            </div>
-        </section>
-    </main>
+{# ── 1. Sources: full width, one card per kind of source ── #}
+<section class="card data-section" id="sources" aria-labelledby="sources-title">
+    <div class="card-header data-section-header">
+        <div><h3 id="sources-title">{{ "data.source_health"|t }}</h3><p>{{ "data.source_health_desc"|t }}</p></div>
+    </div>
+    <div class="data-source-grid">
+        <article class="data-source-card">
+            <header><span class="data-connector-icon sheet">{{ icon("sheet") }}</span><strong>{{ "data.spreadsheets"|t }}</strong>
+                <span class="data-source-state {{ 'healthy' if spreadsheets else 'waiting' }}">{{ (spreadsheets|length|tn("data.items")) if spreadsheets else "data.source_empty"|t }}</span></header>
+            <p>{{ "data.spreadsheets_help"|t }}</p>
+            {% if spreadsheets %}<ul class="data-source-items">{% for sheet in spreadsheets %}<li><span>{{ sheet.name }}</span><small>{{ sheet.rows|tn("data.rows") }} · {{ sheet.columns|tn("data.columns") }}</small></li>{% endfor %}</ul>{% endif %}
+            <form method="POST" action="/initiative/{{ initiative.name }}/data/spreadsheets" enctype="multipart/form-data" style="display:none" id="spreadsheet-form"><input id="spreadsheet-input" type="file" name="spreadsheet" accept=".csv,.tsv" onchange="this.form.submit()"></form>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('spreadsheet-input').click()">{{ icon("upload", 14) }} {{ "data.connect"|t }}</button>
+        </article>
 
-    <aside class="data-sidebar">
-        <section class="card data-section" id="sources">
-            <div class="card-header"><div><h3>{{ "data.source_health"|t }}</h3><p>{{ "data.source_health_desc"|t }}</p></div></div>
-            <div class="data-source-list">
-                <article class="data-source-row">
-                    <span class="data-connector-icon sheet">{{ icon("sheet") }}</span>
-                    <div><strong>{{ "data.spreadsheets"|t }}</strong><small>{% if spreadsheets %}{{ spreadsheets|length|tn("data.items") }}{% else %}{{ "data.not_connected"|t }}{% endif %}</small></div>
-                    <button type="button" class="btn btn-secondary btn-xs" onclick="document.getElementById('spreadsheet-input').click()">{{ "data.connect"|t }}</button>
-                </article>
-                <form method="POST" action="/initiative/{{ initiative.name }}/data/spreadsheets" enctype="multipart/form-data" style="display:none" id="spreadsheet-form"><input id="spreadsheet-input" type="file" name="spreadsheet" accept=".csv,.tsv" onchange="this.form.submit()"></form>
-                {% for sheet in spreadsheets %}<article class="data-source-row"><span class="data-connector-icon sheet">{{ icon("sheet") }}</span><div><strong>{{ sheet.name }}</strong><small>{{ sheet.rows|tn("data.rows") }} · {{ sheet.columns|tn("data.columns") }}</small></div><span class="data-source-state healthy">{{ "data.ready"|t }}</span></article>{% endfor %}
-                <article class="data-source-row" id="automations">
-                    <span class="data-connector-icon automation">{{ icon("workflow") }}</span>
-                    <div><strong>{{ "data.automations"|t }}</strong><small>{{ "data.automations_help"|t }}</small></div>
-                    <a href="#connect-automation" class="btn btn-secondary btn-xs" onclick="document.getElementById('connect-automation').open = true">{{ "data.register"|t }}</a>
-                </article>
-                {% for automation in automations %}<article class="data-source-row"><span class="data-connector-icon automation">{{ icon("workflow") }}</span><div><strong>{{ automation.name }}</strong><small>{{ automation.tool }}{% if automation.description %} · {{ automation.description }}{% endif %}</small></div><span class="data-source-state healthy">{{ "data.synced"|t }}</span></article>{% endfor %}
-                <details class="data-automation-connect" id="connect-automation">
-                    <summary>{{ "data.register_automation"|t }}</summary>
-                    <div class="data-automation-body">
-                        <p>{{ "data.register_automation_desc"|t }}</p>
-                        <form method="POST" action="/initiative/{{ initiative.name }}/data/automations" class="form data-automation-form">
-                            <label>{{ "data.automation_name"|t }}<input type="text" name="name" required placeholder="{{ 'data.automation_name_placeholder'|t }}"></label>
-                            <label>{{ "data.automation_tool"|t }}
-                                <select name="tool" required>
-                                    <option value="">{{ "data.automation_tool_placeholder"|t }}</option>
-                                    <option value="Cursor">Cursor</option>
-                                    <option value="VS Code">VS Code</option>
-                                    <option value="GitHub Actions">GitHub Actions</option>
-                                    <option value="n8n">n8n</option>
-                                    <option value="Make">Make</option>
-                                    <option value="Outro agente MCP">{{ "data.automation_other"|t }}</option>
-                                </select>
-                            </label>
-                            <label class="data-automation-full">{{ "data.automation_description"|t }}<textarea name="description" rows="2" placeholder="{{ 'data.automation_description_placeholder'|t }}"></textarea></label>
-                            <div class="data-automation-actions data-automation-full">
-                                {% if is_installation_admin %}<a href="/config#external-tools-other">{{ "data.configure_tool"|t }}</a>{% else %}<span class="form-hint">{{ "external_tools.ask_admin"|t }}</span>{% endif %}
-                                <button type="submit" class="btn btn-primary btn-sm">{{ "data.save_automation"|t }}</button>
-                            </div>
-                        </form>
-                        <small class="data-automation-note">{{ "data.automation_scope_note"|t }}</small>
-                    </div>
-                </details>
-                {% if context_files %}
-                <article class="data-source-row">
-                    <span class="data-connector-icon files">{{ icon("files") }}</span>
-                    <div><strong>{{ "data.context_files"|t }}</strong><small>{{ context_files|length|tn("data.items") }}</small></div>
-                    <span class="data-source-state healthy">{{ "data.ready"|t }}</span>
-                </article>
-                {% endif %}
-                {% for server in mcp_sources %}
-                <article class="data-source-row">
-                    <span class="data-connector-icon mcp">{{ icon("plug") }}</span>
-                    <div><strong>{{ server.name }}</strong><small>MCP · {{ server.transport }}</small></div>
-                    {% if server.status and server.status.state == "connected" %}
-                    <span class="data-source-state healthy">{{ "data.synced"|t }}</span>
-                    {% else %}
-                    <span class="data-source-state waiting">{{ "data.review"|t }}</span>
-                    {% endif %}
-                </article>
-                {% endfor %}
-            </div>
-        </section>
+        <article class="data-source-card">
+            <header><span class="data-connector-icon files">{{ icon("files") }}</span><strong>{{ "data.context_files"|t }}</strong>
+                <span class="data-source-state {{ 'healthy' if context_files else 'waiting' }}">{{ (context_files|length|tn("data.items")) if context_files else "data.source_empty"|t }}</span></header>
+            <p>{{ "data.context_files_help"|t }}</p>
+            {% if context_files %}<ul class="data-source-items">{% for file in context_files[:4] %}<li><span>{{ file.name }}</span></li>{% endfor %}{% if context_files|length > 4 %}<li><small>+{{ context_files|length - 4 }}</small></li>{% endif %}</ul>{% endif %}
+            <form method="POST" action="/initiative/{{ initiative.name }}/upload" enctype="multipart/form-data" style="display:none" id="context-upload-form"><input type="hidden" name="return_to" value="data"><input id="context-upload-input" type="file" name="docs" accept=".md,.txt,.pdf" multiple onchange="if (PMOS.validateUploadFiles(this)) this.form.submit()"></form>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('context-upload-input').click()">{{ icon("upload", 14) }} {{ "data.add_files"|t }}</button>
+        </article>
 
-        <section class="card data-question-card">
-            <span>{{ icon("sparkles", 18) }}</span>
-            <h3>{{ "data.ask_title"|t }}</h3>
-            <p>{{ "data.ask_desc"|t }}</p>
-            <a href="/initiative/{{ initiative.name }}/chat" class="btn btn-ai btn-sm btn-block">{{ "data.ask_cta"|t }}</a>
-        </section>
-    </aside>
+        <article class="data-source-card" id="automations">
+            <header><span class="data-connector-icon automation">{{ icon("workflow") }}</span><strong>{{ "data.automations"|t }}</strong>
+                <span class="data-source-state {{ 'healthy' if automations else 'waiting' }}">{{ (automations|length|tn("data.items")) if automations else "data.source_empty"|t }}</span></header>
+            <p>{{ "data.automations_help"|t }}</p>
+            {% if automations %}<ul class="data-source-items">{% for automation in automations %}<li><span>{{ automation.name }}</span><small>{{ automation.tool }}{% if automation.description %} · {{ automation.description }}{% endif %}</small></li>{% endfor %}</ul>{% endif %}
+            <a href="#connect-automation" class="btn btn-secondary btn-sm" onclick="document.getElementById('connect-automation').open = true">{{ "data.register"|t }}</a>
+        </article>
+
+        <article class="data-source-card">
+            <header><span class="data-connector-icon mcp">{{ icon("plug") }}</span><strong>{{ "data.mcp_sources"|t }}</strong>
+                <span class="data-source-state {{ 'healthy' if connected_mcp_count else 'waiting' }}">{{ connected_mcp_count }}/{{ mcp_sources|length }}</span></header>
+            <p>{{ "data.mcp_sources_help"|t }}</p>
+            {% if mcp_sources %}<ul class="data-source-items">{% for server in mcp_sources %}<li><span>{{ server.name }}</span><small>MCP · {{ server.transport }} · {{ "data.synced"|t if server.status and server.status.state == "connected" else "data.review"|t }}</small></li>{% endfor %}</ul>{% endif %}
+            {% if is_installation_admin %}<a href="/config#mcp" class="btn btn-secondary btn-sm">{{ "data.configure_mcp"|t }}</a>{% endif %}
+        </article>
+    </div>
+
+    <details class="data-automation-connect" id="connect-automation">
+        <summary>{{ "data.register_automation"|t }}</summary>
+        <div class="data-automation-body">
+            <p>{{ "data.register_automation_desc"|t }}</p>
+            <form method="POST" action="/initiative/{{ initiative.name }}/data/automations" class="form data-automation-form">
+                <label>{{ "data.automation_name"|t }}<input type="text" name="name" required placeholder="{{ 'data.automation_name_placeholder'|t }}"></label>
+                <label>{{ "data.automation_tool"|t }}
+                    <select name="tool" required>
+                        <option value="">{{ "data.automation_tool_placeholder"|t }}</option>
+                        <option value="Cursor">Cursor</option>
+                        <option value="VS Code">VS Code</option>
+                        <option value="GitHub Actions">GitHub Actions</option>
+                        <option value="n8n">n8n</option>
+                        <option value="Make">Make</option>
+                        <option value="Outro agente MCP">{{ "data.automation_other"|t }}</option>
+                    </select>
+                </label>
+                <label class="data-automation-full">{{ "data.automation_description"|t }}<textarea name="description" rows="2" placeholder="{{ 'data.automation_description_placeholder'|t }}"></textarea></label>
+                <div class="data-automation-actions data-automation-full">
+                    {% if is_installation_admin %}<a href="/config#external-tools-other">{{ "data.configure_tool"|t }}</a>{% else %}<span class="form-hint">{{ "external_tools.ask_admin"|t }}</span>{% endif %}
+                    <button type="submit" class="btn btn-primary btn-sm">{{ "data.save_automation"|t }}</button>
+                </div>
+            </form>
+            <small class="data-automation-note">{{ "data.automation_scope_note"|t }}</small>
+        </div>
+    </details>
+</section>
+
+{# ── 2. Agent insights: what the sources are saying, ready for review ── #}
+<section class="card data-section" id="insights" aria-labelledby="insights-title">
+    <div class="card-header data-section-header">
+        <div>
+            <h3 id="insights-title">{{ "data.agent_insights_title"|t }}</h3>
+            <p>{{ "data.agent_insights_desc"|t }}</p>
+        </div>
+        {% if insight_run.insights %}
+        <div class="data-filter" role="group" aria-label="{{ 'data.filter'|t }}" data-agent-filter>
+            <button type="button" class="active" aria-pressed="true" data-filter="all">{{ "data.filter_all"|t }}</button>
+            <button type="button" aria-pressed="false" data-filter="metrics">{{ "data.agent_metrics"|t }}</button>
+            <button type="button" aria-pressed="false" data-filter="voice">{{ "data.agent_voice"|t }}</button>
+            <button type="button" aria-pressed="false" data-filter="gaps">{{ "data.agent_gaps"|t }}</button>
+        </div>
+        {% endif %}
+    </div>
+    {% if insight_run.generated_at %}
+    <p class="data-agent-run">
+        {{ "data.agents_ran"|t }} {% for agent in insight_run.agents %}{{ ("data.agent_" ~ agent)|t }}{% if not loop.last %}, {% endif %}{% endfor %}
+        · {{ insight_run.generated_at[:16]|replace("T", " ") }}
+        {% if is_demo_provider_active %}· {{ "data.agents_local"|t }}{% endif %}
+    </p>
+    {% endif %}
+    <div class="data-agent-insights">
+        {% for insight in insight_run.insights %}
+        <article class="agent-insight agent-{{ insight.agent }} status-{{ insight.status }}" data-agent="{{ insight.agent }}">
+            <div class="agent-insight-topline">
+                <span class="agent-badge agent-badge-{{ insight.agent }}">{{ ("data.agent_" ~ insight.agent)|t }}</span>
+                <span class="agent-confidence" title="{{ 'data.confidence'|t }}">{{ "data.confidence"|t }} {{ (insight.confidence * 100)|round|int }}%</span>
+                {% if insight.status == "accepted" %}<a class="agent-status accepted" href="/signals/{{ insight.signal_id }}">{{ icon("circle-check", 14) }} {{ "data.insight_is_signal"|t }}</a>
+                {% elif insight.status == "dismissed" %}<span class="agent-status">{{ "data.insight_dismissed_label"|t }}</span>{% endif %}
+            </div>
+            <h4>{{ insight.title }}</h4>
+            <p>{{ insight.summary }}</p>
+            {% if insight.implication %}<p class="agent-insight-implication"><strong>{{ "data.implication"|t }}:</strong> {{ insight.implication }}</p>{% endif %}
+            {% if insight.recommendation %}<p class="agent-insight-implication"><strong>{{ "data.recommendation"|t }}:</strong> {{ insight.recommendation }}</p>{% endif %}
+            <ul class="agent-evidence" aria-label="{{ 'data.evidence'|t }}">
+                {% for evidence in insight.evidence %}<li><span class="agent-evidence-source">{{ evidence.source_name }}</span>{{ evidence.excerpt }}</li>{% endfor %}
+            </ul>
+            {% if insight.status == "new" %}
+            <div class="agent-insight-actions">
+                <form method="POST" action="/initiative/{{ initiative.name }}/data/insights/{{ insight.id }}"><input type="hidden" name="decision" value="accept"><button type="submit" class="btn btn-primary btn-sm">{{ "data.insight_accept"|t }}</button></form>
+                <form method="POST" action="/initiative/{{ initiative.name }}/data/insights/{{ insight.id }}"><input type="hidden" name="decision" value="dismiss"><button type="submit" class="btn btn-ghost btn-sm">{{ "data.insight_dismiss"|t }}</button></form>
+            </div>
+            {% endif %}
+        </article>
+        {% else %}
+        <div class="data-empty-action">
+            <strong>{{ ("data.agents_no_results" if insight_run.generated_at else "data.agents_not_run")|t }}</strong>
+            <span>{{ ("data.agents_no_results_desc" if insight_run.generated_at else "data.agents_not_run_desc")|t }}</span>
+            <form method="POST" action="/initiative/{{ initiative.name }}/data/insights/run" class="inline-form" data-loading="processing">
+                <button type="submit" class="btn btn-ai btn-sm">{{ icon("sparkles", 14) }} {{ "data.run_agents"|t }}</button>
+            </form>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+
+{# ── 3. Signals and decisions already registered ── #}
+<div class="data-two-columns">
+    <section class="card data-section">
+        <div class="card-header data-section-header">
+            <div><h3>{{ "data.insight_feed"|t }}</h3><p>{{ "data.insight_feed_desc"|t }}</p></div>
+            {% if linked_signals %}
+            <div class="data-filter" role="group" aria-label="{{ 'data.filter'|t }}" data-insight-filter>
+                <button type="button" class="active" aria-pressed="true" data-filter="all">{{ "data.filter_all"|t }}</button>
+                <button type="button" aria-pressed="false" data-filter="metric">{{ "data.filter_metrics"|t }}</button>
+                <button type="button" aria-pressed="false" data-filter="feedback">{{ "data.filter_feedback"|t }}</button>
+            </div>
+            {% endif %}
+        </div>
+        <div class="data-insight-list">
+            {% for signal in linked_signals %}
+            <article class="data-insight" data-kind="{{ 'metric' if signal.source_type == 'metric' else 'feedback' }}">
+                <div class="data-insight-topline">
+                    <span class="data-source-icon">{{ icon("trending-up" if signal.source_type == "metric" else "message-square", 14) }}</span>
+                    <span class="data-source-label">{{ ("signals.source." ~ signal.source_type)|t }}</span>
+                    <span class="data-strength strength-{{ signal.strength }}">{{ ("signals.strength." ~ signal.strength)|t }}</span>
+                </div>
+                <h4>{{ signal.title }}</h4>
+                <p>{{ signal.summary }}</p>
+                <footer>
+                    {% if signal.theme %}<span>#{{ signal.theme }}</span>{% endif %}
+                    {% if signal.created_at %}<time>{{ signal.created_at[:10] }}</time>{% endif %}
+                    <a href="/signals/{{ signal.signal_id }}">{{ "data.open_signal"|t }}</a>
+                </footer>
+            </article>
+            {% else %}
+            <div class="data-empty-action">
+                <strong>{{ "data.empty_title"|t }}</strong>
+                <span>{{ "data.empty_desc"|t }}</span>
+                <a href="/signals#new-signal" class="btn btn-ghost btn-sm">{{ "data.add_first"|t }}</a>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="card data-section" id="decisions">
+        <div class="card-header data-section-header"><div><h3>{{ "data.decisions_title"|t }}</h3><p>{{ "data.decisions_desc"|t }}</p></div><a href="/initiative/{{ initiative.name }}/specification#decisions" class="btn btn-ghost btn-sm">{{ "data.add_decision"|t }}</a></div>
+        <div class="data-insight-list">
+            {% for decision in decisions %}
+            <article class="data-insight"><div class="data-insight-topline"><span class="data-source-icon">{{ icon("scale", 14) }}</span><span class="decision-status decision-status-{{ decision.status }}">{{ ("decisions.status." ~ decision.status)|t }}</span></div><h4>{{ decision.title }}</h4><p>{{ decision.rationale }}</p>{% if decision.revisit_if %}<footer><span>{{ "decisions.revisit_if"|t }}: {{ decision.revisit_if }}</span></footer>{% endif %}</article>
+            {% else %}<div class="data-empty-action"><strong>{{ "decisions.empty_title"|t }}</strong><span>{{ "decisions.empty_desc"|t }}</span></div>{% endfor %}
+        </div>
+    </section>
 </div>
+
+<section class="card data-question-card data-question-inline">
+    <span>{{ icon("sparkles", 18) }}</span>
+    <div>
+        <h3>{{ "data.ask_title"|t }}</h3>
+        <p>{{ "data.ask_desc"|t }}</p>
+    </div>
+    <a href="/initiative/{{ initiative.name }}/chat" class="btn btn-ai btn-sm">{{ "data.ask_cta"|t }}</a>
+</section>
+
 <script>
 (function () {
-    var filter = document.querySelector('[data-insight-filter]');
-    if (!filter) return;
-    filter.addEventListener('click', function (event) {
-        var button = event.target.closest('button[data-filter]');
-        if (!button) return;
-        var kind = button.dataset.filter;
-        filter.querySelectorAll('button').forEach(function (item) {
-            var active = item === button;
-            item.classList.toggle('active', active);
-            item.setAttribute('aria-pressed', active ? 'true' : 'false');
+    function wireFilter(selector, itemSelector, attribute) {
+        var filter = document.querySelector(selector);
+        if (!filter) return;
+        filter.addEventListener('click', function (event) {
+            var button = event.target.closest('button[data-filter]');
+            if (!button) return;
+            var value = button.dataset.filter;
+            filter.querySelectorAll('button').forEach(function (item) {
+                var active = item === button;
+                item.classList.toggle('active', active);
+                item.setAttribute('aria-pressed', active ? 'true' : 'false');
+            });
+            document.querySelectorAll(itemSelector).forEach(function (item) {
+                item.hidden = value !== 'all' && item.dataset[attribute] !== value;
+            });
         });
-        document.querySelectorAll('.data-insight[data-kind]').forEach(function (item) {
-            item.hidden = kind !== 'all' && item.dataset.kind !== kind;
-        });
-    });
+    }
+    wireFilter('[data-insight-filter]', '.data-insight[data-kind]', 'kind');
+    wireFilter('[data-agent-filter]', '.agent-insight[data-agent]', 'agent');
 })();
 </script>
 {% endblock %}

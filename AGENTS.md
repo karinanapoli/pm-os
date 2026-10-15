@@ -158,6 +158,12 @@ All templates use `|t` filter for i18n:
 - Progressive enhancement: JS desabilitado → fallback para `generate_processing.html`
 - Job store estruturado: `{steps: [{status, detail}], step, message, done, error, result}`
 
+### Data Hub Agents (`src/pm_os/insights/`)
+- Aba Dados: fontes em grade de largura total (planilhas, arquivos, automações, MCP) acima dos insights
+- Subagentes locais: `MetricsAgent` (tendências/anomalias em CSV), `CustomerVoiceAgent` (dores recorrentes em docs), `GapAgent` (lacunas na especificação); `SynthesisAgent` refina textos com o provedor de IA (fora do modo Demo)
+- `POST /initiative/{name}/data/insights/run` executa; `POST /initiative/{name}/data/insights/{id}` com `decision=accept|dismiss` — aceitar cria um sinal vinculado
+- Resultado salvo em `data-sources/insights.json` (status preservado entre execuções)
+
 ## UX Fixes (11+ findings resolved)
 
 | # | Priority | Issue | Fix |
@@ -221,7 +227,7 @@ All templates use `|t` filter for i18n:
 - `docs/retrospectives/sprint-006-retrospective.md` — Sprint 006 retrospective
 
 ## Tests
-- 510 tests pass (incl. UI regressions from the synthetic-user audit in `docs/reviews/ux-audit-2026-10/`)
+- 524 tests pass (incl. UI regressions from the synthetic-user audit in `docs/reviews/ux-audit-2026-10/`)
 - Run: `.venv/bin/python -m pytest tests/ -v`
 
 ## Running

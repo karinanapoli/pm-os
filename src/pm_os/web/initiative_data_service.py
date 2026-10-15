@@ -8,6 +8,8 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
+from pm_os.infrastructure.utils import safe_upload_filename
+
 
 class InitiativeDataService:
     def list_spreadsheets(self, initiative_path: Path) -> list[dict]:
@@ -22,17 +24,37 @@ class InitiativeDataService:
         rows = list(csv.reader(io.StringIO(text), delimiter=delimiter))
         if not rows:
             raise ValueError("empty_spreadsheet")
+        name = safe_upload_filename(Path(filename).name)
+        if not name:
+            raise ValueError("invalid_spreadsheet_name")
         entry = {
-            "name": Path(filename).name,
+            "name": name,
             "rows": max(len(rows) - 1, 0),
             "columns": len(rows[0]),
             "connected_at": datetime.now(timezone.utc).isoformat(),
         }
+        # Keep the file so the insight agents can analyze it later.
+        stored = self._data_dir(initiative_path) / "spreadsheets"
+        stored.mkdir(parents=True, exist_ok=True)
+        (stored / name).write_text(text, encoding="utf-8")
         items = self.list_spreadsheets(initiative_path)
         items = [item for item in items if item.get("name") != entry["name"]]
         items.append(entry)
         self._save(initiative_path, "spreadsheets.json", items)
         return entry
+
+    def read_spreadsheet(self, initiative_path: Path, name: str) -> list[dict[str, str]]:
+        """Rows of a stored spreadsheet as dicts (header → value); empty when unavailable."""
+        safe_name = safe_upload_filename(Path(name).name)
+        path = self._data_dir(initiative_path) / "spreadsheets" / safe_name
+        if not safe_name or not path.is_file():
+            return []
+        delimiter = "\t" if path.suffix.lower() == ".tsv" else ","
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            return []
+        return list(csv.DictReader(io.StringIO(text), delimiter=delimiter))
 
     def list_automations(self, initiative_path: Path) -> list[dict]:
         return self._load(initiative_path, "automations.json")

@@ -68,6 +68,8 @@ from pm_os.web.markdown_renderer import render_safe_markdown
 from pm_os.web.icons import icon as _icon
 from pm_os.web.local_provider_detection import detect_ollama_models
 from pm_os.web.external_tool_configs import external_tool_configs
+from pm_os.insights.engine import InsightEngine, InsightStore
+from pm_os.insights.models import InsightContext, SourceDocument, Spreadsheet
 from pm_os.web.middleware import AuthMiddleware, CSRFMiddleware, NoCacheMiddleware
 from pm_os.web.product_docs_service import ProductDocsService
 from pm_os.web.prd_validation_service import PRDValidationService
@@ -1731,6 +1733,8 @@ async def initiative_data_page(
             decisions=specification.get("decisions") or [],
             spreadsheets=spreadsheets,
             automations=automations,
+            insight_run=InsightStore().load(selected.path),
+            is_demo_provider_active=(config_manager.get("ai_provider") or "demo") == "demo",
             notice=notice,
             notice_kind=notice_kind,
         ),
@@ -1786,6 +1790,95 @@ async def register_initiative_automation(
         notice, kind = "data.automation_invalid", "error"
     return RedirectResponse(
         f"/initiative/{initiative_name}/data?notice={notice}&notice_kind={kind}#automations",
+        status_code=303,
+    )
+
+
+
+
+def _insight_context(selected: Initiative, request: Request) -> InsightContext:
+    """Collect the initiative sources the insight agents are allowed to read."""
+    loaded = _repo(_get_session_squad(request)).get(selected.name, load_content=True) or selected
+    data_service = InitiativeDataService()
+    spreadsheets = [
+        Spreadsheet(item["name"], data_service.read_spreadsheet(selected.path, item["name"]))
+        for item in data_service.list_spreadsheets(selected.path)
+    ]
+    specification = product_specification_service.load(selected.path).get("sections") or {}
+    return InsightContext(
+        initiative=selected.name,
+        lang=_get_lang(),
+        spreadsheets=[sheet for sheet in spreadsheets if sheet.rows],
+        documents=[
+            SourceDocument(source.source_id, source.name, source.content)
+            for source in loaded.sources if source.content
+        ],
+        specification={key: str(value or "") for key, value in specification.items()},
+        automations=data_service.list_automations(selected.path),
+    )
+
+
+@app.post("/initiative/{initiative_name}/data/insights/run")
+async def run_initiative_insights(request: Request, initiative_name: str):
+    """Run the source-analysis agents and keep their findings for review."""
+    selected = _get_initiative_by_name(initiative_name, request)
+    if not selected:
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    context = _insight_context(selected, request)
+    synthesizer = None
+    if (config_manager.get("ai_provider") or "demo") != "demo":
+        try:
+            synthesizer = _build_ai_client()
+        except Exception:  # an unavailable provider only skips the synthesis step
+            synthesizer = None
+    engine = InsightEngine(synthesizer=synthesizer)
+    insights = engine.run(context)
+    InsightStore().save_run(
+        selected.path,
+        insights,
+        agents=[agent.name for agent in engine.agents] + (["synthesis"] if synthesizer else []),
+        synthesized=any(item.synthesized for item in insights),
+    )
+    notice = "data.insights_ready" if insights else "data.insights_empty"
+    return RedirectResponse(
+        f"/initiative/{initiative_name}/data?notice={notice}#insights",
+        status_code=303,
+    )
+
+
+@app.post("/initiative/{initiative_name}/data/insights/{insight_id}")
+async def decide_initiative_insight(
+    request: Request, initiative_name: str, insight_id: str, decision: str = Form(...)
+):
+    """Accept an insight as a linked signal, or dismiss it."""
+    selected = _get_initiative_by_name(initiative_name, request)
+    if not selected:
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    store = InsightStore()
+    insight = next((item for item in store.load(selected.path)["insights"] if item.id == insight_id), None)
+    if insight is None or decision not in {"accept", "dismiss"}:
+        return HTMLResponse(_t("error.not_found", _get_lang()), status_code=404)
+    if decision == "dismiss":
+        store.set_status(selected.path, insight_id, "dismissed")
+        notice = "data.insight_dismissed"
+    else:
+        summary_parts = [insight.summary, insight.implication, insight.recommendation]
+        summary_parts += [f"[{item.source_id}] {item.excerpt}" for item in insight.evidence]
+        strength = "strong" if insight.confidence >= 0.75 else "medium" if insight.confidence >= 0.5 else "weak"
+        signal = _signal_repo(request).create(
+            title=insight.title[:140],
+            summary="\n".join(part for part in summary_parts if part),
+            source_type=insight.signal_type,
+            theme=_t(f"data.agent_{insight.agent}", _get_lang()),
+            strength=strength,
+            initiative_ids=[initiative_name],
+            source_reference=", ".join(sorted({item.source_name for item in insight.evidence})),
+            created_by=_get_session_user_email(request),
+        )
+        store.set_status(selected.path, insight_id, "accepted", signal.signal_id)
+        notice = "data.insight_accepted"
+    return RedirectResponse(
+        f"/initiative/{initiative_name}/data?notice={notice}#insights",
         status_code=303,
     )
 
@@ -2806,6 +2899,7 @@ async def upload_context_doc(
     request: Request,
     initiative_name: str,
     docs: list[UploadFile] = File(...),
+    return_to: str = Form(""),
 ):
     selected = _get_initiative_by_name(initiative_name, request)
     if not selected:
@@ -2836,6 +2930,17 @@ async def upload_context_doc(
     if uploaded > 0:
         tracker = create_change_tracker()
         tracker.update_manifest(str(selected.path))
+
+    if return_to == "data":
+        notice, kind = (
+            ("initiative.detail.upload_partial", "warning") if uploaded and rejected
+            else ("initiative.detail.uploaded", "success") if uploaded
+            else ("initiative.detail.upload_failed", "error")
+        )
+        return RedirectResponse(
+            f"/initiative/{initiative_name}/data?notice={notice}&notice_kind={kind}#sources",
+            status_code=303,
+        )
 
     if uploaded and rejected:
         return await initiative_detail(

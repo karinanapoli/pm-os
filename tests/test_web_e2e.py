@@ -3657,3 +3657,78 @@ def test_editor_and_agent_setup_has_its_own_settings_tab(client):
     assert page.text.index('id="external-tools"') > tab
     assert page.text.index('id="external-tools-other"') > tab
     assert not providers < page.text.index('id="external-tools"') < mcp
+
+
+class TestDataHubAgents:
+    """Data tab: full-width sources and source-analysis agents."""
+
+    def _prepare(self, client, init_id):
+        client.post(
+            f"/initiative/{init_id}/data/spreadsheets",
+            files={"spreadsheet": ("metricas.csv", b"semana,tempo_medio_min\nS1,14\nS2,13\nS3,9\n", "text/csv")},
+        )
+        client.post(
+            f"/initiative/{init_id}/upload",
+            data={"return_to": "data"},
+            files={"docs": ("pesquisa.md", "## Dores\n1. Processo manual: 78% usam planilhas e e-mails\n".encode(), "text/markdown")},
+        )
+
+    def test_sources_are_shown_full_width_before_insights(self, client):
+        init_id = _create_initiative(client, "Data Hub", "INT-DATA-HUB")
+
+        page = client.get(f"/initiative/{init_id}/data")
+
+        assert 'class="data-source-grid"' in page.text
+        assert "data-sidebar" not in page.text
+        assert page.text.index('id="sources"') < page.text.index('id="insights"')
+        assert "Os agentes ainda não analisaram as fontes" in page.text
+
+    def test_upload_from_data_tab_returns_to_data_tab(self, client):
+        init_id = _create_initiative(client, "Data Upload", "INT-DATA-UPLOAD")
+
+        response = client.post(
+            f"/initiative/{init_id}/upload",
+            data={"return_to": "data"},
+            files={"docs": ("nota.md", b"# Nota", "text/markdown")},
+            follow_redirects=False,
+        )
+
+        assert response.status_code == 303
+        assert response.headers["location"].startswith(f"/initiative/{init_id}/data?notice=initiative.detail.uploaded")
+
+    def test_agents_produce_reviewable_insights_and_accept_creates_signal(self, client, session_base):
+        init_id = _create_initiative(client, "Data Agents", "INT-DATA-AGENTS")
+        self._prepare(client, init_id)
+        stored = session_base / "workspace" / "initiatives" / init_id / "data-sources" / "spreadsheets" / "metricas.csv"
+        assert stored.read_text(encoding="utf-8").startswith("semana,tempo_medio_min")
+
+        ran = client.post(f"/initiative/{init_id}/data/insights/run", follow_redirects=False)
+        page = client.get(ran.headers["location"])
+
+        assert "notice=data.insights_ready" in ran.headers["location"]
+        assert "tempo medio min caiu 36% (14 → 9)" in page.text
+        assert "Dor recorrente: processos manuais" in page.text
+        assert "análise local (modo Demo)" in page.text
+        insight_id = re.search(r'/data/insights/(INS-[0-9a-f]{8})"', page.text).group(1)
+
+        accepted = client.post(f"/initiative/{init_id}/data/insights/{insight_id}", data={"decision": "accept"}, follow_redirects=False)
+        after = client.get(accepted.headers["location"])
+
+        assert "notice=data.insight_accepted" in accepted.headers["location"]
+        assert "Virou sinal" in after.text
+        signals = client.get("/signals").text
+        assert re.search(r"<strong>1</strong>\s*<span>sinal neste espaço</span>", signals)
+
+    def test_dismiss_and_unknown_decisions(self, client):
+        init_id = _create_initiative(client, "Data Dismiss", "INT-DATA-DISMISS")
+        self._prepare(client, init_id)
+        page = client.get(client.post(f"/initiative/{init_id}/data/insights/run", follow_redirects=False).headers["location"])
+        insight_id = re.search(r'/data/insights/(INS-[0-9a-f]{8})"', page.text).group(1)
+
+        dismissed = client.post(f"/initiative/{init_id}/data/insights/{insight_id}", data={"decision": "dismiss"}, follow_redirects=False)
+        invalid = client.post(f"/initiative/{init_id}/data/insights/{insight_id}", data={"decision": "delete"})
+        missing = client.post(f"/initiative/{init_id}/data/insights/INS-00000000", data={"decision": "accept"})
+
+        assert "notice=data.insight_dismissed" in dismissed.headers["location"]
+        assert invalid.status_code == 404
+        assert missing.status_code == 404
